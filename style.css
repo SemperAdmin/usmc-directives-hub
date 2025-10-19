@@ -1,58 +1,11 @@
-body {
-  font-family: system-ui, Arial, sans-serif;
-  margin: 0;
-  background: #f5f6f8;
-  color: #222;
-}
-
-header {
-  background: #000;
-  color: #fff;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-button {
-  background: #d62828;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-button:hover {
-  background: #b41e1e;
-}
-
-#status {
-  margin-left: 1rem;
-  font-size: 0.9rem;
-}
-
-#results {
-  padding: 1rem;
-}
-
-.maradmin {
-  background: white;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-left: 4px solid #d62828;
-}
-
-.maradmin h2 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.maradmin p {
-  margin: 0.5rem 0;
-}
-
-.maradmin a {
-  color: #003366;
-  text-decoration: none;
-}
+body { font-family: Arial, sans-serif; background: #f5f5f5; color: #222; margin: 0; }
+header { background: #cc0000; color: #fff; padding: 1rem; text-align: center; }
+.controls { margin-top: 0.5rem; }
+button { margin: 0 0.25rem; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; }
+.results { max-width: 900px; margin: 2rem auto; display: grid; gap: 1rem; }
+.maradmin { background: #fff; padding: 1rem; border-left: 4px solid #cc0000; }
+.maradmin h2 { margin: 0 0 0.5rem 0; font-size: 1.1rem; }
+.maradmin p { margin: 0.25rem 0; }
+.status, .error { text-align: center; padding: 0.5rem; margin: 1rem; }
+.error { background: #ffe6e6; color: #cc0000; border-left: 4px solid #cc0000; }
+.hidden { display: none; }i
