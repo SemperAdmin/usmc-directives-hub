@@ -73,7 +73,8 @@ async function fetchMaradmins() {
 // Fallback parser using Marines.mil/News/Messages HTML
 async function fallbackScrape(url, arr) {
   try {
-    const res = await fetch(url);
+    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+    const response = await fetch(CORS_PROXY + encodeURIComponent(RSS_URL));
     if (!res.ok) return;
     const html = await res.text();
     const parser = new DOMParser();
