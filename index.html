@@ -4,506 +4,516 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Semper Admin - MARADMIN & Directives Tracker</title>
-  <meta name="description" content="Track USMC MARADMINs and Directives in real-time">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>MARADMIN Tracker - Last 7 Days</title>
   <style>
-    :root {
-      --marine-red: #CC0000;
-      --marine-red-dark: #990000;
-      --marine-gold: #D4AF37;
-      --marine-navy: #001F3F;
-      --marine-navy-light: #003366;
-      --bg-primary: #0A0E1A;
-      --bg-secondary: #131825;
-      --bg-card: #1A202E;
-      --text-primary: #FFFFFF;
-      --text-secondary: #9CA3AF;
-      --text-muted: #6B7280;
-      --border-color: #2D3748;
-      --success: #10B981;
-      --warning: #F59E0B;
-      --error: #EF4444;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      line-height: 1.6;
-      min-height: 100vh;
-    }
-    header {
-      background: linear-gradient(135deg, var(--marine-navy) 0%, var(--marine-navy-light) 100%);
-      border-bottom: 3px solid var(--marine-red);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .header-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 1.5rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 2rem;
-    }
-    .logo-section { display: flex; align-items: center; gap: 1rem; }
-    .logo {
-      width: 50px;
-      height: 50px;
-      background: var(--marine-red);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      font-weight: 800;
-      color: white;
-      box-shadow: 0 4px 12px rgba(204, 0, 0, 0.4);
-    }
-    h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.5px; }
-    .brand-name { color: var(--marine-gold); font-weight: 800; }
-    .subtitle { color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem; font-weight: 500; }
-    .header-actions { display: flex; gap: 1rem; align-items: center; }
-    .status-indicator {
-      padding: 0.5rem 1rem;
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
-      border: 1px solid var(--border-color);
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--marine-red) 0%, var(--marine-red-dark) 100%);
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: all 0.3s ease;
-      font-size: 0.95rem;
-      box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
-    }
-    .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(204, 0, 0, 0.4); }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .stat-card {
-      background: var(--bg-card);
-      padding: 1.5rem;
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .stat-label { color: var(--text-muted); font-size: 0.875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-value { font-size: 2rem; font-weight: 800; color: var(--marine-gold); }
-    .filters-section {
-      background: var(--bg-card);
-      border-radius: 16px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      border: 1px solid var(--border-color);
-    }
-    .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-    .filters-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
-    .filters-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; }
-    .input-wrapper { position: relative; }
-    .input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.25rem; }
-    input, select {
-      width: 100%;
-      padding: 0.875rem 1rem;
-      background: var(--bg-secondary);
-      border: 2px solid var(--border-color);
-      border-radius: 10px;
-      color: var(--text-primary);
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-      font-family: 'Inter', sans-serif;
-    }
-    input { padding-left: 3rem; }
-    select { cursor: pointer; }
-    input:focus, select:focus { outline: none; border-color: var(--marine-red); background: var(--bg-primary); }
-    input::placeholder { color: var(--text-muted); }
-    .btn-secondary {
-      background: var(--bg-secondary);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-color);
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 0.875rem;
-    }
-    .btn-secondary:hover { background: var(--bg-primary); color: var(--text-primary); }
-    .alert {
-      padding: 1rem 1.5rem;
-      border-radius: 12px;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      border-left: 4px solid;
-      animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .alert-info { background: rgba(59, 130, 246, 0.1); border-color: #3B82F6; color: #93C5FD; }
-    .alert-success { background: rgba(16, 185, 129, 0.1); border-color: var(--success); color: #6EE7B7; }
-    .alert-warning { background: rgba(245, 158, 11, 0.1); border-color: var(--warning); color: #FCD34D; }
-    .alert-error { background: rgba(239, 68, 68, 0.1); border-color: var(--error); color: #FCA5A5; }
-    .alert-icon { font-size: 1.5rem; flex-shrink: 0; }
-    .documents-grid { display: flex; flex-direction: column; gap: 1rem; }
-    .doc-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.5rem;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .doc-card::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      background: var(--marine-red);
-      transform: scaleY(0);
-      transition: transform 0.3s ease;
-    }
-    .doc-card:hover { border-color: var(--marine-red); transform: translateX(4px); box-shadow: 0 8px 24px rgba(204, 0, 0, 0.2); }
-    .doc-card:hover::before { transform: scaleY(1); }
-    .doc-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .doc-icon { font-size: 2rem; }
-    .badge {
-      padding: 0.375rem 0.875rem;
-      background: linear-gradient(135deg, var(--marine-red) 0%, var(--marine-red-dark) 100%);
-      color: white;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .doc-date { color: var(--text-muted); font-size: 0.875rem; display: flex; align-items: center; gap: 0.375rem; }
-    .doc-title { font-size: 1.125rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem; line-height: 1.4; }
-    .doc-description { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem; }
-    .btn-view {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: linear-gradient(135deg, var(--marine-red) 0%, var(--marine-red-dark) 100%);
-      color: white;
-      text-decoration: none;
-      padding: 0.625rem 1.25rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.875rem;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
-    }
-    .btn-view:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(204, 0, 0, 0.4); }
-    .empty-state { text-align: center; padding: 4rem 2rem; background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border-color); }
-    .empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.5; }
-    .empty-text { color: var(--text-secondary); font-size: 1.125rem; margin-bottom: 1.5rem; }
-    .loading-state { text-align: center; padding: 4rem 2rem; }
-    .loading-spinner {
-      width: 64px;
-      height: 64px;
-      border: 4px solid var(--border-color);
-      border-top-color: var(--marine-red);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1.5rem;
-    }
-    footer { background: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 3rem 2rem; margin-top: 4rem; }
-    .footer-content { max-width: 1400px; margin: 0 auto; text-align: center; }
-    .footer-logo { font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }
-    .footer-text { color: var(--text-muted); font-size: 0.875rem; line-height: 1.8; }
-    .footer-links { display: flex; justify-content: center; gap: 2rem; margin-top: 1.5rem; flex-wrap: wrap; }
-    .footer-link { color: var(--text-secondary); text-decoration: none; font-size: 0.875rem; transition: color 0.2s ease; }
-    .footer-link:hover { color: var(--marine-gold); }
-    @media (max-width: 1024px) { .filters-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 768px) {
-      .header-content { flex-direction: column; gap: 1rem; text-align: center; }
-      .logo-section { flex-direction: column; }
-      h1 { font-size: 1.5rem; }
-      .filters-grid { grid-template-columns: 1fr; }
-      .stats-bar { grid-template-columns: 1fr 1fr; }
-      .stat-value { font-size: 1.5rem; }
-      .container { padding: 1rem; }
-    }
+
+```
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --accent: #cc0000;
+  --border: #dddddd;
+  --error-bg: #ffebee;
+  --error-text: #c62828;
+}
+
+body.dark-theme {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --accent: #ff3333;
+  --border: #444444;
+  --error-bg: #3a1a1a;
+  --error-text: #ff6666;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+header {
+  background-color: var(--accent);
+  color: white;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+header p {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.9;
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+button {
+  background-color: white;
+  color: var(--accent);
+  border: 2px solid white;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background-color: transparent;
+  color: white;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+main {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.status {
+  background-color: var(--bg-secondary);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.error {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--error-text);
+}
+
+.error.hidden {
+  display: none;
+}
+
+.results {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.maradmin {
+  background-color: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 4px;
+  border-left: 4px solid var(--accent);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.maradmin:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.maradmin h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.maradmin h2 a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.maradmin h2 a:hover {
+  text-decoration: underline;
+}
+
+.maradmin p {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.maradmin .summary {
+  margin-top: 0.75rem;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+footer {
+  background-color: var(--bg-secondary);
+  padding: 2rem 1rem;
+  text-align: center;
+  margin-top: 3rem;
+  border-top: 1px solid var(--border);
+}
+
+footer p {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .maradmin h2 {
+    font-size: 1.1rem;
+  }
+}
+```
+
   </style>
 </head>
 <body>
   <header>
-    <div class="header-content">
-      <div class="logo-section">
-        <div class="logo">SA</div>
-        <div>
-          <h1><span class="brand-name">Semper Admin</span></h1>
-          <div class="subtitle">MARADMIN & Directives Intelligence Platform</div>
-        </div>
-      </div>
-      <div class="header-actions">
-        <div class="status-indicator"><div class="status-dot"></div><span>Live</span></div>
-        <button class="btn-primary" onclick="fetchFeeds()" id="refreshBtn">
-          <span id="refreshIcon">🔄</span><span>Refresh</span>
-        </button>
-      </div>
+    <h1>MARADMIN Tracker</h1>
+    <p>Displays all MARADMINs published on Marines.mil within the last 7 days</p>
+    <div class="controls">
+      <button id="refreshBtn">Refresh</button>
+      <button id="exportBtn">Export JSON</button>
+      <button id="themeToggle">Toggle Theme</button>
     </div>
   </header>
-  <div class="container">
-    <div class="stats-bar">
-      <div class="stat-card"><div class="stat-label">Total Documents</div><div class="stat-value" id="totalStat">0</div></div>
-      <div class="stat-card"><div class="stat-label">MARADMINs</div><div class="stat-value" id="maradminStat">0</div></div>
-      <div class="stat-card"><div class="stat-label">Directives</div><div class="stat-value" id="directiveStat">0</div></div>
-      <div class="stat-card"><div class="stat-label">Filtered Results</div><div class="stat-value" id="filteredStat">0</div></div>
-    </div>
-    <div class="filters-section">
-      <div class="filters-header">
-        <div class="filters-title"><span>🔍</span><span>Filter & Search</span></div>
-        <button class="btn-secondary" onclick="clearFilters()">Clear All</button>
-      </div>
-      <div class="filters-grid">
-        <div class="input-wrapper">
-          <span class="input-icon">🔎</span>
-          <input type="text" id="searchInput" placeholder="Search by keyword, title, or content..." oninput="applyFilters()">
-        </div>
-        <select id="typeFilter" onchange="applyFilters()">
-          <option value="all">All Types</option>
-          <option value="MARADMIN">MARADMINs</option>
-          <option value="Directive">Directives</option>
-        </select>
-        <input type="date" id="startDate" onchange="applyFilters()">
-        <input type="date" id="endDate" onchange="applyFilters()">
-      </div>
-    </div>
-    <div id="alertBox"></div>
-    <div id="documentsContainer"></div>
-  </div>
+
+  <main>
+    <div id="status" class="status">Click Refresh to load data</div>
+    <div id="error" class="error hidden"></div>
+    <div id="results" class="results"></div>
+  </main>
+
   <footer>
-    <div class="footer-content">
-      <div class="footer-logo"><span class="brand-name">Semper Admin</span></div>
-      <div class="footer-text">
-        <p>Aggregating official USMC publications from marines.mil</p>
-        <p style="margin-top: 0.5rem;">Data sourced from official RSS feeds • Not affiliated with USMC</p>
-      </div>
-      <div class="footer-links">
-        <a href="https://www.marines.mil/News/Messages/MARADMINS/" target="_blank" class="footer-link">MARADMINs</a>
-        <a href="https://www.marines.mil/News/Publications/MCPEL/" target="_blank" class="footer-link">MCPEL</a>
-        <a href="https://github.com" target="_blank" class="footer-link">GitHub</a>
-      </div>
-    </div>
+    <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a></p>
+    <p>Last updated: <span id="lastUpdate">Never</span></p>
   </footer>
+
   <script>
-    let allDocuments = [];
-    let filteredDocuments = [];
-    const CORS_PROXY = 'https://api.allorigins.win/get?url=';
-    const feeds = [
-      { url: 'https://www.marines.mil/News/Messages/MARADMINS/RSS/', type: 'MARADMIN', icon: '📋' },
-      { url: 'https://www.marines.mil/News/Publications/MCPEL/RSS/', type: 'Directive', icon: '📄' }
-    ];
-    function parseRSS(xmlText, type, icon) {
+    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+    const RSS_URL = "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=50&category=14336";
+    const MESSAGES_URL = "https://www.marines.mil/News/Messages/";
+    const CACHE_KEY = "maradmin_cache";
+    const CACHE_TIMESTAMP_KEY = "maradmin_cache_timestamp";
+
+    const refreshBtn = document.getElementById("refreshBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const themeToggle = document.getElementById("themeToggle");
+    const statusDiv = document.getElementById("status");
+    const errorDiv = document.getElementById("error");
+    const resultsDiv = document.getElementById("results");
+    const lastUpdateSpan = document.getElementById("lastUpdate");
+
+    let currentMaradmins = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadThemePreference();
+      loadCachedData();
+    });
+
+    refreshBtn.addEventListener("click", fetchMaradmins);
+    exportBtn.addEventListener("click", exportToJSON);
+    themeToggle.addEventListener("click", toggleTheme);
+
+    async function fetchMaradmins() {
+      setStatus("Fetching MARADMINs from RSS feed...");
+      hideError();
+      clearResults();
+      refreshBtn.disabled = true;
+
+      let maradmins = [];
+      let fetchMethod = "";
+      let rssError = null;
+
       try {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlText, 'text/xml');
-        const parseError = xml.querySelector('parsererror');
-        if (parseError) throw new Error('XML parsing failed');
-        const items = xml.querySelectorAll('item');
-        const documents = [];
-        items.forEach(item => {
-          const title = item.querySelector('title')?.textContent || 'Untitled';
-          const link = item.querySelector('link')?.textContent || '';
-          const pubDateStr = item.querySelector('pubDate')?.textContent || '';
-          const description = item.querySelector('description')?.textContent || '';
-          if (link) {
-            documents.push({
-              title: title.trim(),
-              link: link.trim(),
-              pubDate: pubDateStr ? new Date(pubDateStr) : new Date(),
-              type: type,
-              icon: icon,
-              description: description.replace(/<[^>]*>/g, '').substring(0, 200).trim()
-            });
-          }
-        });
-        return documents;
-      } catch (error) {
-        console.error('RSS parsing error:', error);
-        return [];
-      }
-    }
-    async function fetchFeeds() {
-      const btn = document.getElementById('refreshBtn');
-      const icon = document.getElementById('refreshIcon');
-      const container = document.getElementById('documentsContainer');
-      const alertBox = document.getElementById('alertBox');
-      btn.disabled = true;
-      icon.innerHTML = '<div class="spinner"></div>';
-      if (allDocuments.length === 0) {
-        container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p style="color: var(--text-secondary); font-size: 1.125rem;">Loading latest documents...</p></div>';
-      }
-      alertBox.innerHTML = '<div class="alert alert-info"><span class="alert-icon">📡</span><span>Fetching latest data from USMC feeds...</span></div>';
-      const allItems = [];
-      const seenLinks = new Set();
-      let successCount = 0;
-      let errorMessages = [];
-      for (const feed of feeds) {
+        const rssProxyURL = CORS_PROXY + encodeURIComponent(RSS_URL);
+        const response = await fetch(rssProxyURL);
+        
+        if (response.ok) {
+          const text = await response.text();
+          maradmins = parseRSSFeed(text);
+          fetchMethod = "RSS Feed";
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (err) {
+        rssError = err.message;
+        console.warn("RSS feed failed:", rssError);
+        setStatus("RSS unavailable. Trying Messages page...");
+        
         try {
-          const proxiedUrl = CORS_PROXY + encodeURIComponent(feed.url);
-          const response = await fetch(proxiedUrl);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const data = await response.json();
-          const xmlText = data.contents;
-          if (!xmlText || (!xmlText.includes('<?xml') && !xmlText.includes('<rss'))) {
-            throw new Error('Invalid RSS feed response');
+          const htmlProxyURL = CORS_PROXY + encodeURIComponent(MESSAGES_URL);
+          const response = await fetch(htmlProxyURL);
+          
+          if (response.ok) {
+            const html = await response.text();
+            maradmins = parseMessagesPage(html);
+            fetchMethod = "Messages Page";
+          } else {
+            throw new Error(`HTTP ${response.status}`);
           }
-          const documents = parseRSS(xmlText, feed.type, feed.icon);
-          const uniqueDocs = documents.filter(doc => {
-            if (seenLinks.has(doc.link)) return false;
-            seenLinks.add(doc.link);
-            return true;
-          });
-          allItems.push(...uniqueDocs);
-          successCount++;
-          console.log(`✅ Successfully fetched ${uniqueDocs.length} ${feed.type} documents`);
-        } catch (err) {
-          console.error(`❌ Failed to fetch ${feed.type}:`, err);
-          errorMessages.push(feed.type);
+        } catch (htmlErr) {
+          showError(`Both methods failed. RSS: ${rssError}. HTML: ${htmlErr.message}`);
+          refreshBtn.disabled = false;
+          return;
         }
       }
-      allDocuments = allItems.sort((a, b) => b.pubDate - a.pubDate);
-      try {
-        localStorage.setItem('semper_admin_docs', JSON.stringify(allDocuments));
-        localStorage.setItem('semper_admin_timestamp', new Date().toISOString());
-      } catch (e) {
-        console.warn('localStorage save failed:', e);
-      }
-      if (successCount === 0) {
-        alertBox.innerHTML = '<div class="alert alert-error"><span class="alert-icon">❌</span><div><strong>Unable to fetch feeds</strong><br><small>This may be due to CORS restrictions. For best results, deploy to GitHub Pages or a web server.</small><br><br><strong>Troubleshooting:</strong><ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.875rem;"><li>Check internet connection</li><li>Deploy to GitHub Pages (recommended)</li><li>Try using a CORS browser extension for testing</li></ul></div></div>';
-      } else if (errorMessages.length > 0) {
-        alertBox.innerHTML = '<div class="alert alert-warning"><span class="alert-icon">⚠️</span><span>Partial data loaded. Could not fetch: ' + errorMessages.join(', ') + '</span></div>';
-        setTimeout(() => alertBox.innerHTML = '', 5000);
-      } else {
-        alertBox.innerHTML = '<div class="alert alert-success"><span class="alert-icon">✅</span><span>Successfully loaded ' + allDocuments.length + ' documents from both feeds!</span></div>';
-        setTimeout(() => alertBox.innerHTML = '', 3000);
-      }
-      applyFilters();
-      updateStats();
-      btn.disabled = false;
-      icon.innerHTML = '🔄';
-    }
-    function applyFilters() {
-      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-      const typeFilter = document.getElementById('typeFilter').value;
-      const startDate = document.getElementById('startDate').value;
-      const endDate = document.getElementById('endDate').value;
-      filteredDocuments = allDocuments.filter(doc => {
-        if (searchTerm) {
-          const matchesSearch = doc.title.toLowerCase().includes(searchTerm) || doc.description.toLowerCase().includes(searchTerm);
-          if (!matchesSearch) return false;
-        }
-        if (typeFilter !== 'all' && doc.type !== typeFilter) return false;
-        if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          if (doc.pubDate < start) return false;
-        }
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          if (doc.pubDate > end) return false;
-        }
-        return true;
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      maradmins = maradmins.filter(item => {
+        const pubDate = new Date(item.pubDate);
+        return pubDate >= sevenDaysAgo;
       });
-      displayDocuments();
-      updateStats();
+
+      maradmins.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+      currentMaradmins = maradmins;
+      cacheData(maradmins);
+
+      if (maradmins.length === 0) {
+        setStatus("No MARADMINs found in the last 7 days.");
+      } else {
+        setStatus(`Loaded ${maradmins.length} MARADMIN${maradmins.length === 1 ? '' : 's'} via ${fetchMethod}`);
+        renderMaradmins(maradmins);
+      }
+
+      updateLastUpdateTime();
+      refreshBtn.disabled = false;
     }
-    function displayDocuments() {
-      const container = document.getElementById('documentsContainer');
-      if (filteredDocuments.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No documents match your current filters</div>' + (allDocuments.length > 0 ? '<button class="btn-secondary" onclick="clearFilters()">Clear Filters</button>' : '<p style="color: var(--text-muted); margin-top: 1rem;">No data loaded yet. Click "Refresh" above.</p>') + '</div>';
+
+    function parseRSSFeed(xmlText) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, "application/xml");
+      
+      const parseError = xml.querySelector("parsererror");
+      if (parseError) {
+        throw new Error("XML parse error");
+      }
+
+      const items = xml.querySelectorAll("item");
+      const maradmins = [];
+
+      items.forEach(item => {
+        const title = item.querySelector("title")?.textContent || "";
+        const link = item.querySelector("link")?.textContent || "";
+        const pubDate = item.querySelector("pubDate")?.textContent || "";
+        const description = item.querySelector("description")?.textContent || "";
+
+        const idMatch = title.match(/MARADMIN\s+\d+\/\d+/i);
+        if (!idMatch) return;
+
+        const summary = extractFirstSentence(description);
+
+        maradmins.push({
+          id: idMatch[0].toUpperCase(),
+          title: title.trim(),
+          link: link.trim(),
+          pubDate: new Date(pubDate).toISOString(),
+          summary: summary
+        });
+      });
+
+      return maradmins;
+    }
+
+    function parseMessagesPage(html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const maradmins = [];
+
+      const links = doc.querySelectorAll("a");
+
+      links.forEach(link => {
+        const title = link.textContent.trim();
+        const href = link.getAttribute("href");
+        
+        if (!title || !href) return;
+
+        const idMatch = title.match(/MARADMIN\s+\d+\/\d+/i);
+        if (!idMatch) return;
+
+        const article = link.closest("article") || link.closest("li") || link.closest("div");
+        const timeElement = article?.querySelector("time");
+        
+        let pubDate = new Date();
+        if (timeElement) {
+          const datetime = timeElement.getAttribute("datetime") || timeElement.textContent;
+          pubDate = new Date(datetime);
+        }
+
+        const fullLink = href.startsWith("http") ? href : `https://www.marines.mil${href}`;
+
+        maradmins.push({
+          id: idMatch[0].toUpperCase(),
+          title: title,
+          link: fullLink,
+          pubDate: pubDate.toISOString(),
+          summary: ""
+        });
+      });
+
+      return maradmins;
+    }
+
+    function extractFirstSentence(text) {
+      if (!text) return "";
+      
+      const cleaned = text.replace(/<[^>]*>/g, "").trim();
+      const match = cleaned.match(/^[^.!?]+[.!?]/);
+      
+      return match ? match[0].trim() : cleaned.substring(0, 150) + "...";
+    }
+
+    function renderMaradmins(maradmins) {
+      clearResults();
+
+      maradmins.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "maradmin";
+
+        const h2 = document.createElement("h2");
+        h2.innerHTML = `${item.id}: <a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>`;
+
+        const datePara = document.createElement("p");
+        datePara.innerHTML = `<strong>Published:</strong> ${new Date(item.pubDate).toUTCString()}`;
+
+        div.appendChild(h2);
+        div.appendChild(datePara);
+
+        if (item.summary) {
+          const summaryPara = document.createElement("p");
+          summaryPara.className = "summary";
+          summaryPara.textContent = item.summary;
+          div.appendChild(summaryPara);
+        }
+
+        resultsDiv.appendChild(div);
+      });
+    }
+
+    function cacheData(data) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(CACHE_TIMESTAMP_KEY, new Date().toISOString());
+      } catch (e) {
+        console.warn("Cache failed:", e);
+      }
+    }
+
+    function loadCachedData() {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        const timestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
+
+        if (cached && timestamp) {
+          currentMaradmins = JSON.parse(cached);
+          renderMaradmins(currentMaradmins);
+          setStatus(`Showing cached data from ${new Date(timestamp).toLocaleString()}`);
+          lastUpdateSpan.textContent = new Date(timestamp).toLocaleString();
+        }
+      } catch (e) {
+        console.warn("Cache load failed:", e);
+      }
+    }
+
+    function exportToJSON() {
+      if (currentMaradmins.length === 0) {
+        showError("No data to export. Click Refresh first.");
         return;
       }
-      container.innerHTML = '<div class="documents-grid">' + filteredDocuments.map((doc, index) => {
-        return '<div class="doc-card" style="animation: slideIn 0.3s ease ' + (index * 0.05) + 's both;"><div class="doc-meta"><span class="doc-icon">' + doc.icon + '</span><span class="badge">' + doc.type + '</span><span class="doc-date">📅 ' + doc.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + '</span></div><h3 class="doc-title">' + escapeHtml(doc.title) + '</h3>' + (doc.description ? '<p class="doc-description">' + escapeHtml(doc.description) + '...</p>' : '') + '<a href="' + doc.link + '" target="_blank" rel="noopener noreferrer" class="btn-view">View Document<span>↗</span></a></div>';
-      }).join('') + '</div>';
+
+      const dataStr = JSON.stringify(currentMaradmins, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `maradmins_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
-    function updateStats() {
-      const maradminCount = allDocuments.filter(d => d.type === 'MARADMIN').length;
-      const directiveCount = allDocuments.filter(d => d.type === 'Directive').length;
-      document.getElementById('totalStat').textContent = allDocuments.length;
-      document.getElementById('maradminStat').textContent = maradminCount;
-      document.getElementById('directiveStat').textContent = directiveCount;
-      document.getElementById('filteredStat').textContent = filteredDocuments.length;
+
+    function toggleTheme() {
+      document.body.classList.toggle("dark-theme");
+      const isDark = document.body.classList.contains("dark-theme");
+      localStorage.setItem("theme", isDark ? "dark" : "light");
     }
-    function clearFilters() {
-      document.getElementById('searchInput').value = '';
-      document.getElementById('typeFilter').value = 'all';
-      document.getElementById('startDate').value = '';
-      document.getElementById('endDate').value = '';
-      applyFilters();
-    }
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    function loadFromCache() {
-      const cached = localStorage.getItem('semper_admin_docs');
-      const timestamp = localStorage.getItem('semper_admin_timestamp');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          allDocuments = parsed.map(doc => ({ ...doc, pubDate: new Date(doc.pubDate) }));
-          if (timestamp) {
-            const cacheAge = Math.floor((Date.now() - new Date(timestamp)) / 1000 / 60);
-            console.log('📦 Loaded ' + allDocuments.length + ' documents from cache (' + cacheAge + ' minutes old)');
-          }
-          applyFilters();
-          updateStats();
-        } catch (e) {
-          console.error('Cache load error:', e);
-        }
+
+    function loadThemePreference() {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.body.classList.add("dark-theme");
       }
     }
-    window.addEventListener('DOMContentLoaded', () => {
-      loadFromCache();
-      fetchFeeds();
-    });
+
+    function setStatus(message) {
+      statusDiv.textContent = message;
+    }
+
+    function showError(message) {
+      errorDiv.textContent = `Error: ${message}`;
+      errorDiv.classList.remove("hidden");
+    }
+
+    function hideError() {
+      errorDiv.classList.add("hidden");
+    }
+
+    function clearResults() {
+      resultsDiv.innerHTML = "";
+    }
+
+    function updateLastUpdateTime() {
+      lastUpdateSpan.textContent = new Date().toLocaleString();
+    }
   </script>
+
 </body>
 </html>
