@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MARADMIN Tracker</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MARADMIN Tracker</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>MARADMINs - Last 7 Days</h1>
-    <div class="controls">
-      <button id="refreshBtn">Refresh</button>
-      <span id="status"></span>
-    </div>
-  </header>
-
-  <main>
-    <section id="results"></section>
-  </main>
-
-  <footer>
-    <small>Data pulled from Marines.mil public feeds. Runs fully client-side.</small>
-  </footer>
-
-  <script src="app.js"></script>
+<header>
+  <h1>MARADMIN Tracker - Last 7 Days</h1>
+  <div class="controls">
+    <button id="refreshBtn">Refresh</button>
+    <button id="exportBtn">Export JSON</button>
+    <button id="themeToggle">Toggle Theme</button>
+  </div>
+</header>
+<main>
+  <div id="status" class="status">Loading cached data...</div>
+  <div id="error" class="error hidden"></div>
+  <div id="results" class="results"></div>
+</main>
+<footer>
+  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a></p>
+  <p>Last updated: <span id="lastUpdate">Never</span></p>
+</footer>
+<script src="app.js"></script>
 </body>
 </html>
