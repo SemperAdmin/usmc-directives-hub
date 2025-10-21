@@ -149,22 +149,31 @@ function processRSSData(text) {
 function parseRSS(xmlText){
   const parser = new DOMParser();
   const xml = parser.parseFromString(xmlText,"application/xml");
-  return Array.from(xml.querySelectorAll("item")).map(item=>{
+  const items = Array.from(xml.querySelectorAll("item"));
+
+  console.log(`Total RSS items found: ${items.length}`);
+
+  const parsed = items.map((item, index) => {
     const title = item.querySelector("title")?.textContent || "";
     const link = item.querySelector("link")?.textContent || "";
     const pubDate = item.querySelector("pubDate")?.textContent || "";
     const description = item.querySelector("description")?.textContent || "";
     const category = item.querySelector("category")?.textContent || "";
 
-    // Extract MARADMIN ID (e.g., "MARADMIN 123/24")
-    const idMatch = title.match(/MARADMIN\s+(\d+\/\d+)/i);
-    if (!idMatch) return null;
+    // Extract MARADMIN ID - be more flexible with format
+    // Matches: "MARADMIN 123/24", "MARADMIN 123-24", "MARADMIN 12324", etc.
+    const idMatch = title.match(/MARADMIN\s+(\d+[-\/]?\d*)/i);
+
+    if (!idMatch) {
+      console.log(`Skipping item ${index + 1}: No MARADMIN ID found in title: "${title}"`);
+      return null;
+    }
 
     const id = idMatch[0];
     const numericId = idMatch[1];
 
     // Extract subject from title (text after MARADMIN number)
-    const subject = title.replace(/MARADMIN\s+\d+\/\d+\s*[-:]?\s*/i, "").trim();
+    const subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
 
     // Clean and extract description
     const cleanDescription = description.replace(/<[^>]*>/g, "").trim();
@@ -184,6 +193,9 @@ function parseRSS(xmlText){
       searchText: `${id} ${subject} ${cleanDescription}`.toLowerCase()
     };
   }).filter(Boolean);
+
+  console.log(`Parsed ${parsed.length} MARADMINs from ${items.length} RSS items`);
+  return parsed;
 }
 
 // Filter and Search Functions
@@ -192,17 +204,22 @@ function filterMaradmins() {
   const dateRange = parseInt(dateRangeSelect.value);
 
   let filtered = [...allMaradmins];
+  console.log(`Starting filter with ${filtered.length} total MARADMINs`);
 
   // Apply date filter
   if (dateRange > 0) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - dateRange);
+    console.log(`Filtering by date: last ${dateRange} days (since ${cutoffDate.toLocaleDateString()})`);
     filtered = filtered.filter(m => m.pubDateObj >= cutoffDate);
+    console.log(`After date filter: ${filtered.length} MARADMINs`);
   }
 
   // Apply search filter
   if (searchTerm) {
+    console.log(`Filtering by search term: "${searchTerm}"`);
     filtered = filtered.filter(m => m.searchText.includes(searchTerm));
+    console.log(`After search filter: ${filtered.length} MARADMINs`);
   }
 
   currentMaradmins = filtered;
@@ -212,7 +229,7 @@ function filterMaradmins() {
 
 function clearSearch() {
   searchInput.value = "";
-  dateRangeSelect.value = "7";
+  dateRangeSelect.value = "30"; // Reset to 30 days default
   filterMaradmins();
 }
 
