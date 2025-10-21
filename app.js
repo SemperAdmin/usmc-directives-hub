@@ -160,20 +160,26 @@ function parseRSS(xmlText){
     const description = item.querySelector("description")?.textContent || "";
     const category = item.querySelector("category")?.textContent || "";
 
-    // Extract MARADMIN ID - be more flexible with format
-    // Matches: "MARADMIN 123/24", "MARADMIN 123-24", "MARADMIN 12324", etc.
+    // Extract MARADMIN ID if present in title
+    // Matches: "MARADMIN 123/24", "MARADMIN 123-24", etc.
     const idMatch = title.match(/MARADMIN\s+(\d+[-\/]?\d*)/i);
 
-    if (!idMatch) {
-      console.log(`Skipping item ${index + 1}: No MARADMIN ID found in title: "${title}"`);
-      return null;
+    let id, numericId, subject;
+
+    if (idMatch) {
+      // Has MARADMIN ID in title
+      id = idMatch[0];
+      numericId = idMatch[1];
+      subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+    } else {
+      // No MARADMIN ID in title - this is still a valid message
+      // Try to extract from link (e.g., /Article/4321795/)
+      const linkMatch = link.match(/\/Article\/(\d+)\//);
+      id = linkMatch ? `Article ${linkMatch[1]}` : `Message ${index + 1}`;
+      numericId = linkMatch ? linkMatch[1] : String(index + 1);
+      subject = title;
+      console.log(`Item ${index + 1}: No MARADMIN ID in title, using "${id}" - Title: "${title.substring(0, 60)}..."`);
     }
-
-    const id = idMatch[0];
-    const numericId = idMatch[1];
-
-    // Extract subject from title (text after MARADMIN number)
-    const subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
 
     // Clean and extract description
     const cleanDescription = description.replace(/<[^>]*>/g, "").trim();
@@ -192,9 +198,9 @@ function parseRSS(xmlText){
       category,
       searchText: `${id} ${subject} ${cleanDescription}`.toLowerCase()
     };
-  }).filter(Boolean);
+  });
 
-  console.log(`Parsed ${parsed.length} MARADMINs from ${items.length} RSS items`);
+  console.log(`Parsed ${parsed.length} messages from ${items.length} RSS items`);
   return parsed;
 }
 
