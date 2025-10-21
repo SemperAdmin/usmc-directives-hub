@@ -41,6 +41,20 @@
 <footer>
   <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a></p>
   <p>Last updated: <span id="lastUpdate">Never</span></p>
+  <details class="troubleshooting">
+    <summary>Troubleshooting</summary>
+    <div class="troubleshooting-content">
+      <p><strong>If you see "Fetch failed" errors:</strong></p>
+      <ul>
+        <li>The app tries multiple CORS proxies automatically</li>
+        <li>First load may take 10-30 seconds while trying different proxies</li>
+        <li>Once data is cached, the app works offline</li>
+        <li>Try the Refresh button if the initial load fails</li>
+        <li>Check the browser console (F12) for detailed error messages</li>
+      </ul>
+      <p><strong>Note:</strong> This app uses CORS proxies to access the Marines.mil RSS feed. Some proxies may be temporarily unavailable.</p>
+    </div>
+  </details>
 </footer>
 <script src="app.js"></script>
 </body>
