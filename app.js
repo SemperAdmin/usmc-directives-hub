@@ -1,5 +1,12 @@
 const RSS_URL = "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=50&category=14336";
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
+// Multiple CORS proxies to try as fallbacks
+const CORS_PROXIES = [
+  "https://corsproxy.io/?",
+  "https://api.allorigins.win/raw?url=",
+  "https://cors-anywhere.herokuapp.com/",
+  "https://api.codetabs.com/v1/proxy?quest="
+];
 
 const refreshBtn = document.getElementById("refreshBtn");
 const exportBtn = document.getElementById("exportBtn");
@@ -28,24 +35,114 @@ searchInput.addEventListener("input", filterMaradmins);
 dateRangeSelect.addEventListener("change", filterMaradmins);
 clearSearchBtn.addEventListener("click", clearSearch);
 
-// Fetch MARADMINs from RSS (via proxy)
+// Fetch MARADMINs from RSS (via proxy with fallbacks)
 async function fetchMaradmins() {
   statusDiv.textContent = "Fetching MARADMINs...";
   errorDiv.classList.add("hidden");
-  resultsDiv.innerHTML = "";
+
+  // Try direct fetch first (might work if CORS is allowed)
   try {
-    const response = await fetch(CORS_PROXY + encodeURIComponent(RSS_URL));
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text();
-    allMaradmins = parseRSS(text);
-    allMaradmins.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
-    filterMaradmins(); // Apply current filters
-    cacheData(allMaradmins);
-    statusDiv.textContent = `Loaded ${allMaradmins.length} total MARADMINs.`;
-    updateLastUpdate();
+    const text = await tryDirectFetch();
+    if (text) {
+      processRSSData(text);
+      return;
+    }
   } catch(err) {
-    showError(`Fetch failed: ${err.message}. Showing cached data.`);
+    console.log("Direct fetch failed, trying proxies...", err);
   }
+
+  // Try each CORS proxy
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    try {
+      statusDiv.textContent = `Fetching MARADMINs... (attempt ${i + 1}/${CORS_PROXIES.length})`;
+      const text = await tryProxyFetch(CORS_PROXIES[i]);
+      if (text) {
+        processRSSData(text);
+        return;
+      }
+    } catch(err) {
+      console.log(`Proxy ${i + 1} failed:`, err.message);
+      if (i === CORS_PROXIES.length - 1) {
+        // Last proxy failed
+        if (allMaradmins.length === 0) {
+          loadCachedData();
+        }
+
+        if (allMaradmins.length > 0) {
+          showError(`Unable to fetch new MARADMINs. Network issue or proxy unavailable. <br>Showing cached data from ${lastUpdateSpan.textContent}.`);
+        } else {
+          showError(`Unable to fetch MARADMINs. Please check your internet connection and try again. <br><small>All CORS proxies failed. The RSS feed may be temporarily unavailable.</small>`);
+          statusDiv.textContent = "No data available";
+        }
+      }
+    }
+  }
+}
+
+// Try direct fetch without proxy
+async function tryDirectFetch() {
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Request timeout')), 10000)
+  );
+
+  const fetchPromise = fetch(RSS_URL, {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-cache'
+  });
+
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return await response.text();
+}
+
+// Try fetch with a specific CORS proxy with timeout
+async function tryProxyFetch(proxy) {
+  const url = proxy.includes('allorigins')
+    ? proxy + encodeURIComponent(RSS_URL)
+    : proxy + RSS_URL;
+
+  // Create timeout promise
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Request timeout')), 15000)
+  );
+
+  // Create fetch promise
+  const fetchPromise = fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/xml, text/xml, */*'
+    }
+  });
+
+  // Race between fetch and timeout
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const text = await response.text();
+
+  // Handle allorigins.win response format (returns JSON with 'contents' field)
+  if (proxy.includes('allorigins') && !proxy.includes('/raw')) {
+    try {
+      const json = JSON.parse(text);
+      return json.contents || text;
+    } catch(e) {
+      return text;
+    }
+  }
+
+  return text;
+}
+
+// Process the RSS data once fetched
+function processRSSData(text) {
+  allMaradmins = parseRSS(text);
+  allMaradmins.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+  filterMaradmins(); // Apply current filters
+  cacheData(allMaradmins);
+  statusDiv.textContent = `Loaded ${allMaradmins.length} total MARADMINs.`;
+  updateLastUpdate();
 }
 
 // Parse RSS XML - Enhanced to extract more metadata
@@ -167,8 +264,15 @@ function formatDate(date) {
 }
 
 function showError(msg) {
-  errorDiv.textContent = msg;
+  errorDiv.innerHTML = msg;
   errorDiv.classList.remove("hidden");
+
+  // Auto-hide after showing cached data successfully
+  if (allMaradmins.length > 0) {
+    setTimeout(() => {
+      errorDiv.classList.add("hidden");
+    }, 5000);
+  }
 }
 
 function cacheData(data) {
