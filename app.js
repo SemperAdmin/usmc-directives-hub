@@ -216,9 +216,6 @@ async function fetchMessageDetails(message) {
         message.id = `MARADMIN ${maradminMatch[1]}`;
       }
 
-      // Extract 5 Ws from the message content
-      message.fiveWs = extract5Ws(bodyText, message.title);
-
     } else if (message.type === 'mcpub') {
       // Extract PDF download link for MCPUBs
       const pdfLinkElement = doc.querySelector('a.button-primary[href*=".pdf"]');
@@ -283,93 +280,6 @@ function extractMCPubInfo(content) {
   return info;
 }
 
-// Extract 5 Ws (Who, What, When, Where, Why) from message content
-function extract5Ws(content, title) {
-  const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
-  const fiveWs = {
-    who: '',
-    what: '',
-    when: '',
-    where: '',
-    why: ''
-  };
-
-  // What: Use the title/subject as the primary "what"
-  fiveWs.what = title;
-
-  // Who: Look for organizational references
-  const whoPatterns = [
-    /(?:to|for|from)[:.\s]+([A-Z][A-Z\s,]+(?:MARINE|CORPS|USMC|COMMAND|FORCE|DIVISION|REGIMENT|BATTALION|SQUADRON)[A-Z\s,]*)/i,
-    /(?:all|active|reserve|selected)\s+(marines|personnel|officers|enlisted)/i
-  ];
-
-  for (const pattern of whoPatterns) {
-    const match = content.match(pattern);
-    if (match) {
-      fiveWs.who = match[1] || match[0];
-      break;
-    }
-  }
-
-  // When: Look for effective dates, deadlines
-  const whenPatterns = [
-    /effective(?:\s+date)?[:.\s]+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i,
-    /(?:by|on|before|until)[:.\s]+(\d{1,2}\s+[A-Z][a-z]+\s+\d{4})/i,
-    /deadline[:.\s]+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i,
-    /fiscal\s+year\s+(\d{2,4})/i
-  ];
-
-  for (const pattern of whenPatterns) {
-    const match = content.match(pattern);
-    if (match) {
-      fiveWs.when = match[1] || match[0];
-      break;
-    }
-  }
-
-  // Where: Look for location references
-  const wherePatterns = [
-    /(?:location|at|base|station|installation)[:.\s]+([A-Z][A-Za-z\s,]+(?:CA|NC|VA|HI|SC|AZ|TX|FL|DC|OKINAWA|JAPAN))/i,
-    /(?:MARINE CORPS BASE|MCB|CAMP)\s+([A-Z][A-Za-z\s]+)/i
-  ];
-
-  for (const pattern of wherePatterns) {
-    const match = content.match(pattern);
-    if (match) {
-      fiveWs.where = match[1] || match[0];
-      break;
-    }
-  }
-
-  // Why: Look for purpose statements
-  const whyPatterns = [
-    /(?:purpose|intent|in order to|to provide|to establish|to update|to announce)[:.\s]+([^.]+\.)/i,
-    /(?:this message)\s+(?:provides|establishes|announces|updates)\s+([^.]+\.)/i
-  ];
-
-  for (const pattern of whyPatterns) {
-    const match = content.match(pattern);
-    if (match) {
-      fiveWs.why = match[1] || match[0];
-      break;
-    }
-  }
-
-  // Clean up extracted text
-  Object.keys(fiveWs).forEach(key => {
-    if (fiveWs[key]) {
-      fiveWs[key] = fiveWs[key]
-        .replace(/\s+/g, ' ')
-        .replace(/[\r\n]+/g, ' ')
-        .trim()
-        .substring(0, 200); // Limit length
-    } else {
-      fiveWs[key] = 'Not specified';
-    }
-  });
-
-  return fiveWs;
-}
 
 // Parse RSS XML - Enhanced to extract more metadata
 function parseRSS(xmlText, type){
@@ -438,8 +348,7 @@ function parseRSS(xmlText, type){
       type, // Add message type
       searchText: `${id} ${subject} ${cleanDescription}`.toLowerCase(),
       detailsFetched: false,
-      maradminNumber: null,
-      fiveWs: null
+      maradminNumber: null
     };
   });
 
@@ -555,7 +464,7 @@ function renderMaradmins(arr) {
       <div class="maradmin-footer">
         ${item.category ? `<span class="category">${item.category}</span>` : ''}
         <button class="expand-btn" onclick="toggleDetails(${index}, currentMessages[${index}])">
-          ${item.detailsFetched && (item.fiveWs || item.pdfUrl) ? '📋 Hide Details' : (item.type === 'mcpub' ? '📄 Show Details' : '📋 Show 5 Ws')}
+          ${item.detailsFetched && item.pdfUrl ? '📋 Hide Details' : '📄 Show Details'}
         </button>
         <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="view-full">View Full Message →</a>
       </div>
@@ -564,7 +473,7 @@ function renderMaradmins(arr) {
   });
 }
 
-// Toggle message details (5 Ws)
+// Toggle message details
 async function toggleDetails(index, message) {
   const detailsDiv = document.getElementById(`details-${index}`);
   const btn = event.target;
@@ -572,7 +481,7 @@ async function toggleDetails(index, message) {
   // If already visible, hide it
   if (detailsDiv.style.display === 'block') {
     detailsDiv.style.display = 'none';
-    btn.textContent = message.type === 'mcpub' ? '📄 Show Details' : '📋 Show 5 Ws';
+    btn.textContent = '📄 Show Details';
     return;
   }
 
@@ -592,34 +501,12 @@ async function toggleDetails(index, message) {
       btn.disabled = false;
 
       // Display details based on message type
-      if (message.type === 'maradmin' && message.fiveWs) {
-        // Display 5 Ws for MARADMINs
+      if (message.type === 'maradmin') {
+        // Display MARADMIN details
         detailsDiv.innerHTML = `
-          <div class="five-ws">
-            <h4>5 Ws Summary</h4>
-            <div class="ws-grid">
-              <div class="w-item">
-                <strong>Who:</strong>
-                <span>${message.fiveWs.who}</span>
-              </div>
-              <div class="w-item">
-                <strong>What:</strong>
-                <span>${message.fiveWs.what}</span>
-              </div>
-              <div class="w-item">
-                <strong>When:</strong>
-                <span>${message.fiveWs.when}</span>
-              </div>
-              <div class="w-item">
-                <strong>Where:</strong>
-                <span>${message.fiveWs.where}</span>
-              </div>
-              <div class="w-item">
-                <strong>Why:</strong>
-                <span>${message.fiveWs.why}</span>
-              </div>
-            </div>
-            ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : ''}
+          <div class="maradmin-details-content">
+            <h4>Message Details</h4>
+            ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : '<p class="no-details-found">No additional details extracted.</p>'}
           </div>
         `;
       } else if (message.type === 'mcpub') {
@@ -669,33 +556,11 @@ async function toggleDetails(index, message) {
     // Already fetched, just display
     btn.textContent = '📋 Hide Details';
 
-    if (message.type === 'maradmin' && message.fiveWs) {
+    if (message.type === 'maradmin') {
       detailsDiv.innerHTML = `
-        <div class="five-ws">
-          <h4>5 Ws Summary</h4>
-          <div class="ws-grid">
-            <div class="w-item">
-              <strong>Who:</strong>
-              <span>${message.fiveWs.who}</span>
-            </div>
-            <div class="w-item">
-              <strong>What:</strong>
-              <span>${message.fiveWs.what}</span>
-            </div>
-            <div class="w-item">
-              <strong>When:</strong>
-              <span>${message.fiveWs.when}</span>
-            </div>
-            <div class="w-item">
-              <strong>Where:</strong>
-              <span>${message.fiveWs.where}</span>
-            </div>
-            <div class="w-item">
-              <strong>Why:</strong>
-              <span>${message.fiveWs.why}</span>
-            </div>
-          </div>
-          ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : ''}
+        <div class="maradmin-details-content">
+          <h4>Message Details</h4>
+          ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : '<p class="no-details-found">No additional details extracted.</p>'}
         </div>
       `;
     } else if (message.type === 'mcpub') {
