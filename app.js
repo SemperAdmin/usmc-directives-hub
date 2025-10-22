@@ -1,4 +1,8 @@
-const RSS_URL = "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=50&category=14336";
+// RSS Feed URLs
+const RSS_FEEDS = {
+  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=50&category=14336",
+  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=50"
+};
 
 // Multiple CORS proxies to try as fallbacks
 const CORS_PROXIES = [
@@ -18,61 +22,76 @@ const lastUpdateSpan = document.getElementById("lastUpdate");
 const searchInput = document.getElementById("searchInput");
 const dateRangeSelect = document.getElementById("dateRange");
 const clearSearchBtn = document.getElementById("clearSearch");
+const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 
-let currentMaradmins = [];
-let allMaradmins = []; // Store all fetched messages for filtering
+let currentMessages = [];
+let allMaradmins = []; // Store all MARADMINs
+let allMcpubs = []; // Store all MCPUBs
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', or 'all'
 
 // Init
 document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
-  fetchMaradmins();
+  fetchAllFeeds();
   initTheme();
 });
-refreshBtn.addEventListener("click", fetchMaradmins);
+refreshBtn.addEventListener("click", fetchAllFeeds);
 exportBtn.addEventListener("click", exportToJSON);
 themeToggle.addEventListener("click", toggleTheme);
-searchInput.addEventListener("input", filterMaradmins);
-dateRangeSelect.addEventListener("change", filterMaradmins);
+searchInput.addEventListener("input", filterMessages);
+dateRangeSelect.addEventListener("change", filterMessages);
 clearSearchBtn.addEventListener("click", clearSearch);
+messageTypeButtons.forEach(btn => {
+  btn.addEventListener("click", () => switchMessageType(btn.dataset.type));
+});
 
-// Fetch MARADMINs from RSS (via proxy with fallbacks)
-async function fetchMaradmins() {
-  statusDiv.textContent = "Fetching MARADMINs...";
+// Fetch all RSS feeds (MARADMINs and MCPUBs)
+async function fetchAllFeeds() {
+  statusDiv.textContent = "Fetching messages...";
   errorDiv.classList.add("hidden");
 
-  // Try direct fetch first (might work if CORS is allowed)
+  // Fetch MARADMINs
+  await fetchFeed('maradmin', RSS_FEEDS.maradmin);
+
+  // Fetch MCPUBs
+  await fetchFeed('mcpub', RSS_FEEDS.mcpub);
+
+  // Update display
+  filterMessages();
+  updateLastUpdate();
+}
+
+// Fetch a specific RSS feed
+async function fetchFeed(type, url) {
+  console.log(`Fetching ${type.toUpperCase()}s...`);
+
+  // Try direct fetch first
   try {
-    const text = await tryDirectFetch();
+    const text = await tryDirectFetch(url);
     if (text) {
-      processRSSData(text);
+      processRSSData(text, type);
       return;
     }
   } catch(err) {
-    console.log("Direct fetch failed, trying proxies...", err);
+    console.log(`Direct fetch for ${type} failed, trying proxies...`, err);
   }
 
   // Try each CORS proxy
   for (let i = 0; i < CORS_PROXIES.length; i++) {
     try {
-      statusDiv.textContent = `Fetching MARADMINs... (attempt ${i + 1}/${CORS_PROXIES.length})`;
-      const text = await tryProxyFetch(CORS_PROXIES[i]);
+      statusDiv.textContent = `Fetching ${type.toUpperCase()}s... (attempt ${i + 1}/${CORS_PROXIES.length})`;
+      const text = await tryProxyFetch(CORS_PROXIES[i], url);
       if (text) {
-        processRSSData(text);
+        processRSSData(text, type);
         return;
       }
     } catch(err) {
-      console.log(`Proxy ${i + 1} failed:`, err.message);
+      console.log(`Proxy ${i + 1} failed for ${type}:`, err.message);
       if (i === CORS_PROXIES.length - 1) {
         // Last proxy failed
-        if (allMaradmins.length === 0) {
-          loadCachedData();
-        }
-
-        if (allMaradmins.length > 0) {
-          showError(`Unable to fetch new MARADMINs. Network issue or proxy unavailable. <br>Showing cached data from ${lastUpdateSpan.textContent}.`);
-        } else {
-          showError(`Unable to fetch MARADMINs. Please check your internet connection and try again. <br><small>All CORS proxies failed. The RSS feed may be temporarily unavailable.</small>`);
-          statusDiv.textContent = "No data available";
+        const messages = type === 'maradmin' ? allMaradmins : allMcpubs;
+        if (messages.length === 0) {
+          showError(`Unable to fetch ${type.toUpperCase()}s. All proxies failed.`);
         }
       }
     }
@@ -80,12 +99,12 @@ async function fetchMaradmins() {
 }
 
 // Try direct fetch without proxy
-async function tryDirectFetch() {
+async function tryDirectFetch(url) {
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('Request timeout')), 10000)
   );
 
-  const fetchPromise = fetch(RSS_URL, {
+  const fetchPromise = fetch(url, {
     method: 'GET',
     mode: 'cors',
     cache: 'no-cache'
@@ -97,10 +116,10 @@ async function tryDirectFetch() {
 }
 
 // Try fetch with a specific CORS proxy with timeout
-async function tryProxyFetch(proxy) {
+async function tryProxyFetch(proxy, rssUrl) {
   const url = proxy.includes('allorigins')
-    ? proxy + encodeURIComponent(RSS_URL)
-    : proxy + RSS_URL;
+    ? proxy + encodeURIComponent(rssUrl)
+    : proxy + rssUrl;
 
   // Create timeout promise
   const timeoutPromise = new Promise((_, reject) =>
@@ -136,13 +155,18 @@ async function tryProxyFetch(proxy) {
 }
 
 // Process the RSS data once fetched
-function processRSSData(text) {
-  allMaradmins = parseRSS(text);
-  allMaradmins.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
-  filterMaradmins(); // Apply current filters
-  cacheData(allMaradmins);
-  statusDiv.textContent = `Loaded ${allMaradmins.length} total MARADMINs.`;
-  updateLastUpdate();
+function processRSSData(text, type) {
+  const parsed = parseRSS(text, type);
+  parsed.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+
+  if (type === 'maradmin') {
+    allMaradmins = parsed;
+  } else if (type === 'mcpub') {
+    allMcpubs = parsed;
+  }
+
+  cacheData();
+  console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
 }
 
 // Fetch full message details from the message page
@@ -297,12 +321,12 @@ function extract5Ws(content, title) {
 }
 
 // Parse RSS XML - Enhanced to extract more metadata
-function parseRSS(xmlText){
+function parseRSS(xmlText, type){
   const parser = new DOMParser();
   const xml = parser.parseFromString(xmlText,"application/xml");
   const items = Array.from(xml.querySelectorAll("item"));
 
-  console.log(`Total RSS items found: ${items.length}`);
+  console.log(`Total RSS items found for ${type}: ${items.length}`);
 
   const parsed = items.map((item, index) => {
     const title = item.querySelector("title")?.textContent || "";
@@ -311,28 +335,38 @@ function parseRSS(xmlText){
     const description = item.querySelector("description")?.textContent || "";
     const category = item.querySelector("category")?.textContent || "";
 
-    // Extract MARADMIN ID from multiple sources
-    // 1. Try title first
-    let idMatch = title.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
-
-    // 2. Try description if not in title
-    if (!idMatch && description) {
-      idMatch = description.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
-    }
-
     let id, numericId, subject;
 
-    if (idMatch) {
-      // Has MARADMIN ID
-      id = idMatch[0];
-      numericId = idMatch[1];
-      subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
-    } else {
-      // No MARADMIN ID found - use Article ID from link
-      const linkMatch = link.match(/\/Article\/(\d+)\//);
-      id = linkMatch ? `Article ${linkMatch[1]}` : `Message ${index + 1}`;
-      numericId = linkMatch ? linkMatch[1] : String(index + 1);
-      subject = title;
+    if (type === 'maradmin') {
+      // Extract MARADMIN ID from multiple sources
+      let idMatch = title.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
+      if (!idMatch && description) {
+        idMatch = description.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
+      }
+
+      if (idMatch) {
+        id = idMatch[0];
+        numericId = idMatch[1];
+        subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+      } else {
+        const linkMatch = link.match(/\/Article\/(\d+)\//);
+        id = linkMatch ? `Article ${linkMatch[1]}` : `Message ${index + 1}`;
+        numericId = linkMatch ? linkMatch[1] : String(index + 1);
+        subject = title;
+      }
+    } else if (type === 'mcpub') {
+      // Extract MCPUB ID from title (e.g., "MCO 5110.1D", "MCBUL 5000")
+      const mcpubMatch = title.match(/(MCO|MCBUL|MCRP|FMFM|MCWP|NAVMC)\s+[\d.]+[A-Z]*/i);
+      if (mcpubMatch) {
+        id = mcpubMatch[0];
+        numericId = mcpubMatch[0];
+        subject = title.replace(/(MCO|MCBUL|MCRP|FMFM|MCWP|NAVMC)\s+[\d.]+[A-Z]*\s*[-:]?\s*/i, "").trim();
+      } else {
+        const linkMatch = link.match(/\/Article\/(\d+)\//);
+        id = linkMatch ? `Article ${linkMatch[1]}` : `MCPUB ${index + 1}`;
+        numericId = linkMatch ? linkMatch[1] : String(index + 1);
+        subject = title;
+      }
     }
 
     // Clean and extract description
@@ -350,24 +384,52 @@ function parseRSS(xmlText){
       summary,
       description: cleanDescription,
       category,
+      type, // Add message type
       searchText: `${id} ${subject} ${cleanDescription}`.toLowerCase(),
-      detailsFetched: false, // Track if we've fetched full details
-      maradminNumber: null, // Will be filled when fetching details
-      fiveWs: null // Will be filled when fetching details
+      detailsFetched: false,
+      maradminNumber: null,
+      fiveWs: null
     };
   });
 
-  console.log(`Parsed ${parsed.length} messages from ${items.length} RSS items`);
+  console.log(`Parsed ${parsed.length} ${type.toUpperCase()}s from ${items.length} RSS items`);
   return parsed;
 }
 
+// Switch between message types
+function switchMessageType(type) {
+  currentMessageType = type;
+
+  // Update button states
+  messageTypeButtons.forEach(btn => {
+    if (btn.dataset.type === type) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  filterMessages();
+}
+
 // Filter and Search Functions
-function filterMaradmins() {
+function filterMessages() {
   const searchTerm = searchInput.value.toLowerCase().trim();
   const dateRange = parseInt(dateRangeSelect.value);
 
-  let filtered = [...allMaradmins];
-  console.log(`Starting filter with ${filtered.length} total MARADMINs`);
+  // Get messages based on current type
+  let allMessages = [];
+  if (currentMessageType === 'maradmin') {
+    allMessages = [...allMaradmins];
+  } else if (currentMessageType === 'mcpub') {
+    allMessages = [...allMcpubs];
+  } else if (currentMessageType === 'all') {
+    allMessages = [...allMaradmins, ...allMcpubs];
+    allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+  }
+
+  console.log(`Starting filter with ${allMessages.length} total ${currentMessageType.toUpperCase()} messages`);
+  let filtered = allMessages;
 
   // Apply date filter
   if (dateRange > 0) {
@@ -375,31 +437,37 @@ function filterMaradmins() {
     cutoffDate.setDate(cutoffDate.getDate() - dateRange);
     console.log(`Filtering by date: last ${dateRange} days (since ${cutoffDate.toLocaleDateString()})`);
     filtered = filtered.filter(m => m.pubDateObj >= cutoffDate);
-    console.log(`After date filter: ${filtered.length} MARADMINs`);
+    console.log(`After date filter: ${filtered.length} messages`);
   }
 
   // Apply search filter
   if (searchTerm) {
     console.log(`Filtering by search term: "${searchTerm}"`);
     filtered = filtered.filter(m => m.searchText.includes(searchTerm));
-    console.log(`After search filter: ${filtered.length} MARADMINs`);
+    console.log(`After search filter: ${filtered.length} messages`);
   }
 
-  currentMaradmins = filtered;
-  renderMaradmins(currentMaradmins);
+  currentMessages = filtered;
+  renderMaradmins(currentMessages);
   updateResultsCount();
 }
 
 function clearSearch() {
   searchInput.value = "";
-  dateRangeSelect.value = "30"; // Reset to 30 days default
-  filterMaradmins();
+  dateRangeSelect.value = "30";
+  filterMessages();
 }
 
 function updateResultsCount() {
-  const countText = currentMaradmins.length === allMaradmins.length
-    ? `Showing all ${currentMaradmins.length} MARADMINs`
-    : `Showing ${currentMaradmins.length} of ${allMaradmins.length} MARADMINs`;
+  const totalCount = currentMessageType === 'maradmin' ? allMaradmins.length :
+                     currentMessageType === 'mcpub' ? allMcpubs.length :
+                     allMaradmins.length + allMcpubs.length;
+
+  const typeLabel = currentMessageType === 'all' ? 'Messages' : currentMessageType.toUpperCase() + 's';
+
+  const countText = currentMessages.length === totalCount
+    ? `Showing all ${currentMessages.length} ${typeLabel}`
+    : `Showing ${currentMessages.length} of ${totalCount} ${typeLabel}`;
   statusDiv.textContent = countText;
 }
 
@@ -573,10 +641,11 @@ function showError(msg) {
   }
 }
 
-function cacheData(data) {
+function cacheData() {
   try {
-    localStorage.setItem("maradmin_cache", JSON.stringify(data));
-    localStorage.setItem("maradmin_cache_timestamp", new Date().toISOString());
+    localStorage.setItem("maradmin_cache", JSON.stringify(allMaradmins));
+    localStorage.setItem("mcpub_cache", JSON.stringify(allMcpubs));
+    localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
     console.error("Failed to cache data:", e);
   }
@@ -584,29 +653,43 @@ function cacheData(data) {
 
 function loadCachedData() {
   try {
-    const cached = localStorage.getItem("maradmin_cache");
-    const ts = localStorage.getItem("maradmin_cache_timestamp");
-    if (cached) {
-      allMaradmins = JSON.parse(cached);
-      // Reconstruct Date objects
+    const maradminCache = localStorage.getItem("maradmin_cache");
+    const mcpubCache = localStorage.getItem("mcpub_cache");
+    const ts = localStorage.getItem("cache_timestamp");
+
+    if (maradminCache) {
+      allMaradmins = JSON.parse(maradminCache);
       allMaradmins = allMaradmins.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
-      filterMaradmins();
+    }
+
+    if (mcpubCache) {
+      allMcpubs = JSON.parse(mcpubCache);
+      allMcpubs = allMcpubs.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    if (ts) {
       lastUpdateSpan.textContent = new Date(ts).toLocaleString();
     }
+
+    filterMessages();
   } catch(e) {
     console.error("Failed to load cached data:", e);
   }
 }
 
 function exportToJSON() {
-  if(!currentMaradmins.length) {
+  if(!currentMessages.length) {
     showError("No data to export.");
     return;
   }
-  const exportData = currentMaradmins.map(m => ({
+  const exportData = currentMessages.map(m => ({
+    type: m.type,
     id: m.id,
     numericId: m.numericId,
     subject: m.subject,
@@ -619,7 +702,8 @@ function exportToJSON() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `maradmins_${new Date().toISOString().split("T")[0]}.json`;
+  const filename = `${currentMessageType}_${new Date().toISOString().split("T")[0]}.json`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
