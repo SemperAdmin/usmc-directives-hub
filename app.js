@@ -205,24 +205,52 @@ async function fetchMessageDetails(message) {
     // Parse the HTML content
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-
-    // Extract MARADMIN number from content
     const bodyText = doc.body?.textContent || '';
-    const maradminMatch = bodyText.match(/MARADMIN\s+(?:NUMBER\s+)?(\d+[-\/]\d+)/i);
 
-    if (maradminMatch) {
-      message.maradminNumber = maradminMatch[1];
-      message.id = `MARADMIN ${maradminMatch[1]}`;
+    if (message.type === 'maradmin') {
+      // Extract MARADMIN number from content
+      const maradminMatch = bodyText.match(/MARADMIN\s+(?:NUMBER\s+)?(\d+[-\/]\d+)/i);
+
+      if (maradminMatch) {
+        message.maradminNumber = maradminMatch[1];
+        message.id = `MARADMIN ${maradminMatch[1]}`;
+      }
+
+      // Extract 5 Ws from the message content
+      message.fiveWs = extract5Ws(bodyText, message.title);
+
+    } else if (message.type === 'mcpub') {
+      // Extract PDF download link for MCPUBs
+      const pdfLinkElement = doc.querySelector('a.button-primary[href*=".pdf"]');
+
+      if (pdfLinkElement) {
+        let pdfUrl = pdfLinkElement.getAttribute('href');
+
+        // Make sure it's an absolute URL
+        if (pdfUrl && !pdfUrl.startsWith('http')) {
+          pdfUrl = 'https://www.marines.mil' + pdfUrl;
+        }
+
+        message.pdfUrl = pdfUrl;
+
+        // Extract publication title from the link
+        const titleElement = pdfLinkElement.querySelector('.relatedattachmenttitle');
+        if (titleElement) {
+          const pubTitle = titleElement.textContent.trim();
+          message.id = pubTitle;
+        }
+      }
+
+      // Extract basic info for MCPUBs
+      message.mcpubInfo = extractMCPubInfo(bodyText);
     }
 
-    // Extract 5 Ws from the message content
-    message.fiveWs = extract5Ws(bodyText, message.title);
     message.detailsFetched = true;
 
     // Update cache
-    cacheData(allMaradmins);
+    cacheData();
 
-    console.log(`Fetched details for ${message.id}:`, message.fiveWs);
+    console.log(`Fetched details for ${message.id}:`, message);
     return message;
 
   } catch(error) {
@@ -230,6 +258,29 @@ async function fetchMessageDetails(message) {
     message.detailsFetched = true; // Mark as attempted
     return message;
   }
+}
+
+// Extract MCPub specific information
+function extractMCPubInfo(content) {
+  const info = {
+    description: '',
+    subject: '',
+    effectiveDate: ''
+  };
+
+  // Look for subject/description
+  const subjectMatch = content.match(/(?:subject|description)[:.\s]+([^\n.]+)/i);
+  if (subjectMatch) {
+    info.subject = subjectMatch[1].trim().substring(0, 200);
+  }
+
+  // Look for effective date
+  const dateMatch = content.match(/effective(?:\s+date)?[:.\s]+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i);
+  if (dateMatch) {
+    info.effectiveDate = dateMatch[1];
+  }
+
+  return info;
 }
 
 // Extract 5 Ws (Who, What, When, Where, Why) from message content
@@ -503,8 +554,8 @@ function renderMaradmins(arr) {
       </div>
       <div class="maradmin-footer">
         ${item.category ? `<span class="category">${item.category}</span>` : ''}
-        <button class="expand-btn" onclick="toggleDetails(${index}, currentMaradmins[${index}])">
-          ${item.detailsFetched && item.fiveWs ? '📋 Hide Details' : '📋 Show 5 Ws'}
+        <button class="expand-btn" onclick="toggleDetails(${index}, currentMessages[${index}])">
+          ${item.detailsFetched && (item.fiveWs || item.pdfUrl) ? '📋 Hide Details' : (item.type === 'mcpub' ? '📄 Show Details' : '📋 Show 5 Ws')}
         </button>
         <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="view-full">View Full Message →</a>
       </div>
@@ -521,7 +572,7 @@ async function toggleDetails(index, message) {
   // If already visible, hide it
   if (detailsDiv.style.display === 'block') {
     detailsDiv.style.display = 'none';
-    btn.textContent = '📋 Show 5 Ws';
+    btn.textContent = message.type === 'mcpub' ? '📄 Show Details' : '📋 Show 5 Ws';
     return;
   }
 
@@ -540,8 +591,9 @@ async function toggleDetails(index, message) {
       btn.textContent = '📋 Hide Details';
       btn.disabled = false;
 
-      // Display the 5 Ws
-      if (message.fiveWs) {
+      // Display details based on message type
+      if (message.type === 'maradmin' && message.fiveWs) {
+        // Display 5 Ws for MARADMINs
         detailsDiv.innerHTML = `
           <div class="five-ws">
             <h4>5 Ws Summary</h4>
@@ -570,6 +622,32 @@ async function toggleDetails(index, message) {
             ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : ''}
           </div>
         `;
+      } else if (message.type === 'mcpub') {
+        // Display PDF download and info for MCPUBs
+        detailsDiv.innerHTML = `
+          <div class="mcpub-details">
+            <h4>Publication Details</h4>
+            ${message.pdfUrl ? `
+              <div class="pdf-download">
+                <a href="${message.pdfUrl}" target="_blank" rel="noopener noreferrer" class="download-pdf-btn">
+                  📥 Download PDF
+                </a>
+                <p class="pdf-link-url">${message.id || 'PDF Document'}</p>
+              </div>
+            ` : ''}
+            ${message.mcpubInfo && message.mcpubInfo.subject ? `
+              <div class="mcpub-info">
+                <strong>Subject:</strong> ${message.mcpubInfo.subject}
+              </div>
+            ` : ''}
+            ${message.mcpubInfo && message.mcpubInfo.effectiveDate ? `
+              <div class="mcpub-info">
+                <strong>Effective Date:</strong> ${message.mcpubInfo.effectiveDate}
+              </div>
+            ` : ''}
+            ${!message.pdfUrl ? '<p class="no-pdf-found">No PDF download link found on this page.</p>' : ''}
+          </div>
+        `;
       } else {
         detailsDiv.innerHTML = '<div class="error-details">Could not extract details from this message.</div>';
       }
@@ -591,7 +669,7 @@ async function toggleDetails(index, message) {
     // Already fetched, just display
     btn.textContent = '📋 Hide Details';
 
-    if (message.fiveWs) {
+    if (message.type === 'maradmin' && message.fiveWs) {
       detailsDiv.innerHTML = `
         <div class="five-ws">
           <h4>5 Ws Summary</h4>
@@ -618,6 +696,31 @@ async function toggleDetails(index, message) {
             </div>
           </div>
           ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : ''}
+        </div>
+      `;
+    } else if (message.type === 'mcpub') {
+      detailsDiv.innerHTML = `
+        <div class="mcpub-details">
+          <h4>Publication Details</h4>
+          ${message.pdfUrl ? `
+            <div class="pdf-download">
+              <a href="${message.pdfUrl}" target="_blank" rel="noopener noreferrer" class="download-pdf-btn">
+                📥 Download PDF
+              </a>
+              <p class="pdf-link-url">${message.id || 'PDF Document'}</p>
+            </div>
+          ` : ''}
+          ${message.mcpubInfo && message.mcpubInfo.subject ? `
+            <div class="mcpub-info">
+              <strong>Subject:</strong> ${message.mcpubInfo.subject}
+            </div>
+          ` : ''}
+          ${message.mcpubInfo && message.mcpubInfo.effectiveDate ? `
+            <div class="mcpub-info">
+              <strong>Effective Date:</strong> ${message.mcpubInfo.effectiveDate}
+            </div>
+          ` : ''}
+          ${!message.pdfUrl ? '<p class="no-pdf-found">No PDF download link found on this page.</p>' : ''}
         </div>
       `;
     }
