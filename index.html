@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MARADMIN Tracker</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header>
-  <h1>MARADMIN Scanner</h1>
-  <p class="subtitle">Search and track Marine Corps Administrative Messages with 5 Ws summaries</p>
+  <h1>USMC Directives Hub</h1>
+  <p class="subtitle">Search and track Marine Corps Messages and Publications</p>
   <div class="controls">
     <button id="refreshBtn">Refresh</button>
     <button id="exportBtn">Export JSON</button>
@@ -17,6 +17,11 @@
   </div>
 </header>
 <main>
+  <div class="message-type-tabs">
+    <button class="message-type-btn active" data-type="maradmin">MARADMINs</button>
+    <button class="message-type-btn" data-type="mcpub">MCPUBs</button>
+    <button class="message-type-btn" data-type="all">All Messages</button>
+  </div>
   <div class="filters-section">
     <div class="search-container">
       <input type="text" id="searchInput" placeholder="Search by ID, subject, or keywords..." />
@@ -56,6 +61,6 @@
     </div>
   </details>
 </footer>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

@@ -58,10 +58,46 @@ button:active {
   transform: translateY(0);
 }
 
+/* Message Type Tabs */
+.message-type-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  max-width: 900px;
+  margin: 2rem auto 0 auto;
+  padding: 0 1rem;
+  border-bottom: 2px solid #ddd;
+}
+
+.message-type-btn {
+  background: transparent;
+  color: #666;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border-radius: 0;
+}
+
+.message-type-btn:hover {
+  background: rgba(204,0,0,0.05);
+  color: #cc0000;
+  transform: none;
+}
+
+.message-type-btn.active {
+  color: #cc0000;
+  border-bottom-color: #cc0000;
+  background: transparent;
+}
+
 /* Filters Section */
 .filters-section {
   max-width: 900px;
-  margin: 2rem auto 1rem auto;
+  margin: 1rem auto 1rem auto;
   padding: 0 1rem;
 }
 
@@ -526,6 +562,24 @@ body.dark-theme .loading-details {
 
 body.dark-theme .error-details {
   color: #ff6666;
+}
+
+body.dark-theme .message-type-tabs {
+  border-bottom-color: #444;
+}
+
+body.dark-theme .message-type-btn {
+  color: #888;
+}
+
+body.dark-theme .message-type-btn:hover {
+  background: rgba(255,68,68,0.1);
+  color: #ff4444;
+}
+
+body.dark-theme .message-type-btn.active {
+  color: #ff4444;
+  border-bottom-color: #ff4444;
 }
 
 /* Responsive Design */
