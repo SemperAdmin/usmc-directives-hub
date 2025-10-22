@@ -353,6 +353,69 @@ button:active {
   color: #cc0000;
 }
 
+.mcpub-details {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.mcpub-details h4 {
+  margin: 0 0 1rem 0;
+  color: #cc0000;
+  font-size: 1.1rem;
+}
+
+.pdf-download {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #fff;
+  border: 2px dashed #cc0000;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.download-pdf-btn {
+  display: inline-block;
+  background: #cc0000;
+  color: white;
+  padding: 0.75rem 2rem;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: background 0.3s ease;
+}
+
+.download-pdf-btn:hover {
+  background: #990000;
+}
+
+.pdf-link-url {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.85rem;
+  color: #666;
+  font-family: 'Courier New', monospace;
+}
+
+.mcpub-info {
+  margin: 0.75rem 0;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.mcpub-info strong {
+  color: #cc0000;
+  margin-right: 0.5rem;
+}
+
+.no-pdf-found {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  margin: 1rem 0;
+}
+
 /* Status and Error */
 .status, .error {
   text-align: center;
@@ -580,6 +643,44 @@ body.dark-theme .message-type-btn:hover {
 body.dark-theme .message-type-btn.active {
   color: #ff4444;
   border-bottom-color: #ff4444;
+}
+
+body.dark-theme .mcpub-details {
+  background: #1a1a1a;
+  border: 1px solid #444;
+}
+
+body.dark-theme .mcpub-details h4 {
+  color: #ff4444;
+}
+
+body.dark-theme .pdf-download {
+  background: #2a2a2a;
+  border-color: #ff4444;
+}
+
+body.dark-theme .download-pdf-btn {
+  background: #ff4444;
+}
+
+body.dark-theme .download-pdf-btn:hover {
+  background: #ff6666;
+}
+
+body.dark-theme .pdf-link-url {
+  color: #888;
+}
+
+body.dark-theme .mcpub-info {
+  background: #2a2a2a;
+}
+
+body.dark-theme .mcpub-info strong {
+  color: #ff4444;
+}
+
+body.dark-theme .no-pdf-found {
+  color: #888;
 }
 
 /* Responsive Design */
