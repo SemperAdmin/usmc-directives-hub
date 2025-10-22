@@ -145,6 +145,157 @@ function processRSSData(text) {
   updateLastUpdate();
 }
 
+// Fetch full message details from the message page
+async function fetchMessageDetails(message) {
+  if (message.detailsFetched) return message;
+
+  try {
+    // Try multiple CORS proxies to fetch the page
+    let html = null;
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const url = proxy.includes('allorigins')
+          ? proxy + encodeURIComponent(message.link)
+          : proxy + message.link;
+
+        const response = await fetch(url, { timeout: 10000 });
+        if (response.ok) {
+          html = await response.text();
+
+          // Handle allorigins response
+          if (proxy.includes('allorigins') && !proxy.includes('/raw')) {
+            try {
+              const json = JSON.parse(html);
+              html = json.contents || html;
+            } catch(e) {}
+          }
+          break;
+        }
+      } catch(e) {
+        console.log(`Failed to fetch via ${proxy}:`, e.message);
+      }
+    }
+
+    if (!html) throw new Error('All proxies failed');
+
+    // Parse the HTML content
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Extract MARADMIN number from content
+    const bodyText = doc.body?.textContent || '';
+    const maradminMatch = bodyText.match(/MARADMIN\s+(?:NUMBER\s+)?(\d+[-\/]\d+)/i);
+
+    if (maradminMatch) {
+      message.maradminNumber = maradminMatch[1];
+      message.id = `MARADMIN ${maradminMatch[1]}`;
+    }
+
+    // Extract 5 Ws from the message content
+    message.fiveWs = extract5Ws(bodyText, message.title);
+    message.detailsFetched = true;
+
+    // Update cache
+    cacheData(allMaradmins);
+
+    console.log(`Fetched details for ${message.id}:`, message.fiveWs);
+    return message;
+
+  } catch(error) {
+    console.error(`Error fetching details for ${message.id}:`, error);
+    message.detailsFetched = true; // Mark as attempted
+    return message;
+  }
+}
+
+// Extract 5 Ws (Who, What, When, Where, Why) from message content
+function extract5Ws(content, title) {
+  const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+  const fiveWs = {
+    who: '',
+    what: '',
+    when: '',
+    where: '',
+    why: ''
+  };
+
+  // What: Use the title/subject as the primary "what"
+  fiveWs.what = title;
+
+  // Who: Look for organizational references
+  const whoPatterns = [
+    /(?:to|for|from)[:.\s]+([A-Z][A-Z\s,]+(?:MARINE|CORPS|USMC|COMMAND|FORCE|DIVISION|REGIMENT|BATTALION|SQUADRON)[A-Z\s,]*)/i,
+    /(?:all|active|reserve|selected)\s+(marines|personnel|officers|enlisted)/i
+  ];
+
+  for (const pattern of whoPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      fiveWs.who = match[1] || match[0];
+      break;
+    }
+  }
+
+  // When: Look for effective dates, deadlines
+  const whenPatterns = [
+    /effective(?:\s+date)?[:.\s]+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i,
+    /(?:by|on|before|until)[:.\s]+(\d{1,2}\s+[A-Z][a-z]+\s+\d{4})/i,
+    /deadline[:.\s]+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i,
+    /fiscal\s+year\s+(\d{2,4})/i
+  ];
+
+  for (const pattern of whenPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      fiveWs.when = match[1] || match[0];
+      break;
+    }
+  }
+
+  // Where: Look for location references
+  const wherePatterns = [
+    /(?:location|at|base|station|installation)[:.\s]+([A-Z][A-Za-z\s,]+(?:CA|NC|VA|HI|SC|AZ|TX|FL|DC|OKINAWA|JAPAN))/i,
+    /(?:MARINE CORPS BASE|MCB|CAMP)\s+([A-Z][A-Za-z\s]+)/i
+  ];
+
+  for (const pattern of wherePatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      fiveWs.where = match[1] || match[0];
+      break;
+    }
+  }
+
+  // Why: Look for purpose statements
+  const whyPatterns = [
+    /(?:purpose|intent|in order to|to provide|to establish|to update|to announce)[:.\s]+([^.]+\.)/i,
+    /(?:this message)\s+(?:provides|establishes|announces|updates)\s+([^.]+\.)/i
+  ];
+
+  for (const pattern of whyPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      fiveWs.why = match[1] || match[0];
+      break;
+    }
+  }
+
+  // Clean up extracted text
+  Object.keys(fiveWs).forEach(key => {
+    if (fiveWs[key]) {
+      fiveWs[key] = fiveWs[key]
+        .replace(/\s+/g, ' ')
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+        .substring(0, 200); // Limit length
+    } else {
+      fiveWs[key] = 'Not specified';
+    }
+  });
+
+  return fiveWs;
+}
+
 // Parse RSS XML - Enhanced to extract more metadata
 function parseRSS(xmlText){
   const parser = new DOMParser();
@@ -160,25 +311,28 @@ function parseRSS(xmlText){
     const description = item.querySelector("description")?.textContent || "";
     const category = item.querySelector("category")?.textContent || "";
 
-    // Extract MARADMIN ID if present in title
-    // Matches: "MARADMIN 123/24", "MARADMIN 123-24", etc.
-    const idMatch = title.match(/MARADMIN\s+(\d+[-\/]?\d*)/i);
+    // Extract MARADMIN ID from multiple sources
+    // 1. Try title first
+    let idMatch = title.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
+
+    // 2. Try description if not in title
+    if (!idMatch && description) {
+      idMatch = description.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
+    }
 
     let id, numericId, subject;
 
     if (idMatch) {
-      // Has MARADMIN ID in title
+      // Has MARADMIN ID
       id = idMatch[0];
       numericId = idMatch[1];
       subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
     } else {
-      // No MARADMIN ID in title - this is still a valid message
-      // Try to extract from link (e.g., /Article/4321795/)
+      // No MARADMIN ID found - use Article ID from link
       const linkMatch = link.match(/\/Article\/(\d+)\//);
       id = linkMatch ? `Article ${linkMatch[1]}` : `Message ${index + 1}`;
       numericId = linkMatch ? linkMatch[1] : String(index + 1);
       subject = title;
-      console.log(`Item ${index + 1}: No MARADMIN ID in title, using "${id}" - Title: "${title.substring(0, 60)}..."`);
     }
 
     // Clean and extract description
@@ -196,7 +350,10 @@ function parseRSS(xmlText){
       summary,
       description: cleanDescription,
       category,
-      searchText: `${id} ${subject} ${cleanDescription}`.toLowerCase()
+      searchText: `${id} ${subject} ${cleanDescription}`.toLowerCase(),
+      detailsFetched: false, // Track if we've fetched full details
+      maradminNumber: null, // Will be filled when fetching details
+      fiveWs: null // Will be filled when fetching details
     };
   });
 
@@ -260,9 +417,10 @@ function renderMaradmins(arr) {
     return;
   }
 
-  arr.forEach(item => {
+  arr.forEach((item, index) => {
     const div = document.createElement("div");
     div.className = "maradmin";
+    div.dataset.index = index;
 
     // Enhanced display with more metadata
     div.innerHTML = `
@@ -272,13 +430,130 @@ function renderMaradmins(arr) {
       </div>
       <h3 class="maradmin-subject"><a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.subject}</a></h3>
       <p class="maradmin-summary">${item.summary}</p>
+      <div class="maradmin-details" id="details-${index}" style="display:none;">
+        <div class="loading-details">Loading details...</div>
+      </div>
       <div class="maradmin-footer">
         ${item.category ? `<span class="category">${item.category}</span>` : ''}
+        <button class="expand-btn" onclick="toggleDetails(${index}, currentMaradmins[${index}])">
+          ${item.detailsFetched && item.fiveWs ? '📋 Hide Details' : '📋 Show 5 Ws'}
+        </button>
         <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="view-full">View Full Message →</a>
       </div>
     `;
     resultsDiv.appendChild(div);
   });
+}
+
+// Toggle message details (5 Ws)
+async function toggleDetails(index, message) {
+  const detailsDiv = document.getElementById(`details-${index}`);
+  const btn = event.target;
+
+  // If already visible, hide it
+  if (detailsDiv.style.display === 'block') {
+    detailsDiv.style.display = 'none';
+    btn.textContent = '📋 Show 5 Ws';
+    return;
+  }
+
+  // Show the details div
+  detailsDiv.style.display = 'block';
+
+  // If not fetched yet, fetch now
+  if (!message.detailsFetched) {
+    detailsDiv.innerHTML = '<div class="loading-details">Fetching message details...</div>';
+    btn.disabled = true;
+
+    try {
+      await fetchMessageDetails(message);
+
+      // Update button text
+      btn.textContent = '📋 Hide Details';
+      btn.disabled = false;
+
+      // Display the 5 Ws
+      if (message.fiveWs) {
+        detailsDiv.innerHTML = `
+          <div class="five-ws">
+            <h4>5 Ws Summary</h4>
+            <div class="ws-grid">
+              <div class="w-item">
+                <strong>Who:</strong>
+                <span>${message.fiveWs.who}</span>
+              </div>
+              <div class="w-item">
+                <strong>What:</strong>
+                <span>${message.fiveWs.what}</span>
+              </div>
+              <div class="w-item">
+                <strong>When:</strong>
+                <span>${message.fiveWs.when}</span>
+              </div>
+              <div class="w-item">
+                <strong>Where:</strong>
+                <span>${message.fiveWs.where}</span>
+              </div>
+              <div class="w-item">
+                <strong>Why:</strong>
+                <span>${message.fiveWs.why}</span>
+              </div>
+            </div>
+            ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : ''}
+          </div>
+        `;
+      } else {
+        detailsDiv.innerHTML = '<div class="error-details">Could not extract details from this message.</div>';
+      }
+
+      // Update the ID in the header if we found the MARADMIN number
+      if (message.maradminNumber && message.id.startsWith('Article')) {
+        const headerIdSpan = detailsDiv.closest('.maradmin').querySelector('.maradmin-id');
+        if (headerIdSpan) {
+          headerIdSpan.textContent = `MARADMIN ${message.maradminNumber}`;
+        }
+      }
+
+    } catch (error) {
+      detailsDiv.innerHTML = '<div class="error-details">Failed to fetch message details. Please try again.</div>';
+      btn.disabled = false;
+      btn.textContent = '📋 Retry';
+    }
+  } else {
+    // Already fetched, just display
+    btn.textContent = '📋 Hide Details';
+
+    if (message.fiveWs) {
+      detailsDiv.innerHTML = `
+        <div class="five-ws">
+          <h4>5 Ws Summary</h4>
+          <div class="ws-grid">
+            <div class="w-item">
+              <strong>Who:</strong>
+              <span>${message.fiveWs.who}</span>
+            </div>
+            <div class="w-item">
+              <strong>What:</strong>
+              <span>${message.fiveWs.what}</span>
+            </div>
+            <div class="w-item">
+              <strong>When:</strong>
+              <span>${message.fiveWs.when}</span>
+            </div>
+            <div class="w-item">
+              <strong>Where:</strong>
+              <span>${message.fiveWs.where}</span>
+            </div>
+            <div class="w-item">
+              <strong>Why:</strong>
+              <span>${message.fiveWs.why}</span>
+            </div>
+          </div>
+          ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : ''}
+        </div>
+      `;
+    }
+  }
 }
 
 function formatDate(date) {
