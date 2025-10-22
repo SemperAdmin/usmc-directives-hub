@@ -740,7 +740,7 @@ function showError(msg) {
   if (allMaradmins.length > 0) {
     setTimeout(() => {
       errorDiv.classList.add("hidden");
-    }, 5000);
+    }, 10000);
   }
 }
 
