@@ -4,7 +4,7 @@ const RSS_FEEDS = {
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
   semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml",
-  youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=si=oATayDTRgeVkwiyL"
+  youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=UCob5u7jsXrdca9vmarYJ0Cg"
 };
 
 // ALNAV URLs - dynamically built for current/previous year
