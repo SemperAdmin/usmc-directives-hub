@@ -808,6 +808,11 @@ footer a:hover {
   color: #7b1fa2;
 }
 
+.type-badge.type-dodforms {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
 .compact-col-action {
   display: flex;
   gap: 0.5rem;
@@ -1285,6 +1290,11 @@ body.dark-theme .type-badge.type-almar {
 body.dark-theme .type-badge.type-semperadmin {
   background: #2a1a3a;
   color: #ce93d8;
+}
+
+body.dark-theme .type-badge.type-dodforms {
+  background: #1b3a1b;
+  color: #81c784;
 }
 
 body.dark-theme .compact-expand-btn {
