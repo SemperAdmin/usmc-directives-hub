@@ -813,6 +813,11 @@ footer a:hover {
   color: #2e7d32;
 }
 
+.type-badge.type-youtube {
+  background: #ffebee;
+  color: #c62828;
+}
+
 .compact-col-action {
   display: flex;
   gap: 0.5rem;
@@ -1295,6 +1300,11 @@ body.dark-theme .type-badge.type-semperadmin {
 body.dark-theme .type-badge.type-dodforms {
   background: #1b3a1b;
   color: #81c784;
+}
+
+body.dark-theme .type-badge.type-youtube {
+  background: #3a1a1a;
+  color: #ef5350;
 }
 
 body.dark-theme .compact-expand-btn {
