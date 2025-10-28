@@ -1,7 +1,10 @@
 // RSS Feed URLs
 const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
-  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000"
+  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
+  alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
+  almar: "https://rss.app/feeds/cbh10wV7dBx3A2LV.xml",
+  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml"
 };
 
 // Multiple CORS proxies to try as fallbacks
@@ -29,7 +32,10 @@ const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 let currentMessages = [];
 let allMaradmins = []; // Store all MARADMINs
 let allMcpubs = []; // Store all MCPUBs
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', or 'all'
+let allAlnavs = []; // Store all ALNAVs
+let allAlmars = []; // Store all ALMARs
+let allSemperAdminPosts = []; // Store all Semper Admin posts
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', or 'all'
 let currentView = 'detailed'; // Track view mode: 'detailed' or 'compact'
 let summaryCache = {}; // Cache for AI-generated summaries
 
@@ -50,16 +56,17 @@ messageTypeButtons.forEach(btn => {
   btn.addEventListener("click", () => switchMessageType(btn.dataset.type));
 });
 
-// Fetch all RSS feeds (MARADMINs and MCPUBs)
+// Fetch all RSS feeds (MARADMINs, MCPUBs, ALNAVs, ALMARs, and Semper Admin)
 async function fetchAllFeeds() {
   statusDiv.textContent = "Fetching messages...";
   errorDiv.classList.add("hidden");
 
-  // Fetch MARADMINs
+  // Fetch all feed types
   await fetchFeed('maradmin', RSS_FEEDS.maradmin);
-
-  // Fetch MCPUBs
   await fetchFeed('mcpub', RSS_FEEDS.mcpub);
+  await fetchFeed('alnav', RSS_FEEDS.alnav);
+  await fetchFeed('almar', RSS_FEEDS.almar);
+  await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
 
   // Update display
   filterMessages();
@@ -168,6 +175,12 @@ function processRSSData(text, type) {
     allMaradmins = parsed;
   } else if (type === 'mcpub') {
     allMcpubs = parsed;
+  } else if (type === 'alnav') {
+    allAlnavs = parsed;
+  } else if (type === 'almar') {
+    allAlmars = parsed;
+  } else if (type === 'semperadmin') {
+    allSemperAdminPosts = parsed;
   }
 
   cacheData();
@@ -488,6 +501,35 @@ function parseRSS(xmlText, type){
         numericId = linkMatch ? linkMatch[1] : String(index + 1);
         subject = title;
       }
+    } else if (type === 'alnav') {
+      // Extract ALNAV ID from title (e.g., "ALNAV 001/25")
+      const alnavMatch = title.match(/ALNAV\s+(\d+[-\/]\d+)/i);
+      if (alnavMatch) {
+        id = alnavMatch[0];
+        numericId = alnavMatch[1];
+        subject = title.replace(/ALNAV\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+      } else {
+        id = `ALNAV ${index + 1}`;
+        numericId = String(index + 1);
+        subject = title;
+      }
+    } else if (type === 'almar') {
+      // Extract ALMAR ID from title (e.g., "ALMAR 001/25")
+      const almarMatch = title.match(/ALMAR\s+(\d+[-\/]\d+)/i);
+      if (almarMatch) {
+        id = almarMatch[0];
+        numericId = almarMatch[1];
+        subject = title.replace(/ALMAR\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+      } else {
+        id = `ALMAR ${index + 1}`;
+        numericId = String(index + 1);
+        subject = title;
+      }
+    } else if (type === 'semperadmin') {
+      // For Semper Admin posts, use title as-is
+      id = title.substring(0, 50);
+      numericId = String(index + 1);
+      subject = title;
     }
 
     // Clean and extract description
@@ -543,8 +585,14 @@ function filterMessages() {
     allMessages = [...allMaradmins];
   } else if (currentMessageType === 'mcpub') {
     allMessages = [...allMcpubs];
+  } else if (currentMessageType === 'alnav') {
+    allMessages = [...allAlnavs];
+  } else if (currentMessageType === 'almar') {
+    allMessages = [...allAlmars];
+  } else if (currentMessageType === 'semperadmin') {
+    allMessages = [...allSemperAdminPosts];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -579,11 +627,24 @@ function clearSearch() {
 }
 
 function updateResultsCount() {
-  const totalCount = currentMessageType === 'maradmin' ? allMaradmins.length :
-                     currentMessageType === 'mcpub' ? allMcpubs.length :
-                     allMaradmins.length + allMcpubs.length;
+  let totalCount = 0;
+  if (currentMessageType === 'maradmin') {
+    totalCount = allMaradmins.length;
+  } else if (currentMessageType === 'mcpub') {
+    totalCount = allMcpubs.length;
+  } else if (currentMessageType === 'alnav') {
+    totalCount = allAlnavs.length;
+  } else if (currentMessageType === 'almar') {
+    totalCount = allAlmars.length;
+  } else if (currentMessageType === 'semperadmin') {
+    totalCount = allSemperAdminPosts.length;
+  } else if (currentMessageType === 'all') {
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length;
+  }
 
-  const typeLabel = currentMessageType === 'all' ? 'Messages' : currentMessageType.toUpperCase() + 's';
+  const typeLabel = currentMessageType === 'all' ? 'Messages' :
+                    currentMessageType === 'semperadmin' ? 'Posts' :
+                    currentMessageType.toUpperCase() + 's';
 
   const countText = currentMessages.length === totalCount
     ? `Showing all ${currentMessages.length} ${typeLabel}`
@@ -610,9 +671,20 @@ function toggleView() {
 
 // Render summary statistics panel
 function renderSummaryStats() {
-  const totalCount = currentMessageType === 'maradmin' ? allMaradmins.length :
-                     currentMessageType === 'mcpub' ? allMcpubs.length :
-                     allMaradmins.length + allMcpubs.length;
+  let totalCount = 0;
+  if (currentMessageType === 'maradmin') {
+    totalCount = allMaradmins.length;
+  } else if (currentMessageType === 'mcpub') {
+    totalCount = allMcpubs.length;
+  } else if (currentMessageType === 'alnav') {
+    totalCount = allAlnavs.length;
+  } else if (currentMessageType === 'almar') {
+    totalCount = allAlmars.length;
+  } else if (currentMessageType === 'semperadmin') {
+    totalCount = allSemperAdminPosts.length;
+  } else if (currentMessageType === 'all') {
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length;
+  }
 
   // Get date range
   const dates = currentMessages.map(m => m.pubDateObj).sort((a, b) => a - b);
@@ -624,6 +696,9 @@ function renderSummaryStats() {
   if (currentMessageType === 'all') {
     const maradminCount = currentMessages.filter(m => m.type === 'maradmin').length;
     const mcpubCount = currentMessages.filter(m => m.type === 'mcpub').length;
+    const alnavCount = currentMessages.filter(m => m.type === 'alnav').length;
+    const almarCount = currentMessages.filter(m => m.type === 'almar').length;
+    const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     typeBreakdown = `
       <div class="stat-item">
         <span class="stat-label">MARADMINs:</span>
@@ -632,6 +707,18 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">MCPUBs:</span>
         <span class="stat-value">${mcpubCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">ALNAVs:</span>
+        <span class="stat-value">${alnavCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">ALMARs:</span>
+        <span class="stat-value">${almarCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Semper Admin:</span>
+        <span class="stat-value">${semperAdminCount}</span>
       </div>
     `;
   }
@@ -732,7 +819,14 @@ function renderCompactView(arr) {
     row.className = "compact-row";
     row.dataset.index = index;
 
-    const typeLabel = item.type === 'maradmin' ? 'MARADMIN' : 'MCPUB';
+    const typeLabels = {
+      'maradmin': 'MARADMIN',
+      'mcpub': 'MCPUB',
+      'alnav': 'ALNAV',
+      'almar': 'ALMAR',
+      'semperadmin': 'SEMPER ADMIN'
+    };
+    const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
     const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
 
     row.innerHTML = `
@@ -1025,6 +1119,9 @@ function cacheData() {
   try {
     localStorage.setItem("maradmin_cache", JSON.stringify(allMaradmins));
     localStorage.setItem("mcpub_cache", JSON.stringify(allMcpubs));
+    localStorage.setItem("alnav_cache", JSON.stringify(allAlnavs));
+    localStorage.setItem("almar_cache", JSON.stringify(allAlmars));
+    localStorage.setItem("semperadmin_cache", JSON.stringify(allSemperAdminPosts));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
@@ -1036,6 +1133,9 @@ function loadCachedData() {
   try {
     const maradminCache = localStorage.getItem("maradmin_cache");
     const mcpubCache = localStorage.getItem("mcpub_cache");
+    const alnavCache = localStorage.getItem("alnav_cache");
+    const almarCache = localStorage.getItem("almar_cache");
+    const semperAdminCache = localStorage.getItem("semperadmin_cache");
     const summaryCacheData = localStorage.getItem("summary_cache");
     const ts = localStorage.getItem("cache_timestamp");
 
@@ -1050,6 +1150,30 @@ function loadCachedData() {
     if (mcpubCache) {
       allMcpubs = JSON.parse(mcpubCache);
       allMcpubs = allMcpubs.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    if (alnavCache) {
+      allAlnavs = JSON.parse(alnavCache);
+      allAlnavs = allAlnavs.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    if (almarCache) {
+      allAlmars = JSON.parse(almarCache);
+      allAlmars = allAlmars.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    if (semperAdminCache) {
+      allSemperAdminPosts = JSON.parse(semperAdminCache);
+      allSemperAdminPosts = allSemperAdminPosts.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
