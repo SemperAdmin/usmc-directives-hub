@@ -4,16 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MARADMIN Tracker</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <header>
   <h1>USMC Directives Hub</h1>
   <p class="subtitle">Search and track Marine Corps Messages and Publications</p>
   <div class="controls">
-    <button id="refreshBtn">Refresh</button>
-    <button id="exportBtn">Export JSON</button>
-    <button id="themeToggle">Toggle Theme</button>
+    <button id="refreshBtn">🔄 Refresh</button>
+    <button id="themeToggle">🌙 Dark Mode</button>
   </div>
 </header>
 <main>
@@ -31,11 +30,16 @@
       <button id="clearSearch" class="clear-btn" title="Clear search">✕</button>
     </div>
     <div class="filter-controls">
-      <label for="dateRange">Date Range:</label>
+      <div class="quick-filters">
+        <button class="quick-filter-btn" data-days="1">Today</button>
+        <button class="quick-filter-btn active" data-days="7">This Week</button>
+        <button class="quick-filter-btn" data-days="30">This Month</button>
+      </div>
       <select id="dateRange">
-        <option value="7">Last 7 days</option>
+        <option value="1">Last 24 hours</option>
+        <option value="7" selected>Last 7 days</option>
         <option value="14">Last 14 days</option>
-        <option value="30" selected>Last 30 days</option>
+        <option value="30">Last 30 days</option>
         <option value="60">Last 60 days</option>
         <option value="90">Last 90 days</option>
         <option value="0">All messages</option>
@@ -48,23 +52,9 @@
   <div id="results" class="results"></div>
 </main>
 <footer>
-  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a></p>
-  <p>Last updated: <span id="lastUpdate">Never</span></p>
-  <details class="troubleshooting">
-    <summary>Troubleshooting</summary>
-    <div class="troubleshooting-content">
-      <p><strong>If you see "Fetch failed" errors:</strong></p>
-      <ul>
-        <li>The app tries multiple CORS proxies automatically</li>
-        <li>First load may take 10-30 seconds while trying different proxies</li>
-        <li>Once data is cached, the app works offline</li>
-        <li>Try the Refresh button if the initial load fails</li>
-        <li>Check the browser console (F12) for detailed error messages</li>
-      </ul>
-      <p><strong>Note:</strong> This app uses CORS proxies to access the Marines.mil RSS feed. Some proxies may be temporarily unavailable.</p>
-    </div>
-  </details>
+  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a> | Last updated: <span id="lastUpdate">Never</span></p>
+  <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

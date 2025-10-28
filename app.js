@@ -16,7 +16,6 @@ const CORS_PROXIES = [
 ];
 
 const refreshBtn = document.getElementById("refreshBtn");
-const exportBtn = document.getElementById("exportBtn");
 const themeToggle = document.getElementById("themeToggle");
 const statusDiv = document.getElementById("status");
 const errorDiv = document.getElementById("error");
@@ -27,6 +26,7 @@ const searchInput = document.getElementById("searchInput");
 const dateRangeSelect = document.getElementById("dateRange");
 const clearSearchBtn = document.getElementById("clearSearch");
 const messageTypeButtons = document.querySelectorAll(".message-type-btn");
+const quickFilterButtons = document.querySelectorAll(".quick-filter-btn");
 
 // Gemini API configuration
 const GEMINI_API_KEY = "AIzaSyA0SE-MOkBQY2Wzf5r1WKzyDo2POK4dQkI";
@@ -46,15 +46,25 @@ document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
   fetchAllFeeds();
   initTheme();
+  startAutoRefresh();
 });
-refreshBtn.addEventListener("click", fetchAllFeeds);
-exportBtn.addEventListener("click", exportToJSON);
+refreshBtn.addEventListener("click", () => {
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = "🔄 Refreshing...";
+  fetchAllFeeds().then(() => {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = "🔄 Refresh";
+  });
+});
 themeToggle.addEventListener("click", toggleTheme);
 searchInput.addEventListener("input", filterMessages);
-dateRangeSelect.addEventListener("change", filterMessages);
+dateRangeSelect.addEventListener("change", handleDateRangeChange);
 clearSearchBtn.addEventListener("click", clearSearch);
 messageTypeButtons.forEach(btn => {
   btn.addEventListener("click", () => switchMessageType(btn.dataset.type));
+});
+quickFilterButtons.forEach(btn => {
+  btn.addEventListener("click", () => handleQuickFilter(btn));
 });
 
 // Fetch all RSS feeds (MARADMINs, MCPUBs, ALNAVs, ALMARs, and Semper Admin)
@@ -637,8 +647,53 @@ function filterMessages() {
 
 function clearSearch() {
   searchInput.value = "";
-  dateRangeSelect.value = "30";
+  dateRangeSelect.value = "7";
+
+  // Reset quick filter buttons
+  quickFilterButtons.forEach(btn => btn.classList.remove('active'));
+  quickFilterButtons.forEach(btn => {
+    if (btn.dataset.days === "7") btn.classList.add('active');
+  });
+
   filterMessages();
+}
+
+// Handle quick filter button clicks
+function handleQuickFilter(button) {
+  const days = button.dataset.days;
+
+  // Update button states
+  quickFilterButtons.forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+
+  // Update dropdown
+  dateRangeSelect.value = days;
+
+  // Filter messages
+  filterMessages();
+}
+
+// Handle date range dropdown change
+function handleDateRangeChange() {
+  // Clear quick filter active states if using custom dropdown
+  quickFilterButtons.forEach(btn => {
+    if (btn.dataset.days === dateRangeSelect.value) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  filterMessages();
+}
+
+// Start auto-refresh every 10 minutes
+function startAutoRefresh() {
+  // Auto-refresh every 10 minutes (600000 ms)
+  setInterval(() => {
+    console.log('Auto-refreshing feeds...');
+    fetchAllFeeds();
+  }, 600000); // 10 minutes
 }
 
 function updateResultsCount() {
@@ -792,9 +847,14 @@ function renderCompactView(arr) {
     const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
     const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
 
+    // Check if message is from today
+    const isNew = isMessageNew(item.pubDateObj);
+    const newBadge = isNew ? '<span class="new-badge">NEW</span>' : '';
+
     row.innerHTML = `
       <div class="compact-col-id">
         <span class="compact-id">${item.id}</span>
+        ${newBadge}
       </div>
       <div class="compact-col-date">
         <span class="compact-date">${formatDate(item.pubDateObj)}</span>
@@ -807,7 +867,7 @@ function renderCompactView(arr) {
       </div>
       <div class="compact-col-action">
         <button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">
-          🤖
+          AI Summary
         </button>
         <button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">
           Details
@@ -1040,6 +1100,15 @@ function formatDate(date) {
   return date.toLocaleDateString('en-US', options);
 }
 
+// Check if message is from today
+function isMessageNew(pubDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const messageDate = new Date(pubDate);
+  messageDate.setHours(0, 0, 0, 0);
+  return messageDate.getTime() === today.getTime();
+}
+
 function showError(msg) {
   errorDiv.innerHTML = msg;
   errorDiv.classList.remove("hidden");
@@ -1130,43 +1199,21 @@ function loadCachedData() {
   }
 }
 
-function exportToJSON() {
-  if(!currentMessages.length) {
-    showError("No data to export.");
-    return;
-  }
-  const exportData = currentMessages.map(m => ({
-    type: m.type,
-    id: m.id,
-    numericId: m.numericId,
-    subject: m.subject,
-    link: m.link,
-    pubDate: m.pubDate,
-    category: m.category,
-    description: m.description
-  }));
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: "application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const filename = `${currentMessageType}_${new Date().toISOString().split("T")[0]}.json`;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 function initTheme() {
   const savedTheme = localStorage.getItem("theme");
   if (savedTheme === "dark") {
     document.body.classList.add("dark-theme");
+    themeToggle.textContent = "☀️ Light Mode";
+  } else {
+    themeToggle.textContent = "🌙 Dark Mode";
   }
 }
 
 function toggleTheme() {
   document.body.classList.toggle("dark-theme");
-  localStorage.setItem("theme", document.body.classList.contains("dark-theme") ? "dark" : "light");
+  const isDark = document.body.classList.contains("dark-theme");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+  themeToggle.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
 }
 
 function updateLastUpdate() {

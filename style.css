@@ -152,14 +152,39 @@ button:active {
 .filter-controls {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.quick-filters {
+  display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.filter-controls label {
-  font-weight: 500;
+.quick-filter-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid #ddd;
+  background: white;
   color: #555;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
   white-space: nowrap;
+}
+
+.quick-filter-btn:hover {
+  border-color: #cc0000;
+  color: #cc0000;
+  background: rgba(204, 0, 0, 0.05);
+}
+
+.quick-filter-btn.active {
+  background: #cc0000;
+  border-color: #cc0000;
+  color: white;
 }
 
 #dateRange {
@@ -170,7 +195,6 @@ button:active {
   cursor: pointer;
   background: white;
   transition: border-color 0.3s ease;
-  flex: 1;
   min-width: 150px;
 }
 
@@ -503,13 +527,39 @@ button:active {
   display: none;
 }
 
+/* NEW Badge */
+.new-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 /* Footer */
 footer {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   background: #333;
   color: #fff;
   margin-top: 3rem;
+  font-size: 0.9rem;
 }
 
 footer p {
@@ -517,51 +567,20 @@ footer p {
 }
 
 footer a {
-  color: #cc0000;
+  color: #ff6b6b;
   text-decoration: none;
+  transition: color 0.3s ease;
 }
 
 footer a:hover {
+  color: #ff8787;
   text-decoration: underline;
 }
 
-.troubleshooting {
-  margin-top: 1.5rem;
-  text-align: left;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.troubleshooting summary {
-  cursor: pointer;
-  font-weight: 600;
-  padding: 0.5rem;
-  background: rgba(255,255,255,0.1);
-  border-radius: 4px;
-  user-select: none;
-}
-
-.troubleshooting summary:hover {
-  background: rgba(255,255,255,0.15);
-}
-
-.troubleshooting-content {
-  padding: 1rem;
-  margin-top: 0.5rem;
-  background: rgba(255,255,255,0.05);
-  border-radius: 4px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.troubleshooting-content ul {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
-}
-
-.troubleshooting-content li {
-  margin: 0.3rem 0;
+.footer-note {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
 }
 
 /* Summary Stats Panel */
@@ -618,7 +637,7 @@ footer a:hover {
 
 .compact-header {
   display: grid;
-  grid-template-columns: 120px 100px 1fr 100px 120px;
+  grid-template-columns: 140px 100px 1fr 110px 200px;
   gap: 1rem;
   padding: 1rem;
   background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
@@ -629,7 +648,7 @@ footer a:hover {
 
 .compact-row {
   display: grid;
-  grid-template-columns: 120px 100px 1fr 100px 120px;
+  grid-template-columns: 140px 100px 1fr 110px 200px;
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid #eee;
@@ -724,24 +743,29 @@ footer a:hover {
 .compact-ai-btn {
   background: #1565c0;
   color: white;
-  padding: 0.4rem 0.6rem;
+  padding: 0.45rem 0.9rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
   white-space: nowrap;
-  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .compact-ai-btn:hover {
   background: #0d47a1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(21, 101, 192, 0.3);
 }
 
 .compact-ai-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
+  transform: none;
 }
 
 .compact-expand-btn {
@@ -1122,6 +1146,33 @@ body.dark-theme .compact-category {
 
 body.dark-theme .compact-link-btn {
   color: #ff4444;
+}
+
+body.dark-theme .quick-filter-btn {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #b0b0b0;
+}
+
+body.dark-theme .quick-filter-btn:hover {
+  border-color: #ff4444;
+  color: #ff4444;
+  background: rgba(255, 68, 68, 0.1);
+}
+
+body.dark-theme .quick-filter-btn.active {
+  background: #ff4444;
+  border-color: #ff4444;
+  color: white;
+}
+
+body.dark-theme .new-badge {
+  background: linear-gradient(135deg, #ff4444 0%, #ff6666 100%);
+  box-shadow: 0 2px 4px rgba(255, 68, 68, 0.4);
+}
+
+body.dark-theme .footer-note {
+  color: #666;
 }
 
 /* Responsive Design */
