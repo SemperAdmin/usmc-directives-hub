@@ -94,6 +94,31 @@ button:active {
   background: transparent;
 }
 
+/* Tab Counter Badge */
+.tab-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 6px;
+  background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+.message-type-btn:not(.active) .tab-counter {
+  background: #999;
+}
+
+.message-type-btn:hover:not(.active) .tab-counter {
+  background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
+}
+
 /* Filters Section */
 .filters-section {
   max-width: 900px;
@@ -594,17 +619,49 @@ footer a:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .summary-stats h3 {
-  margin: 0 0 1rem 0;
+  margin: 0;
   color: #cc0000;
   font-size: 1.2rem;
   font-weight: 600;
+}
+
+.stats-toggle-btn {
+  background: transparent;
+  border: none;
+  color: #cc0000;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+}
+
+.stats-toggle-btn:hover {
+  background: rgba(204, 0, 0, 0.1);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
+  max-height: 500px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.stats-grid.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: -1rem;
 }
 
 .stat-item {
@@ -785,6 +842,24 @@ footer a:hover {
   background: #990000;
 }
 
+.compact-share-btn {
+  background: #666;
+  color: white;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.compact-share-btn:hover {
+  background: #555;
+  transform: translateY(-1px);
+}
+
 .compact-details-row {
   background: #f9f9f9;
   border-bottom: 1px solid #eee;
@@ -832,6 +907,58 @@ footer a:hover {
 
 .compact-link-btn:hover {
   text-decoration: underline;
+}
+
+/* Skeleton Loader */
+.skeleton-loader {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 140px 100px 1fr 110px 200px;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.skeleton-item {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+  height: 20px;
+}
+
+.skeleton-id {
+  width: 80%;
+}
+
+.skeleton-date {
+  width: 90%;
+}
+
+.skeleton-subject {
+  width: 95%;
+}
+
+.skeleton-keywords {
+  width: 70%;
+}
+
+.skeleton-actions {
+  width: 85%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Dark Theme */
@@ -1011,6 +1138,18 @@ body.dark-theme .message-type-btn.active {
   border-bottom-color: #ff4444;
 }
 
+body.dark-theme .tab-counter {
+  background: linear-gradient(135deg, #ff4444 0%, #ff6666 100%);
+}
+
+body.dark-theme .message-type-btn:not(.active) .tab-counter {
+  background: #555;
+}
+
+body.dark-theme .message-type-btn:hover:not(.active) .tab-counter {
+  background: linear-gradient(135deg, #ff4444 0%, #ff6666 100%);
+}
+
 body.dark-theme .mcpub-details {
   background: #1a1a1a;
   border: 1px solid #444;
@@ -1056,6 +1195,14 @@ body.dark-theme .summary-stats {
 
 body.dark-theme .summary-stats h3 {
   color: #ff4444;
+}
+
+body.dark-theme .stats-toggle-btn {
+  color: #ff4444;
+}
+
+body.dark-theme .stats-toggle-btn:hover {
+  background: rgba(255, 68, 68, 0.1);
 }
 
 body.dark-theme .stat-label {
@@ -1131,6 +1278,14 @@ body.dark-theme .compact-expand-btn:hover {
   background: #ff6666;
 }
 
+body.dark-theme .compact-share-btn {
+  background: #555;
+}
+
+body.dark-theme .compact-share-btn:hover {
+  background: #666;
+}
+
 body.dark-theme .compact-details-row {
   background: #1a1a1a;
   border-bottom-color: #444;
@@ -1146,6 +1301,15 @@ body.dark-theme .compact-category {
 
 body.dark-theme .compact-link-btn {
   color: #ff4444;
+}
+
+body.dark-theme .skeleton-row {
+  border-bottom-color: #444;
+}
+
+body.dark-theme .skeleton-item {
+  background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
 }
 
 body.dark-theme .quick-filter-btn {
@@ -1179,6 +1343,44 @@ body.dark-theme .footer-note {
 @media (max-width: 768px) {
   header h1 {
     font-size: 1.5rem;
+  }
+
+  /* Mobile tab navigation - horizontal scroll */
+  .message-type-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    justify-content: flex-start;
+    margin: 1.5rem auto 0 auto;
+    padding: 0 0.5rem;
+  }
+
+  .message-type-tabs::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .message-type-tabs::-webkit-scrollbar-track {
+    background: #f0f0f0;
+  }
+
+  .message-type-tabs::-webkit-scrollbar-thumb {
+    background: #cc0000;
+    border-radius: 3px;
+  }
+
+  .message-type-btn {
+    flex-shrink: 0;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .tab-counter {
+    min-width: 20px;
+    height: 18px;
+    font-size: 0.7rem;
+    padding: 0 5px;
+    margin-left: 4px;
   }
 
   .maradmin-header {
