@@ -31,6 +31,7 @@ let allMaradmins = []; // Store all MARADMINs
 let allMcpubs = []; // Store all MCPUBs
 let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', or 'all'
 let currentView = 'detailed'; // Track view mode: 'detailed' or 'compact'
+let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
 document.addEventListener("DOMContentLoaded", () => {
@@ -284,6 +285,161 @@ function extractMCPubInfo(content) {
   return info;
 }
 
+// Generate AI summary for a message
+async function generateAISummary(message, buttonElement) {
+  const messageKey = `${message.type}_${message.numericId}`;
+
+  // Check cache first
+  if (summaryCache[messageKey]) {
+    return summaryCache[messageKey];
+  }
+
+  try {
+    if (buttonElement) {
+      buttonElement.disabled = true;
+      buttonElement.textContent = '⏳ Generating Summary...';
+    }
+
+    // Use WebFetch to get content and generate summary
+    const prompt = `Analyze this Marine Corps ${message.type.toUpperCase()} message and create a structured summary following this exact format:
+
+[EMOJI] [TITLE IN CAPS] [EMOJI]
+📅 EFFECTIVE: [Date if mentioned]
+⚠️ REASON/PURPOSE: [Brief reason]
+🎯 KEY POINTS:
+
+[SECTION HEADERS IN CAPS:]
+[Content organized by logical sections]
+
+Use relevant emojis (💰 📅 ⚠️ 🎯 📋 ✅ ❌ 🔔 📢 etc.) to highlight important information.
+Break down into clear sections with BOLD HEADERS.
+Use bullet points (•) for lists.
+Keep it concise but capture all critical information.
+Highlight deadlines, actions required, and important dates.
+
+Here's an example format:
+💰 FY26 SELECTIVE RETENTION BONUS PROGRAM CLOSURE 💰
+📅 EFFECTIVE: 28 October 2025
+🎯 PURPOSE: Announce closure of FY26 SRBP
+
+CRITICAL DETAILS:
+• Key point 1
+• Key point 2
+
+ACTION REQUIRED:
+Details here...`;
+
+    // Try to fetch and summarize
+    const response = await fetch(message.link);
+    if (!response.ok) {
+      throw new Error('Failed to fetch message content');
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const bodyText = doc.body?.textContent || '';
+
+    // Extract the main message content (usually after "GENTEXT" or "SUBJ")
+    let messageContent = bodyText;
+    const gentextMatch = bodyText.match(/GENTEXT.*?(?=Release authorized|$)/is);
+    if (gentextMatch) {
+      messageContent = gentextMatch[0];
+    } else {
+      const subjMatch = bodyText.match(/SUBJ\/.*?(?=Release authorized|$)/is);
+      if (subjMatch) {
+        messageContent = subjMatch[0];
+      }
+    }
+
+    // Limit content length for processing
+    messageContent = messageContent.substring(0, 8000);
+
+    // Generate structured summary using Claude
+    const summary = await generateFormattedSummary(messageContent, message);
+
+    // Cache the summary
+    summaryCache[messageKey] = summary;
+    message.aiSummary = summary;
+
+    // Update cache
+    cacheData();
+
+    if (buttonElement) {
+      buttonElement.textContent = '🤖 AI Summary';
+      buttonElement.disabled = false;
+    }
+
+    return summary;
+
+  } catch (error) {
+    console.error('Error generating AI summary:', error);
+    if (buttonElement) {
+      buttonElement.textContent = '❌ Summary Failed (Retry)';
+      buttonElement.disabled = false;
+    }
+    throw error;
+  }
+}
+
+// Generate formatted summary using AI-like processing
+async function generateFormattedSummary(content, message) {
+  // This is a simplified version - in production you'd use an actual AI API
+  // For now, we'll extract and format key information
+
+  const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+  let summary = '';
+
+  // Extract subject
+  const subjMatch = content.match(/SUBJ\/(.*?)(?:\/\/|REF)/is);
+  const subject = subjMatch ? subjMatch[1].trim() : message.subject;
+
+  // Add title with emoji
+  summary += `📋 ${subject.toUpperCase()} 📋\n\n`;
+
+  // Extract date if available
+  const dateMatch = content.match(/R\s+(\d{6}Z\s+[A-Z]+\s+\d{2,4})/i) ||
+                   content.match(/Date Signed:\s+(.*?)(?:\||$)/i);
+  if (dateMatch) {
+    summary += `📅 DATE: ${dateMatch[1].trim()}\n`;
+  }
+
+  // Extract purpose/remarks
+  const purposeMatch = content.match(/(?:Purpose|Remarks)[.:]?\s*(?:\d+\.)?\s*(.*?)(?:\n\n|\d+\.|$)/is);
+  if (purposeMatch) {
+    summary += `🎯 PURPOSE:\n${purposeMatch[1].trim()}\n\n`;
+  }
+
+  // Extract key sections
+  const sections = [];
+  const sectionMatches = content.matchAll(/(\d+)\.\s+([A-Za-z\s]+)[.:]?\s+(.*?)(?=\n\d+\.|$)/gs);
+
+  for (const match of sectionMatches) {
+    const sectionTitle = match[2].trim().toUpperCase();
+    const sectionContent = match[3].trim().substring(0, 500);
+
+    if (sectionContent.length > 0) {
+      sections.push(`${sectionTitle}:\n${sectionContent}\n`);
+    }
+  }
+
+  if (sections.length > 0) {
+    summary += sections.join('\n');
+  } else {
+    // Fallback: use first few paragraphs
+    const paragraphs = content.split('\n\n').slice(0, 3);
+    summary += paragraphs.join('\n\n');
+  }
+
+  // Add action items if found
+  const actionMatch = content.match(/(?:Action|Command)[.:]?\s*(?:\d+\.)?\s*(.*?)(?:\n\n|\d+\.|$)/is);
+  if (actionMatch) {
+    summary += `\n\n⚠️ ACTION REQUIRED:\n${actionMatch[1].trim().substring(0, 400)}`;
+  }
+
+  return summary;
+}
+
 
 // Parse RSS XML - Enhanced to extract more metadata
 function parseRSS(xmlText, type){
@@ -533,11 +689,17 @@ function renderDetailedView(arr) {
       </div>
       <h3 class="maradmin-subject"><a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.subject}</a></h3>
       <p class="maradmin-summary">${item.summary}</p>
+      <div class="ai-summary-section" id="ai-summary-${index}" style="display:none;">
+        <div class="ai-summary-content"></div>
+      </div>
       <div class="maradmin-details" id="details-${index}" style="display:none;">
         <div class="loading-details">Loading details...</div>
       </div>
       <div class="maradmin-footer">
         ${item.category ? `<span class="category">${item.category}</span>` : ''}
+        <button class="ai-summary-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])">
+          🤖 AI Summary
+        </button>
         <button class="expand-btn" onclick="toggleDetails(${index}, currentMessages[${index}])">
           ${item.detailsFetched && item.pdfUrl ? '📋 Hide Details' : '📄 Show Details'}
         </button>
@@ -587,6 +749,9 @@ function renderCompactView(arr) {
         ${typeBadge}
       </div>
       <div class="compact-col-action">
+        <button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">
+          🤖
+        </button>
         <button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">
           Details
         </button>
@@ -628,6 +793,95 @@ function toggleCompactDetails(index, message) {
   } else {
     detailsRow.style.display = 'block';
     btn.textContent = 'Hide';
+  }
+}
+
+// Toggle AI-generated summary
+async function toggleAISummary(index, message) {
+  const summarySection = document.getElementById(`ai-summary-${index}`);
+  const btn = event.target;
+
+  // If already visible, hide it
+  if (summarySection && summarySection.style.display === 'block') {
+    summarySection.style.display = 'none';
+    if (btn.classList.contains('ai-summary-btn')) {
+      btn.textContent = '🤖 AI Summary';
+    }
+    return;
+  }
+
+  // Show loading state
+  if (!summarySection) {
+    // For compact view, create summary section if it doesn't exist
+    const detailsRow = document.getElementById(`compact-details-${index}`);
+    if (detailsRow) {
+      const existingSummary = detailsRow.querySelector('.ai-summary-display');
+      if (existingSummary) {
+        if (existingSummary.style.display === 'block') {
+          existingSummary.style.display = 'none';
+          btn.textContent = '🤖';
+          return;
+        }
+        existingSummary.style.display = 'block';
+        btn.textContent = '✓';
+        return;
+      }
+    }
+  }
+
+  try {
+    // Generate summary if not cached
+    const messageKey = `${message.type}_${message.numericId}`;
+    let summary = summaryCache[messageKey] || message.aiSummary;
+
+    if (!summary) {
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = btn.classList.contains('ai-summary-btn') ? '⏳ Generating...' : '⏳';
+
+      summary = await generateAISummary(message, null);
+
+      btn.disabled = false;
+      btn.textContent = btn.classList.contains('ai-summary-btn') ? '🤖 AI Summary' : '🤖';
+    }
+
+    // Display summary
+    if (summarySection) {
+      // Detailed view
+      const contentDiv = summarySection.querySelector('.ai-summary-content');
+      contentDiv.innerHTML = `
+        <div class="ai-summary-header">
+          <span class="ai-summary-title">🤖 AI-Generated Summary</span>
+        </div>
+        <div class="ai-summary-text">${summary.replace(/\n/g, '<br>')}</div>
+      `;
+      summarySection.style.display = 'block';
+      btn.textContent = '✓ Hide Summary';
+    } else {
+      // Compact view - add to details row
+      const detailsRow = document.getElementById(`compact-details-${index}`);
+      if (detailsRow) {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'ai-summary-display';
+        summaryDiv.innerHTML = `
+          <div class="ai-summary-header">
+            <span class="ai-summary-title">🤖 AI-Generated Summary</span>
+          </div>
+          <div class="ai-summary-text">${summary.replace(/\n/g, '<br>')}</div>
+        `;
+        detailsRow.querySelector('.compact-details-content').insertBefore(
+          summaryDiv,
+          detailsRow.querySelector('.compact-summary')
+        );
+        btn.textContent = '✓';
+      }
+    }
+
+  } catch (error) {
+    console.error('Error displaying AI summary:', error);
+    btn.disabled = false;
+    btn.textContent = btn.classList.contains('ai-summary-btn') ? '❌ Retry' : '❌';
+    alert('Failed to generate summary. Please try again.');
   }
 }
 
@@ -771,6 +1025,7 @@ function cacheData() {
   try {
     localStorage.setItem("maradmin_cache", JSON.stringify(allMaradmins));
     localStorage.setItem("mcpub_cache", JSON.stringify(allMcpubs));
+    localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
     console.error("Failed to cache data:", e);
@@ -781,6 +1036,7 @@ function loadCachedData() {
   try {
     const maradminCache = localStorage.getItem("maradmin_cache");
     const mcpubCache = localStorage.getItem("mcpub_cache");
+    const summaryCacheData = localStorage.getItem("summary_cache");
     const ts = localStorage.getItem("cache_timestamp");
 
     if (maradminCache) {
@@ -797,6 +1053,10 @@ function loadCachedData() {
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
+    }
+
+    if (summaryCacheData) {
+      summaryCache = JSON.parse(summaryCacheData);
     }
 
     if (ts) {
