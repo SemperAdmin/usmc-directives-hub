@@ -1,12 +1,28 @@
 // RSS Feed URLs
 const RSS_FEEDS = {
-  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14336",
-  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481",
-  alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
-  almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14335",
+  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
+  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
+  almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
   semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml",
   youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=si=oATayDTRgeVkwiyL"
 };
+
+// ALNAV URLs - dynamically built for current/previous year
+function getAlnavUrls() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const urls = [];
+
+  // Always include current year
+  urls.push(`https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${year}/`);
+
+  // If it's January, also include last year
+  if (now.getMonth() === 0) {
+    urls.push(`https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${year - 1}/`);
+  }
+
+  return urls;
+}
 
 // DoD Forms URLs
 const DOD_FORMS_URLS = [
@@ -122,10 +138,10 @@ async function fetchAllFeeds() {
   // Fetch all feed types
   await fetchFeed('maradmin', RSS_FEEDS.maradmin);
   await fetchFeed('mcpub', RSS_FEEDS.mcpub);
-  await fetchFeed('alnav', RSS_FEEDS.alnav);
+  await fetchAlnavMessages(); // Scrape directly from Navy website
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
-  await frtchFeed('youtube', RSS_FEEDS.youtube);
+  await fetchFeed('youtube', RSS_FEEDS.youtube);
 
   // Fetch DoD Forms
   await fetchDodForms();
@@ -238,8 +254,6 @@ function processRSSData(text, type) {
     allMaradmins = parsed;
   } else if (type === 'mcpub') {
     allMcpubs = parsed;
-  } else if (type === 'alnav') {
-    allAlnavs = parsed;
   } else if (type === 'almar') {
     allAlmars = parsed;
   } else if (type === 'semperadmin') {
@@ -389,6 +403,162 @@ function parseDodFormsTable(doc, sourceUrl) {
   });
 
   return forms;
+}
+
+// Fetch and parse ALNAV messages from Navy website
+async function fetchAlnavMessages() {
+  console.log('Fetching ALNAV messages from Navy website...');
+
+  try {
+    const urls = getAlnavUrls();
+    const allMessages = [];
+
+    // Fetch all ALNAV pages
+    for (const url of urls) {
+      try {
+        const messages = await fetchAlnavPage(url);
+        allMessages.push(...messages);
+        console.log(`Loaded ${messages.length} ALNAVs from ${url}`);
+      } catch (error) {
+        console.warn(`Skip ${url}:`, error.message);
+      }
+    }
+
+    // Remove duplicates based on message ID
+    const uniqueMessages = [];
+    const seen = new Set();
+    for (const msg of allMessages) {
+      if (!seen.has(msg.id)) {
+        seen.add(msg.id);
+        uniqueMessages.push(msg);
+      }
+    }
+
+    // Sort by date (newest first)
+    uniqueMessages.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+    allAlnavs = uniqueMessages;
+    cacheData();
+    console.log(`Total ALNAVs loaded: ${allAlnavs.length}`);
+  } catch (error) {
+    console.error('Error fetching ALNAV messages:', error);
+  }
+}
+
+// Fetch and parse a single ALNAV page
+async function fetchAlnavPage(url) {
+  try {
+    // Try direct fetch first
+    let text = await tryDirectFetch(url);
+
+    // If direct fails, try proxies
+    if (!text) {
+      for (let i = 0; i < CORS_PROXIES.length; i++) {
+        try {
+          text = await tryProxyFetch(CORS_PROXIES[i], url);
+          if (text) break;
+        } catch (err) {
+          console.log(`Proxy ${i + 1} failed for ALNAV page, trying next...`);
+        }
+      }
+    }
+
+    if (!text) {
+      throw new Error('All fetch attempts failed');
+    }
+
+    // Parse the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+
+    return parseAlnavLinks(doc, url);
+  } catch (error) {
+    console.error(`Error fetching ALNAV page ${url}:`, error);
+    return [];
+  }
+}
+
+// Parse ALNAV links from HTML document
+function parseAlnavLinks(doc, sourceUrl) {
+  const messages = [];
+
+  // Find all links to PDF, MSG, or TXT files
+  const links = doc.querySelectorAll('a[href$=".pdf"], a[href$=".msg"], a[href$=".txt"], a[href$=".PDF"], a[href$=".MSG"], a[href$=".TXT"]');
+
+  links.forEach(link => {
+    try {
+      const title = link.textContent.trim();
+      const href = new URL(link.getAttribute('href'), sourceUrl).href;
+
+      if (!title || !href) return;
+
+      // Extract ALNAV number from title or filename
+      // Examples: "ALNAV 001/25", "ALNAV 001-25", "001-25.pdf"
+      const alnavMatch = title.match(/ALNAV[_\s-]*(\d{3})[\/\-](\d{2,4})/i) ||
+                         href.match(/ALNAV[_\s-]*(\d{3})[\/\-](\d{2,4})/i) ||
+                         title.match(/(\d{3})[\/\-](\d{2,4})/) ||
+                         href.match(/(\d{3})[\/\-](\d{2,4})/);
+
+      if (!alnavMatch) return;
+
+      const number = alnavMatch[1];
+      let year = alnavMatch[2];
+
+      // Convert 2-digit year to 4-digit
+      if (year.length === 2) {
+        const currentYear = new Date().getFullYear();
+        const century = Math.floor(currentYear / 100) * 100;
+        year = century + parseInt(year);
+
+        // If year is more than 10 years in the future, it's probably from the past century
+        if (year > currentYear + 10) {
+          year -= 100;
+        }
+      }
+
+      const id = `ALNAV ${number}/${year}`;
+
+      // Try to extract date from title or use current date as fallback
+      let pubDate = new Date();
+      let pubDateObj = new Date();
+
+      // Look for date in title (various formats)
+      const dateMatch = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i) ||
+                        title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/) ||
+                        title.match(/(\d{4})-(\d{2})-(\d{2})/);
+
+      if (dateMatch) {
+        try {
+          pubDateObj = new Date(dateMatch[0]);
+          if (!isNaN(pubDateObj.getTime())) {
+            pubDate = pubDateObj.toISOString();
+          }
+        } catch (e) {
+          // Use default date
+        }
+      } else {
+        // Use year from ALNAV number
+        pubDateObj = new Date(year, 0, 1);
+        pubDate = pubDateObj.toISOString();
+      }
+
+      const message = {
+        id: id,
+        subject: title,
+        link: href,
+        pubDate: pubDate,
+        pubDateObj: pubDateObj,
+        type: 'alnav',
+        searchText: `${id} ${title}`.toLowerCase()
+      };
+
+      messages.push(message);
+    } catch (error) {
+      console.error('Error parsing ALNAV link:', error);
+    }
+  });
+
+  return messages;
 }
 
 // Fetch full message details from the message page
