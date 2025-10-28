@@ -4,7 +4,8 @@ const RSS_FEEDS = {
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481",
   alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14335",
-  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml"
+  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml",
+  youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=si=oATayDTRgeVkwiyL"
 };
 
 // Multiple CORS proxies to try as fallbacks
@@ -38,6 +39,7 @@ let allMcpubs = []; // Store all MCPUBs
 let allAlnavs = []; // Store all ALNAVs
 let allAlmars = []; // Store all ALMARs
 let allSemperAdminPosts = []; // Store all Semper Admin posts
+let allYouTubePosts = [];
 let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
@@ -78,6 +80,7 @@ async function fetchAllFeeds() {
   await fetchFeed('alnav', RSS_FEEDS.alnav);
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
+  await frtchFeed('youtube', RSS_FEEDS.youtube);
 
   // Update display
   filterMessages();
@@ -192,7 +195,10 @@ function processRSSData(text, type) {
     allAlmars = parsed;
   } else if (type === 'semperadmin') {
     allSemperAdminPosts = parsed;
+  } else if (type === 'youtube') {
+    allYouTubePosts = parsed;
   }
+
 
   cacheData();
   console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
