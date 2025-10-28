@@ -692,6 +692,21 @@ footer a:hover {
   color: #2e7d32;
 }
 
+.type-badge.type-alnav {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.type-badge.type-almar {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.type-badge.type-semperadmin {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
 .compact-col-action {
   display: flex;
   gap: 0.5rem;
@@ -1059,6 +1074,21 @@ body.dark-theme .type-badge.type-maradmin {
 body.dark-theme .type-badge.type-mcpub {
   background: #1a3a1a;
   color: #81c784;
+}
+
+body.dark-theme .type-badge.type-alnav {
+  background: #3a2a1a;
+  color: #ffb74d;
+}
+
+body.dark-theme .type-badge.type-almar {
+  background: #3a1a2a;
+  color: #f48fb1;
+}
+
+body.dark-theme .type-badge.type-semperadmin {
+  background: #2a1a3a;
+  color: #ce93d8;
 }
 
 body.dark-theme .compact-expand-btn {
