@@ -1,9 +1,9 @@
 // RSS Feed URLs
 const RSS_FEEDS = {
-  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
-  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
+  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14336",
+  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481",
   alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
-  almar: "https://rss.app/feeds/cbh10wV7dBx3A2LV.xml",
+  almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14335",
   semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml"
 };
 
