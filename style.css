@@ -15,6 +15,23 @@ header {
   padding: 1.5rem 1rem;
   text-align: center;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: padding 0.3s ease, box-shadow 0.3s ease;
+}
+
+header.scrolled {
+  padding: 0.75rem 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+header.scrolled h1 {
+  font-size: 1.5rem;
+}
+
+header.scrolled .subtitle {
+  display: none;
 }
 
 header h1 {
@@ -1447,5 +1464,109 @@ body.dark-theme .footer-note {
   body.dark-theme .compact-col-date::before,
   body.dark-theme .compact-col-type::before {
     color: #888;
+  }
+}
+
+/* Print Styles */
+@media print {
+  /* Reset colors for print */
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide non-essential elements */
+  header .controls,
+  .message-type-tabs,
+  .filters-section,
+  .compact-ai-btn,
+  .compact-expand-btn,
+  .compact-share-btn,
+  .quick-filters,
+  .summary-stats,
+  footer,
+  .stats-toggle-btn {
+    display: none !important;
+  }
+
+  /* Simplify header */
+  header {
+    padding: 1rem;
+    position: static;
+    border-bottom: 2px solid #000;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  header .subtitle {
+    font-size: 0.9rem;
+  }
+
+  /* Show status */
+  #status {
+    font-weight: bold;
+    margin: 1rem 0;
+    page-break-after: avoid;
+  }
+
+  /* Compact table for print */
+  .compact-header {
+    background: #f0f0f0 !important;
+    border-bottom: 2px solid #000;
+    font-weight: bold;
+  }
+
+  .compact-row {
+    border-bottom: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+
+  .compact-col-action {
+    display: none !important;
+  }
+
+  /* Adjust grid for print - remove action column */
+  .compact-header,
+  .compact-row {
+    grid-template-columns: 120px 90px 1fr 100px;
+  }
+
+  /* Show links */
+  .compact-subject {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  /* Type badges */
+  .type-badge {
+    border: 1px solid #000;
+    padding: 0.15rem 0.4rem;
+  }
+
+  /* Hide expanded details */
+  .compact-details-row {
+    display: none !important;
+  }
+
+  /* Page breaks */
+  .compact-view {
+    page-break-before: avoid;
+  }
+
+  h3 {
+    page-break-after: avoid;
+  }
+
+  /* Print specific title */
+  header::after {
+    content: "Printed: " attr(data-print-date);
+    display: block;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    opacity: 0.7;
   }
 }
