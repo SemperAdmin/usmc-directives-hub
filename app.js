@@ -926,10 +926,10 @@ async function toggleAISummary(index, message) {
   if (existingSummary) {
     if (existingSummary.style.display === 'none') {
       existingSummary.style.display = 'block';
-      btn.textContent = '✓';
+      btn.textContent = 'Hide Summary';
     } else {
       existingSummary.style.display = 'none';
-      btn.textContent = '🤖';
+      btn.textContent = 'AI Summary';
     }
     return;
   }
@@ -941,22 +941,28 @@ async function toggleAISummary(index, message) {
 
     if (!summary) {
       btn.disabled = true;
-      btn.textContent = '⏳';
+      btn.textContent = 'Generating...';
 
       summary = await generateAISummary(message, btn);
 
       btn.disabled = false;
     }
 
-    // Add summary to details row
+    // Add summary to details row - properly escape HTML
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'ai-summary-display';
-    summaryDiv.innerHTML = `
-      <div class="ai-summary-header">
-        <span class="ai-summary-title">🤖 AI-Generated Summary</span>
-      </div>
-      <div class="ai-summary-text">${summary.replace(/\n/g, '<br>')}</div>
-    `;
+
+    const header = document.createElement('div');
+    header.className = 'ai-summary-header';
+    header.innerHTML = '<span class="ai-summary-title">🤖 AI-Generated Summary</span>';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'ai-summary-text';
+    // Escape HTML then convert newlines to <br>
+    textDiv.innerHTML = escapeHtml(summary).replace(/\n/g, '<br>');
+
+    summaryDiv.appendChild(header);
+    summaryDiv.appendChild(textDiv);
 
     const content = detailsRow.querySelector('.compact-details-content');
     const summarySection = detailsRow.querySelector('.compact-summary');
@@ -966,14 +972,21 @@ async function toggleAISummary(index, message) {
       content.appendChild(summaryDiv);
     }
 
-    btn.textContent = '✓';
+    btn.textContent = 'Hide Summary';
 
   } catch (error) {
     console.error('Error displaying AI summary:', error);
     btn.disabled = false;
-    btn.textContent = '❌';
+    btn.textContent = '❌ Retry';
     alert('Failed to generate summary. Please try again.');
   }
+}
+
+// Escape HTML to prevent code injection and display issues
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Toggle message details
