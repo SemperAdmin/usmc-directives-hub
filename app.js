@@ -69,9 +69,40 @@ quickFilterButtons.forEach(btn => {
   btn.addEventListener("click", () => handleQuickFilter(btn));
 });
 
+// Show skeleton loading placeholders
+function showSkeletonLoaders() {
+  statusDiv.textContent = "Loading...";
+  resultsDiv.innerHTML = `
+    <div class="skeleton-loader">
+      <div class="compact-header">
+        <div>ID / Type</div>
+        <div>Date</div>
+        <div>Subject</div>
+        <div>Keywords</div>
+        <div>Actions</div>
+      </div>
+      ${Array(8).fill(0).map(() => `
+        <div class="skeleton-row">
+          <div class="skeleton-item skeleton-id"></div>
+          <div class="skeleton-item skeleton-date"></div>
+          <div class="skeleton-item skeleton-subject"></div>
+          <div class="skeleton-item skeleton-keywords"></div>
+          <div class="skeleton-item skeleton-actions"></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// Hide skeleton loaders
+function hideSkeletonLoaders() {
+  const skeletons = document.querySelectorAll('.skeleton-loader');
+  skeletons.forEach(skeleton => skeleton.remove());
+}
+
 // Fetch all RSS feeds (MARADMINs, MCPUBs, ALNAVs, ALMARs, and Semper Admin)
 async function fetchAllFeeds() {
-  statusDiv.textContent = "Fetching messages...";
+  showSkeletonLoaders();
   errorDiv.classList.add("hidden");
 
   // Fetch all feed types
@@ -85,6 +116,7 @@ async function fetchAllFeeds() {
   // Update display
   filterMessages();
   updateLastUpdate();
+  updateTabCounters();
 }
 
 // Fetch a specific RSS feed
@@ -649,6 +681,7 @@ function filterMessages() {
   currentMessages = filtered;
   renderMaradmins(currentMessages);
   updateResultsCount();
+  updateTabCounters();
 }
 
 function clearSearch() {
@@ -728,6 +761,68 @@ function updateResultsCount() {
   statusDiv.textContent = countText;
 }
 
+// Update tab counters with filtered message counts
+function updateTabCounters() {
+  const dateRange = parseInt(dateRangeSelect.value);
+  const searchTerm = searchInput.value.toLowerCase().trim();
+
+  // Helper function to get filtered count for a type
+  function getFilteredCount(messages) {
+    let filtered = messages;
+
+    // Apply date filter
+    if (dateRange > 0) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - dateRange);
+      filtered = filtered.filter(m => m.pubDateObj >= cutoffDate);
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(m => m.searchText.includes(searchTerm));
+    }
+
+    return filtered.length;
+  }
+
+  // Update each tab with its count
+  messageTypeButtons.forEach(btn => {
+    const type = btn.dataset.type;
+    let count = 0;
+    let baseText = '';
+
+    switch(type) {
+      case 'maradmin':
+        count = getFilteredCount(allMaradmins);
+        baseText = 'MARADMINs';
+        break;
+      case 'mcpub':
+        count = getFilteredCount(allMcpubs);
+        baseText = 'MCPUBs';
+        break;
+      case 'alnav':
+        count = getFilteredCount(allAlnavs);
+        baseText = 'ALNAVs';
+        break;
+      case 'almar':
+        count = getFilteredCount(allAlmars);
+        baseText = 'ALMARs';
+        break;
+      case 'semperadmin':
+        count = getFilteredCount(allSemperAdminPosts);
+        baseText = 'Semper Admin';
+        break;
+      case 'all':
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts]);
+        baseText = 'All Messages';
+        break;
+    }
+
+    // Update button text with counter badge
+    btn.innerHTML = `${baseText} <span class="tab-counter">${count}</span>`;
+  });
+}
+
 // Render summary statistics panel
 function renderSummaryStats() {
   let totalCount = 0;
@@ -782,9 +877,17 @@ function renderSummaryStats() {
     `;
   }
 
+  // Check if stats should be collapsed (from localStorage)
+  const isCollapsed = localStorage.getItem('stats_collapsed') === 'true';
+
   summaryStatsDiv.innerHTML = `
-    <h3>Summary Overview</h3>
-    <div class="stats-grid">
+    <div class="stats-header">
+      <h3>Summary Overview</h3>
+      <button class="stats-toggle-btn" onclick="toggleSummaryStats()">
+        ${isCollapsed ? '▼' : '▲'}
+      </button>
+    </div>
+    <div class="stats-grid ${isCollapsed ? 'collapsed' : ''}">
       <div class="stat-item">
         <span class="stat-label">Total Showing:</span>
         <span class="stat-value">${currentMessages.length} of ${totalCount}</span>
@@ -796,6 +899,43 @@ function renderSummaryStats() {
       </div>
     </div>
   `;
+}
+
+// Toggle summary stats collapse/expand
+function toggleSummaryStats() {
+  const statsGrid = summaryStatsDiv.querySelector('.stats-grid');
+  const toggleBtn = summaryStatsDiv.querySelector('.stats-toggle-btn');
+
+  if (statsGrid.classList.contains('collapsed')) {
+    statsGrid.classList.remove('collapsed');
+    toggleBtn.textContent = '▲';
+    localStorage.setItem('stats_collapsed', 'false');
+  } else {
+    statsGrid.classList.add('collapsed');
+    toggleBtn.textContent = '▼';
+    localStorage.setItem('stats_collapsed', 'true');
+  }
+}
+
+// Share message - copy link to clipboard
+async function shareMessage(message) {
+  try {
+    await navigator.clipboard.writeText(message.link);
+
+    // Show temporary success message
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✓';
+    btn.style.background = '#4caf50';
+
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy link:', err);
+    alert('Failed to copy link. Please try again.');
+  }
 }
 
 // Utilities
@@ -878,6 +1018,9 @@ function renderCompactView(arr) {
         <button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">
           Details
         </button>
+        <button class="compact-share-btn" onclick="shareMessage(currentMessages[${index}])" title="Copy link to clipboard">
+          🔗
+        </button>
       </div>
     `;
 
@@ -932,10 +1075,10 @@ async function toggleAISummary(index, message) {
   if (existingSummary) {
     if (existingSummary.style.display === 'none') {
       existingSummary.style.display = 'block';
-      btn.textContent = '✓';
+      btn.textContent = 'Hide Summary';
     } else {
       existingSummary.style.display = 'none';
-      btn.textContent = '🤖';
+      btn.textContent = 'AI Summary';
     }
     return;
   }
@@ -947,22 +1090,28 @@ async function toggleAISummary(index, message) {
 
     if (!summary) {
       btn.disabled = true;
-      btn.textContent = '⏳';
+      btn.textContent = 'Generating...';
 
       summary = await generateAISummary(message, btn);
 
       btn.disabled = false;
     }
 
-    // Add summary to details row
+    // Add summary to details row - properly escape HTML
     const summaryDiv = document.createElement('div');
     summaryDiv.className = 'ai-summary-display';
-    summaryDiv.innerHTML = `
-      <div class="ai-summary-header">
-        <span class="ai-summary-title">🤖 AI-Generated Summary</span>
-      </div>
-      <div class="ai-summary-text">${summary.replace(/\n/g, '<br>')}</div>
-    `;
+
+    const header = document.createElement('div');
+    header.className = 'ai-summary-header';
+    header.innerHTML = '<span class="ai-summary-title">🤖 AI-Generated Summary</span>';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'ai-summary-text';
+    // Escape HTML then convert newlines to <br>
+    textDiv.innerHTML = escapeHtml(summary).replace(/\n/g, '<br>');
+
+    summaryDiv.appendChild(header);
+    summaryDiv.appendChild(textDiv);
 
     const content = detailsRow.querySelector('.compact-details-content');
     const summarySection = detailsRow.querySelector('.compact-summary');
@@ -972,14 +1121,21 @@ async function toggleAISummary(index, message) {
       content.appendChild(summaryDiv);
     }
 
-    btn.textContent = '✓';
+    btn.textContent = 'Hide Summary';
 
   } catch (error) {
     console.error('Error displaying AI summary:', error);
     btn.disabled = false;
-    btn.textContent = '❌';
+    btn.textContent = '❌ Retry';
     alert('Failed to generate summary. Please try again.');
   }
+}
+
+// Escape HTML to prevent code injection and display issues
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Toggle message details

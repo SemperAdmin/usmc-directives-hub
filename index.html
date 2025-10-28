@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MARADMIN Tracker</title>
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header>
@@ -17,12 +17,12 @@
 </header>
 <main>
   <div class="message-type-tabs">
-    <button class="message-type-btn active" data-type="maradmin">MARADMINs</button>
-    <button class="message-type-btn" data-type="mcpub">MCPUBs</button>
-    <button class="message-type-btn" data-type="alnav">ALNAVs</button>
-    <button class="message-type-btn" data-type="almar">ALMARs</button>
-    <button class="message-type-btn" data-type="semperadmin">Semper Admin</button>
-    <button class="message-type-btn" data-type="all">All Messages</button>
+    <button class="message-type-btn active" data-type="maradmin">MARADMINs <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="mcpub">MCPUBs <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="alnav">ALNAVs <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="almar">ALMARs <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="semperadmin">Semper Admin <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="all">All Messages <span class="tab-counter">0</span></button>
   </div>
   <div class="filters-section">
     <div class="search-container">
@@ -55,6 +55,6 @@
   <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a> | Last updated: <span id="lastUpdate">Never</span></p>
   <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
