@@ -46,9 +46,12 @@ let summaryCache = {}; // Cache for AI-generated summaries
 // Init
 document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
+  restoreFilterPreferences();
   fetchAllFeeds();
   initTheme();
   startAutoRefresh();
+  initStickyHeader();
+  initKeyboardShortcuts();
 });
 refreshBtn.addEventListener("click", () => {
   refreshBtn.disabled = true;
@@ -634,6 +637,9 @@ function switchMessageType(type) {
     }
   });
 
+  // Save preference
+  localStorage.setItem('filter_message_type', type);
+
   filterMessages();
 }
 
@@ -697,6 +703,28 @@ function clearSearch() {
   filterMessages();
 }
 
+// Restore filter preferences from localStorage
+function restoreFilterPreferences() {
+  // Restore message type
+  const savedMessageType = localStorage.getItem('filter_message_type');
+  if (savedMessageType && savedMessageType !== 'maradmin') {
+    currentMessageType = savedMessageType;
+    messageTypeButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.type === savedMessageType);
+    });
+  }
+
+  // Restore date range
+  const savedDateRange = localStorage.getItem('filter_date_range');
+  if (savedDateRange) {
+    dateRangeSelect.value = savedDateRange;
+    // Update quick filter buttons
+    quickFilterButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.days === savedDateRange);
+    });
+  }
+}
+
 // Handle quick filter button clicks
 function handleQuickFilter(button) {
   const days = button.dataset.days;
@@ -707,6 +735,9 @@ function handleQuickFilter(button) {
 
   // Update dropdown
   dateRangeSelect.value = days;
+
+  // Save preference
+  localStorage.setItem('filter_date_range', days);
 
   // Filter messages
   filterMessages();
@@ -722,6 +753,9 @@ function handleDateRangeChange() {
       btn.classList.remove('active');
     }
   });
+
+  // Save preference
+  localStorage.setItem('filter_date_range', dateRangeSelect.value);
 
   filterMessages();
 }
@@ -1363,12 +1397,40 @@ function loadCachedData() {
 
 function initTheme() {
   const savedTheme = localStorage.getItem("theme");
+
+  // If no saved preference, check system preference
+  if (!savedTheme) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDark) {
+      document.body.classList.add("dark-theme");
+      themeToggle.textContent = "☀️ Light Mode";
+      localStorage.setItem("theme", "dark");
+      return;
+    }
+  }
+
+  // Use saved preference
   if (savedTheme === "dark") {
     document.body.classList.add("dark-theme");
     themeToggle.textContent = "☀️ Light Mode";
   } else {
     themeToggle.textContent = "🌙 Dark Mode";
   }
+
+  // Listen for system theme changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    // Only auto-update if user hasn't manually set a preference
+    const userPreference = localStorage.getItem("theme");
+    if (!userPreference) {
+      if (e.matches) {
+        document.body.classList.add("dark-theme");
+        themeToggle.textContent = "☀️ Light Mode";
+      } else {
+        document.body.classList.remove("dark-theme");
+        themeToggle.textContent = "🌙 Dark Mode";
+      }
+    }
+  });
 }
 
 function toggleTheme() {
@@ -1380,4 +1442,131 @@ function toggleTheme() {
 
 function updateLastUpdate() {
   lastUpdateSpan.textContent = new Date().toLocaleString();
+}
+
+// Initialize sticky header scroll behavior
+function initStickyHeader() {
+  const header = document.querySelector('header');
+  let lastScrollTop = 0;
+  let ticking = false;
+
+  window.addEventListener('scroll', () => {
+    lastScrollTop = window.scrollY;
+
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        if (lastScrollTop > 100) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+}
+
+// Initialize keyboard shortcuts
+function initKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Ignore if user is typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+      // Allow ESC to blur input fields
+      if (e.key === 'Escape') {
+        e.target.blur();
+      }
+      return;
+    }
+
+    // Keyboard shortcuts
+    switch(e.key.toLowerCase()) {
+      case 'r':
+        // R = Refresh
+        e.preventDefault();
+        refreshBtn.click();
+        break;
+
+      case 't':
+        // T = Toggle theme
+        e.preventDefault();
+        toggleTheme();
+        break;
+
+      case 'f':
+      case '/':
+        // F or / = Focus search
+        e.preventDefault();
+        searchInput.focus();
+        break;
+
+      case 'p':
+        // P = Print (only with Ctrl/Cmd)
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          window.print();
+        }
+        break;
+
+      case '1':
+        // 1 = MARADMINs tab
+        e.preventDefault();
+        switchMessageType('maradmin');
+        break;
+
+      case '2':
+        // 2 = MCPUBs tab
+        e.preventDefault();
+        switchMessageType('mcpub');
+        break;
+
+      case '3':
+        // 3 = ALNAVs tab
+        e.preventDefault();
+        switchMessageType('alnav');
+        break;
+
+      case '4':
+        // 4 = ALMARs tab
+        e.preventDefault();
+        switchMessageType('almar');
+        break;
+
+      case '5':
+        // 5 = Semper Admin tab
+        e.preventDefault();
+        switchMessageType('semperadmin');
+        break;
+
+      case '6':
+        // 6 = All Messages tab
+        e.preventDefault();
+        switchMessageType('all');
+        break;
+
+      case '?':
+        // ? = Show keyboard shortcuts help
+        if (e.shiftKey) {
+          e.preventDefault();
+          showKeyboardShortcuts();
+        }
+        break;
+    }
+  });
+}
+
+// Show keyboard shortcuts modal
+function showKeyboardShortcuts() {
+  const shortcuts = `
+    KEYBOARD SHORTCUTS
+
+    r         - Refresh messages
+    t         - Toggle dark/light theme
+    f or /    - Focus search box
+    Ctrl+P    - Print current view
+    1-6       - Switch between tabs
+    Esc       - Clear search focus
+    ?         - Show this help
+  `;
+  alert(shortcuts);
 }
