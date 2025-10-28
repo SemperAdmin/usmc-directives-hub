@@ -24,6 +24,12 @@ function getAlnavUrls() {
   return urls;
 }
 
+// SECNAV URLs - Secretary of the Navy directives
+function getSecnavUrls() {
+  // SECNAV current directives page
+  return ['https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx'];
+}
+
 // DoD Forms URLs
 const DOD_FORMS_URLS = [
   "https://www.esd.whs.mil/Directives/forms/dd0001_0499/",
@@ -68,7 +74,8 @@ let allAlmars = []; // Store all ALMARs
 let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
 let allYouTubePosts = []; // Store all YouTube posts
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', or 'all'
+let allSecnavs = []; // Store all SECNAV directives
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', 'secnav', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -143,6 +150,7 @@ async function fetchAllFeeds() {
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
   await fetchFeed('youtube', RSS_FEEDS.youtube);
+  await fetchSecnavMessages(); // Scrape SECNAV directives from Navy website
 
   // Fetch DoD Forms
   await fetchDodForms();
@@ -560,6 +568,155 @@ function parseAlnavLinks(doc, sourceUrl) {
   });
 
   return messages;
+}
+
+// Fetch and parse SECNAV directives from Navy website
+async function fetchSecnavMessages() {
+  console.log('Fetching SECNAV directives from Navy website...');
+
+  try {
+    const urls = getSecnavUrls();
+    const allMessages = [];
+
+    // Fetch all SECNAV pages
+    for (const url of urls) {
+      try {
+        const messages = await fetchSecnavPage(url);
+        allMessages.push(...messages);
+        console.log(`Loaded ${messages.length} SECNAV directives from ${url}`);
+      } catch (error) {
+        console.warn(`Skip ${url}:`, error.message);
+      }
+    }
+
+    // Remove duplicates based on message ID
+    const uniqueMessages = [];
+    const seen = new Set();
+    for (const msg of allMessages) {
+      if (!seen.has(msg.id)) {
+        seen.add(msg.id);
+        uniqueMessages.push(msg);
+      }
+    }
+
+    // Sort by date (newest first)
+    uniqueMessages.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+    allSecnavs = uniqueMessages;
+    cacheData();
+    console.log(`Total SECNAV directives loaded: ${allSecnavs.length}`);
+  } catch (error) {
+    console.error('Error fetching SECNAV directives:', error);
+  }
+}
+
+// Fetch and parse a single SECNAV page
+async function fetchSecnavPage(url) {
+  try {
+    // Try direct fetch first
+    let text = await tryDirectFetch(url);
+
+    // If direct fails, try proxies
+    if (!text) {
+      for (let i = 0; i < CORS_PROXIES.length; i++) {
+        try {
+          text = await tryProxyFetch(CORS_PROXIES[i], url);
+          if (text) break;
+        } catch (err) {
+          console.log(`Proxy ${i + 1} failed for SECNAV page, trying next...`);
+        }
+      }
+    }
+
+    if (!text) {
+      throw new Error('All fetch attempts failed');
+    }
+
+    // Parse the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+
+    return parseSecnavLinks(doc, url);
+  } catch (error) {
+    console.error(`Error fetching SECNAV page ${url}:`, error);
+    return [];
+  }
+}
+
+// Parse SECNAV directive links from HTML document
+function parseSecnavLinks(doc, sourceUrl) {
+  const messages = [];
+
+  // Find all links to PDF files and table rows
+  const links = doc.querySelectorAll('a[href*=".pdf"], a[href*=".PDF"]');
+
+  links.forEach(link => {
+    try {
+      const title = link.textContent.trim();
+      const href = new URL(link.getAttribute('href'), sourceUrl).href;
+
+      if (!title || !href) return;
+
+      // Extract SECNAV directive number from title or filename
+      // Examples: "SECNAV M-5510.30", "SECNAVINST 5510.30C", "SECNAV 5510.30"
+      const secnavMatch = title.match(/SECNAV(?:INST)?\s*(?:M-?)?(\d+\.\d+[A-Z]*)/i) ||
+                          href.match(/SECNAV(?:INST)?(?:M)?(\d+\.\d+[A-Z]*)/i);
+
+      if (!secnavMatch) {
+        // Try to match just "SECNAV" followed by directive info
+        const altMatch = title.match(/SECNAV\s+([A-Z]+-?\d+[\w.-]+)/i);
+        if (altMatch) {
+          const id = `SECNAV ${altMatch[1]}`;
+          const message = createSecnavMessage(id, title, href);
+          messages.push(message);
+        }
+        return;
+      }
+
+      const directiveNumber = secnavMatch[1];
+      const id = `SECNAV ${directiveNumber}`;
+
+      const message = createSecnavMessage(id, title, href);
+      messages.push(message);
+    } catch (error) {
+      console.error('Error parsing SECNAV link:', error);
+    }
+  });
+
+  return messages;
+}
+
+// Helper function to create SECNAV message object
+function createSecnavMessage(id, title, href) {
+  // Try to extract date from title or use current date as fallback
+  let pubDate = new Date();
+  let pubDateObj = new Date();
+
+  // Look for date in title (various formats)
+  const dateMatch = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i) ||
+                    title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/) ||
+                    title.match(/(\d{4})-(\d{2})-(\d{2})/);
+
+  if (dateMatch) {
+    try {
+      pubDateObj = new Date(dateMatch[0]);
+      if (!isNaN(pubDateObj.getTime())) {
+        pubDate = pubDateObj.toISOString();
+      }
+    } catch (e) {
+      // Use default date
+    }
+  }
+
+  return {
+    id: id,
+    subject: title,
+    link: href,
+    pubDate: pubDate,
+    pubDateObj: pubDateObj,
+    type: 'secnav',
+    searchText: `${id} ${title}`.toLowerCase()
+  };
 }
 
 // Fetch full message details from the message page
@@ -987,8 +1144,10 @@ function filterMessages() {
     allMessages = [...allDodForms];
   } else if (currentMessageType === 'youtube') {
     allMessages = [...allYouTubePosts];
+  } else if (currentMessageType === 'secnav') {
+    allMessages = [...allSecnavs];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -1187,8 +1346,12 @@ function updateTabCounters() {
         count = getFilteredCount(allYouTubePosts);
         baseText = 'YouTube';
         break;
+      case 'secnav':
+        count = getFilteredCount(allSecnavs);
+        baseText = 'SECNAV';
+        break;
       case 'all':
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs]);
         baseText = 'All Messages';
         break;
     }
@@ -1215,8 +1378,10 @@ function renderSummaryStats() {
     totalCount = allDodForms.length;
   } else if (currentMessageType === 'youtube') {
     totalCount = allYouTubePosts.length;
+  } else if (currentMessageType === 'secnav') {
+    totalCount = allSecnavs.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allSecnavs.length;
   }
 
   // Get date range
@@ -1234,6 +1399,7 @@ function renderSummaryStats() {
     const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
     const youtubeCount = currentMessages.filter(m => m.type === 'youtube').length;
+    const secnavCount = currentMessages.filter(m => m.type === 'secnav').length;
     typeBreakdown = `
       <div class="stat-item">
         <span class="stat-label">MARADMINs:</span>
@@ -1262,6 +1428,10 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">YouTube:</span>
         <span class="stat-value">${youtubeCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">SECNAV:</span>
+        <span class="stat-value">${secnavCount}</span>
       </div>
     `;
   }
@@ -1683,6 +1853,7 @@ function cacheData() {
     localStorage.setItem("semperadmin_cache", JSON.stringify(allSemperAdminPosts));
     localStorage.setItem("dodforms_cache", JSON.stringify(allDodForms));
     localStorage.setItem("youtube_cache", JSON.stringify(allYouTubePosts));
+    localStorage.setItem("secnav_cache", JSON.stringify(allSecnavs));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
@@ -1753,6 +1924,15 @@ function loadCachedData() {
     if (youtubeCache) {
       allYouTubePosts = JSON.parse(youtubeCache);
       allYouTubePosts = allYouTubePosts.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    const secnavCache = localStorage.getItem("secnav_cache");
+    if (secnavCache) {
+      allSecnavs = JSON.parse(secnavCache);
+      allSecnavs = allSecnavs.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
