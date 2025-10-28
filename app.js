@@ -67,7 +67,8 @@ let allAlnavs = []; // Store all ALNAVs
 let allAlmars = []; // Store all ALMARs
 let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', or 'all'
+let allYouTubePosts = []; // Store all YouTube posts
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -984,8 +985,10 @@ function filterMessages() {
     allMessages = [...allSemperAdminPosts];
   } else if (currentMessageType === 'dodforms') {
     allMessages = [...allDodForms];
+  } else if (currentMessageType === 'youtube') {
+    allMessages = [...allYouTubePosts];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -1107,13 +1110,16 @@ function updateResultsCount() {
     totalCount = allSemperAdminPosts.length;
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
+  } else if (currentMessageType === 'youtube') {
+    totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length;
   }
 
   const typeLabel = currentMessageType === 'all' ? 'Messages' :
                     currentMessageType === 'semperadmin' ? 'Posts' :
                     currentMessageType === 'dodforms' ? 'Forms' :
+                    currentMessageType === 'youtube' ? 'Videos' :
                     currentMessageType.toUpperCase() + 's';
 
   const countText = currentMessages.length === totalCount
@@ -1177,8 +1183,12 @@ function updateTabCounters() {
         count = getFilteredCount(allDodForms);
         baseText = 'DoD Forms';
         break;
+      case 'youtube':
+        count = getFilteredCount(allYouTubePosts);
+        baseText = 'YouTube';
+        break;
       case 'all':
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts]);
         baseText = 'All Messages';
         break;
     }
@@ -1203,8 +1213,10 @@ function renderSummaryStats() {
     totalCount = allSemperAdminPosts.length;
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
+  } else if (currentMessageType === 'youtube') {
+    totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length;
   }
 
   // Get date range
@@ -1221,6 +1233,7 @@ function renderSummaryStats() {
     const almarCount = currentMessages.filter(m => m.type === 'almar').length;
     const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
+    const youtubeCount = currentMessages.filter(m => m.type === 'youtube').length;
     typeBreakdown = `
       <div class="stat-item">
         <span class="stat-label">MARADMINs:</span>
@@ -1245,6 +1258,10 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">DoD Forms:</span>
         <span class="stat-value">${dodFormsCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">YouTube:</span>
+        <span class="stat-value">${youtubeCount}</span>
       </div>
     `;
   }
@@ -1361,7 +1378,8 @@ function renderCompactView(arr) {
       'alnav': 'ALNAV',
       'almar': 'ALMAR',
       'semperadmin': 'SEMPER ADMIN',
-      'dodforms': 'DOD FORM'
+      'dodforms': 'DOD FORM',
+      'youtube': 'YOUTUBE'
     };
     const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
     const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
@@ -1664,6 +1682,7 @@ function cacheData() {
     localStorage.setItem("almar_cache", JSON.stringify(allAlmars));
     localStorage.setItem("semperadmin_cache", JSON.stringify(allSemperAdminPosts));
     localStorage.setItem("dodforms_cache", JSON.stringify(allDodForms));
+    localStorage.setItem("youtube_cache", JSON.stringify(allYouTubePosts));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
@@ -1725,6 +1744,15 @@ function loadCachedData() {
     if (dodFormsCache) {
       allDodForms = JSON.parse(dodFormsCache);
       allDodForms = allDodForms.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    const youtubeCache = localStorage.getItem("youtube_cache");
+    if (youtubeCache) {
+      allYouTubePosts = JSON.parse(youtubeCache);
+      allYouTubePosts = allYouTubePosts.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
@@ -1894,7 +1922,13 @@ function initKeyboardShortcuts() {
         break;
 
       case '7':
-        // 7 = All Messages tab
+        // 7 = YouTube tab
+        e.preventDefault();
+        switchMessageType('youtube');
+        break;
+
+      case '8':
+        // 8 = All Messages tab
         e.preventDefault();
         switchMessageType('all');
         break;
@@ -1919,7 +1953,7 @@ function showKeyboardShortcuts() {
     t         - Toggle dark/light theme
     f or /    - Focus search box
     Ctrl+P    - Print current view
-    1-7       - Switch between tabs
+    1-8       - Switch between tabs
     Esc       - Clear search focus
     ?         - Show this help
   `;
