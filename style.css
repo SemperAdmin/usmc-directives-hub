@@ -818,6 +818,11 @@ footer a:hover {
   color: #c62828;
 }
 
+.type-badge.type-secnav {
+  background: #e1f5fe;
+  color: #01579b;
+}
+
 .compact-col-action {
   display: flex;
   gap: 0.5rem;
@@ -1305,6 +1310,11 @@ body.dark-theme .type-badge.type-dodforms {
 body.dark-theme .type-badge.type-youtube {
   background: #3a1a1a;
   color: #ef5350;
+}
+
+body.dark-theme .type-badge.type-secnav {
+  background: #1a2a3a;
+  color: #4fc3f7;
 }
 
 body.dark-theme .compact-expand-btn {
