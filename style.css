@@ -97,13 +97,17 @@ button:active {
 /* Filters Section */
 .filters-section {
   max-width: 900px;
-  margin: 1rem auto 1rem auto;
+  margin: 1rem auto;
   padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .search-container {
   position: relative;
-  margin-bottom: 1rem;
+  flex: 1;
+  min-width: 0;
 }
 
 #searchInput {
@@ -149,11 +153,13 @@ button:active {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .filter-controls label {
   font-weight: 500;
   color: #555;
+  white-space: nowrap;
 }
 
 #dateRange {
@@ -164,6 +170,8 @@ button:active {
   cursor: pointer;
   background: white;
   transition: border-color 0.3s ease;
+  flex: 1;
+  min-width: 150px;
 }
 
 #dateRange:focus {
