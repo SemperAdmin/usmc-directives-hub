@@ -1,10 +1,11 @@
 // RSS Feed URLs
 const RSS_FEEDS = {
-  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
-  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
+  maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14336",
+  mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481",
   alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
-  almar: "https://rss.app/feeds/cbh10wV7dBx3A2LV.xml",
-  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml"
+  almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&category=14335",
+  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml",
+  youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=si=oATayDTRgeVkwiyL"
 };
 
 // DoD Forms URLs
@@ -124,6 +125,7 @@ async function fetchAllFeeds() {
   await fetchFeed('alnav', RSS_FEEDS.alnav);
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
+  await frtchFeed('youtube', RSS_FEEDS.youtube);
 
   // Fetch DoD Forms
   await fetchDodForms();
@@ -242,7 +244,10 @@ function processRSSData(text, type) {
     allAlmars = parsed;
   } else if (type === 'semperadmin') {
     allSemperAdminPosts = parsed;
+  } else if (type === 'youtube') {
+    allYouTubePosts = parsed;
   }
+
 
   cacheData();
   console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
