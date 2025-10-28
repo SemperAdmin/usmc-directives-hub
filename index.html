@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MARADMIN Tracker</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header>
@@ -13,6 +13,7 @@
   <div class="controls">
     <button id="refreshBtn">Refresh</button>
     <button id="exportBtn">Export JSON</button>
+    <button id="viewToggle">Compact View</button>
     <button id="themeToggle">Toggle Theme</button>
   </div>
 </header>
@@ -41,6 +42,7 @@
   </div>
   <div id="status" class="status">Loading cached data...</div>
   <div id="error" class="error hidden"></div>
+  <div id="summaryStats" class="summary-stats hidden"></div>
   <div id="results" class="results"></div>
 </main>
 <footer>
@@ -61,6 +63,6 @@
     </div>
   </details>
 </footer>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

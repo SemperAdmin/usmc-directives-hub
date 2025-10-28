@@ -14,10 +14,12 @@ const CORS_PROXIES = [
 
 const refreshBtn = document.getElementById("refreshBtn");
 const exportBtn = document.getElementById("exportBtn");
+const viewToggle = document.getElementById("viewToggle");
 const themeToggle = document.getElementById("themeToggle");
 const statusDiv = document.getElementById("status");
 const errorDiv = document.getElementById("error");
 const resultsDiv = document.getElementById("results");
+const summaryStatsDiv = document.getElementById("summaryStats");
 const lastUpdateSpan = document.getElementById("lastUpdate");
 const searchInput = document.getElementById("searchInput");
 const dateRangeSelect = document.getElementById("dateRange");
@@ -28,6 +30,7 @@ let currentMessages = [];
 let allMaradmins = []; // Store all MARADMINs
 let allMcpubs = []; // Store all MCPUBs
 let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', or 'all'
+let currentView = 'detailed'; // Track view mode: 'detailed' or 'compact'
 
 // Init
 document.addEventListener("DOMContentLoaded", () => {
@@ -37,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 refreshBtn.addEventListener("click", fetchAllFeeds);
 exportBtn.addEventListener("click", exportToJSON);
+viewToggle.addEventListener("click", toggleView);
 themeToggle.addEventListener("click", toggleTheme);
 searchInput.addEventListener("input", filterMessages);
 dateRangeSelect.addEventListener("change", filterMessages);
@@ -431,6 +435,67 @@ function updateResultsCount() {
   statusDiv.textContent = countText;
 }
 
+// Toggle between detailed and compact view
+function toggleView() {
+  currentView = currentView === 'detailed' ? 'compact' : 'detailed';
+  viewToggle.textContent = currentView === 'detailed' ? 'Compact View' : 'Detailed View';
+
+  // Update results display
+  renderMaradmins(currentMessages);
+
+  // Show/hide summary stats
+  if (currentView === 'compact') {
+    renderSummaryStats();
+    summaryStatsDiv.classList.remove('hidden');
+  } else {
+    summaryStatsDiv.classList.add('hidden');
+  }
+}
+
+// Render summary statistics panel
+function renderSummaryStats() {
+  const totalCount = currentMessageType === 'maradmin' ? allMaradmins.length :
+                     currentMessageType === 'mcpub' ? allMcpubs.length :
+                     allMaradmins.length + allMcpubs.length;
+
+  // Get date range
+  const dates = currentMessages.map(m => m.pubDateObj).sort((a, b) => a - b);
+  const oldestDate = dates.length > 0 ? formatDate(dates[0]) : 'N/A';
+  const newestDate = dates.length > 0 ? formatDate(dates[dates.length - 1]) : 'N/A';
+
+  // Count by type if showing all
+  let typeBreakdown = '';
+  if (currentMessageType === 'all') {
+    const maradminCount = currentMessages.filter(m => m.type === 'maradmin').length;
+    const mcpubCount = currentMessages.filter(m => m.type === 'mcpub').length;
+    typeBreakdown = `
+      <div class="stat-item">
+        <span class="stat-label">MARADMINs:</span>
+        <span class="stat-value">${maradminCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">MCPUBs:</span>
+        <span class="stat-value">${mcpubCount}</span>
+      </div>
+    `;
+  }
+
+  summaryStatsDiv.innerHTML = `
+    <h3>Summary Overview</h3>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-label">Total Showing:</span>
+        <span class="stat-value">${currentMessages.length} of ${totalCount}</span>
+      </div>
+      ${typeBreakdown}
+      <div class="stat-item">
+        <span class="stat-label">Date Range:</span>
+        <span class="stat-value">${oldestDate} - ${newestDate}</span>
+      </div>
+    </div>
+  `;
+}
+
 // Utilities
 function firstSentence(text) {
   if(!text) return "";
@@ -441,10 +506,20 @@ function firstSentence(text) {
 function renderMaradmins(arr) {
   resultsDiv.innerHTML = "";
   if (arr.length === 0) {
-    resultsDiv.innerHTML = '<div class="no-results">No MARADMINs found matching your criteria.</div>';
+    resultsDiv.innerHTML = '<div class="no-results">No messages found matching your criteria.</div>';
     return;
   }
 
+  // Check current view mode
+  if (currentView === 'compact') {
+    renderCompactView(arr);
+  } else {
+    renderDetailedView(arr);
+  }
+}
+
+// Render detailed card view (original layout)
+function renderDetailedView(arr) {
   arr.forEach((item, index) => {
     const div = document.createElement("div");
     div.className = "maradmin";
@@ -471,6 +546,89 @@ function renderMaradmins(arr) {
     `;
     resultsDiv.appendChild(div);
   });
+}
+
+// Render compact list view
+function renderCompactView(arr) {
+  const table = document.createElement("div");
+  table.className = "compact-view";
+
+  // Create table structure
+  table.innerHTML = `
+    <div class="compact-header">
+      <div class="compact-col-id">ID</div>
+      <div class="compact-col-date">Date</div>
+      <div class="compact-col-subject">Subject</div>
+      <div class="compact-col-type">Type</div>
+      <div class="compact-col-action">Action</div>
+    </div>
+  `;
+
+  // Add rows
+  arr.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = "compact-row";
+    row.dataset.index = index;
+
+    const typeLabel = item.type === 'maradmin' ? 'MARADMIN' : 'MCPUB';
+    const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
+
+    row.innerHTML = `
+      <div class="compact-col-id">
+        <span class="compact-id">${item.id}</span>
+      </div>
+      <div class="compact-col-date">
+        <span class="compact-date">${formatDate(item.pubDateObj)}</span>
+      </div>
+      <div class="compact-col-subject">
+        <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="compact-subject">${item.subject}</a>
+      </div>
+      <div class="compact-col-type">
+        ${typeBadge}
+      </div>
+      <div class="compact-col-action">
+        <button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">
+          Details
+        </button>
+      </div>
+    `;
+
+    // Add expandable details row
+    const detailsRow = document.createElement("div");
+    detailsRow.className = "compact-details-row";
+    detailsRow.id = `compact-details-${index}`;
+    detailsRow.style.display = "none";
+    detailsRow.innerHTML = `
+      <div class="compact-details-content">
+        <div class="compact-summary">
+          <strong>Summary:</strong> ${item.summary}
+        </div>
+        ${item.category ? `<div class="compact-category"><strong>Category:</strong> ${item.category}</div>` : ''}
+        <div class="compact-actions">
+          <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="compact-link-btn">View Full Message →</a>
+        </div>
+      </div>
+    `;
+
+    table.appendChild(row);
+    table.appendChild(detailsRow);
+  });
+
+  resultsDiv.appendChild(table);
+}
+
+// Toggle details in compact view
+function toggleCompactDetails(index, message) {
+  const detailsRow = document.getElementById(`compact-details-${index}`);
+  const btn = event.target;
+
+  if (detailsRow.style.display === 'block') {
+    detailsRow.style.display = 'none';
+    btn.textContent = 'Details';
+  } else {
+    detailsRow.style.display = 'block';
+    btn.textContent = 'Hide';
+  }
 }
 
 // Toggle message details

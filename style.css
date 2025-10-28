@@ -510,6 +510,208 @@ footer a:hover {
   margin: 0.3rem 0;
 }
 
+/* Summary Stats Panel */
+.summary-stats {
+  max-width: 900px;
+  margin: 1rem auto;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f9f9f9 0%, #ffffff 100%);
+  border-left: 5px solid #cc0000;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.summary-stats h3 {
+  margin: 0 0 1rem 0;
+  color: #cc0000;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #222;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Compact View Table */
+.compact-view {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.compact-header {
+  display: grid;
+  grid-template-columns: 120px 100px 1fr 100px 90px;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.compact-row {
+  display: grid;
+  grid-template-columns: 120px 100px 1fr 100px 90px;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.compact-row:hover {
+  background: #f9f9f9;
+}
+
+.compact-row:last-of-type {
+  border-bottom: none;
+}
+
+.compact-col-id,
+.compact-col-date,
+.compact-col-subject,
+.compact-col-type,
+.compact-col-action {
+  overflow: hidden;
+}
+
+.compact-id {
+  font-family: 'Courier New', monospace;
+  color: #cc0000;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.compact-date {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.compact-subject {
+  color: #222;
+  text-decoration: none;
+  font-weight: 500;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s ease;
+}
+
+.compact-subject:hover {
+  color: #cc0000;
+  text-decoration: underline;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.type-badge.type-maradmin {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.type-badge.type-mcpub {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.compact-expand-btn {
+  background: #cc0000;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.3s ease;
+  white-space: nowrap;
+}
+
+.compact-expand-btn:hover {
+  background: #990000;
+}
+
+.compact-details-row {
+  background: #f9f9f9;
+  border-bottom: 1px solid #eee;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.compact-details-content {
+  padding: 1rem 1.5rem;
+}
+
+.compact-summary {
+  margin-bottom: 0.75rem;
+  color: #555;
+  line-height: 1.6;
+}
+
+.compact-category {
+  margin-bottom: 0.75rem;
+  color: #666;
+}
+
+.compact-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.compact-link-btn {
+  color: #cc0000;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.compact-link-btn:hover {
+  text-decoration: underline;
+}
+
 /* Dark Theme */
 body.dark-theme {
   background: #1a1a1a;
@@ -683,6 +885,90 @@ body.dark-theme .no-pdf-found {
   color: #888;
 }
 
+body.dark-theme .summary-stats {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-left-color: #ff4444;
+}
+
+body.dark-theme .summary-stats h3 {
+  color: #ff4444;
+}
+
+body.dark-theme .stat-label {
+  color: #888;
+}
+
+body.dark-theme .stat-value {
+  color: #e0e0e0;
+}
+
+body.dark-theme .compact-view {
+  background: #2a2a2a;
+}
+
+body.dark-theme .compact-header {
+  background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+}
+
+body.dark-theme .compact-row {
+  border-bottom-color: #444;
+}
+
+body.dark-theme .compact-row:hover {
+  background: #333;
+}
+
+body.dark-theme .compact-id {
+  color: #ff4444;
+}
+
+body.dark-theme .compact-date {
+  color: #888;
+}
+
+body.dark-theme .compact-subject {
+  color: #e0e0e0;
+}
+
+body.dark-theme .compact-subject:hover {
+  color: #ff4444;
+}
+
+body.dark-theme .type-badge.type-maradmin {
+  background: #1a3a4a;
+  color: #64b5f6;
+}
+
+body.dark-theme .type-badge.type-mcpub {
+  background: #1a3a1a;
+  color: #81c784;
+}
+
+body.dark-theme .compact-expand-btn {
+  background: #ff4444;
+}
+
+body.dark-theme .compact-expand-btn:hover {
+  background: #ff6666;
+}
+
+body.dark-theme .compact-details-row {
+  background: #1a1a1a;
+  border-bottom-color: #444;
+}
+
+body.dark-theme .compact-summary {
+  color: #b0b0b0;
+}
+
+body.dark-theme .compact-category {
+  color: #888;
+}
+
+body.dark-theme .compact-link-btn {
+  color: #ff4444;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   header h1 {
@@ -698,5 +984,60 @@ body.dark-theme .no-pdf-found {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  /* Responsive compact view - stack columns on mobile */
+  .compact-header {
+    display: none; /* Hide header on mobile */
+  }
+
+  .compact-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .compact-col-id,
+  .compact-col-date,
+  .compact-col-subject,
+  .compact-col-type,
+  .compact-col-action {
+    display: flex;
+    align-items: center;
+  }
+
+  .compact-col-id::before {
+    content: "ID: ";
+    font-weight: 600;
+    margin-right: 0.5rem;
+    color: #666;
+  }
+
+  .compact-col-date::before {
+    content: "Date: ";
+    font-weight: 600;
+    margin-right: 0.5rem;
+    color: #666;
+  }
+
+  .compact-col-type::before {
+    content: "Type: ";
+    font-weight: 600;
+    margin-right: 0.5rem;
+    color: #666;
+  }
+
+  .compact-subject {
+    white-space: normal;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.dark-theme .compact-col-id::before,
+  body.dark-theme .compact-col-date::before,
+  body.dark-theme .compact-col-type::before {
+    color: #888;
   }
 }
