@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MARADMIN Tracker</title>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <header>
   <h1>USMC Directives Hub</h1>
-  <p class="subtitle">Search and track Marine Corps Messages and Publications</p>
+  <p class="subtitle">Search and track Marine Corps Messages, Publications, and Forms</p>
   <div class="controls">
     <button id="refreshBtn">🔄 Refresh</button>
     <button id="themeToggle">🌙 Dark Mode</button>
@@ -22,6 +22,7 @@
     <button class="message-type-btn" data-type="alnav">ALNAVs <span class="tab-counter">0</span></button>
     <button class="message-type-btn" data-type="almar">ALMARs <span class="tab-counter">0</span></button>
     <button class="message-type-btn" data-type="semperadmin">Semper Admin <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="dodforms">DoD Forms <span class="tab-counter">0</span></button>
     <button class="message-type-btn" data-type="all">All Messages <span class="tab-counter">0</span></button>
   </div>
   <div class="filters-section">
@@ -52,9 +53,9 @@
   <div id="results" class="results"></div>
 </main>
 <footer>
-  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a> | Last updated: <span id="lastUpdate">Never</span></p>
+  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a> & <a href="https://www.esd.whs.mil/Directives/forms/" target="_blank">DoD Forms</a> | Last updated: <span id="lastUpdate">Never</span></p>
   <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

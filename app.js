@@ -8,6 +8,17 @@ const RSS_FEEDS = {
   youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=si=oATayDTRgeVkwiyL"
 };
 
+// DoD Forms URLs
+const DOD_FORMS_URLS = [
+  "https://www.esd.whs.mil/Directives/forms/dd0001_0499/",
+  "https://www.esd.whs.mil/Directives/forms/dd0500_0999/",
+  "https://www.esd.whs.mil/Directives/forms/dd1000_1499/",
+  "https://www.esd.whs.mil/Directives/forms/dd1500_1999/",
+  "https://www.esd.whs.mil/Directives/forms/dd2000_2499/",
+  "https://www.esd.whs.mil/Directives/forms/dd2500_2999/",
+  "https://www.esd.whs.mil/Directives/forms/dd3000_3499/"
+];
+
 // Multiple CORS proxies to try as fallbacks
 const CORS_PROXIES = [
   "https://corsproxy.io/?",
@@ -39,8 +50,8 @@ let allMcpubs = []; // Store all MCPUBs
 let allAlnavs = []; // Store all ALNAVs
 let allAlmars = []; // Store all ALMARs
 let allSemperAdminPosts = []; // Store all Semper Admin posts
-let allYouTubePosts = [];
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', or 'all'
+let allDodForms = []; // Store all DoD Forms
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -115,6 +126,9 @@ async function fetchAllFeeds() {
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
   await frtchFeed('youtube', RSS_FEEDS.youtube);
+
+  // Fetch DoD Forms
+  await fetchDodForms();
 
   // Update display
   filterMessages();
@@ -237,6 +251,144 @@ function processRSSData(text, type) {
 
   cacheData();
   console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
+}
+
+// Fetch and parse DoD Forms from all pages
+async function fetchDodForms() {
+  console.log('Fetching DoD Forms from 7 pages...');
+
+  try {
+    const allForms = [];
+
+    // Fetch all pages in parallel
+    const promises = DOD_FORMS_URLS.map(url => fetchDodFormsPage(url));
+    const results = await Promise.allSettled(promises);
+
+    // Collect all successful results
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value) {
+        allForms.push(...result.value);
+        console.log(`Loaded ${result.value.length} forms from page ${index + 1}`);
+      } else {
+        console.error(`Failed to load page ${index + 1}:`, result.reason);
+      }
+    });
+
+    // Remove duplicates based on form number
+    const uniqueForms = [];
+    const seen = new Set();
+    for (const form of allForms) {
+      if (!seen.has(form.id)) {
+        seen.add(form.id);
+        uniqueForms.push(form);
+      }
+    }
+
+    // Sort by form number
+    uniqueForms.sort((a, b) => {
+      const numA = parseInt(a.id.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.id.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    allDodForms = uniqueForms;
+    cacheData();
+    console.log(`Total DoD Forms loaded: ${allDodForms.length}`);
+  } catch (error) {
+    console.error('Error fetching DoD Forms:', error);
+  }
+}
+
+// Fetch and parse a single DoD Forms page
+async function fetchDodFormsPage(url) {
+  try {
+    // Try direct fetch first
+    let text = await tryDirectFetch(url);
+
+    // If direct fails, try proxies
+    if (!text) {
+      for (let i = 0; i < CORS_PROXIES.length; i++) {
+        try {
+          text = await tryProxyFetch(CORS_PROXIES[i], url);
+          if (text) break;
+        } catch (err) {
+          console.log(`Proxy ${i + 1} failed for DoD Forms page, trying next...`);
+        }
+      }
+    }
+
+    if (!text) {
+      throw new Error('All fetch attempts failed');
+    }
+
+    // Parse the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+
+    return parseDodFormsTable(doc, url);
+  } catch (error) {
+    console.error(`Error fetching DoD Forms page ${url}:`, error);
+    return [];
+  }
+}
+
+// Parse DoD Forms table from HTML document
+function parseDodFormsTable(doc, sourceUrl) {
+  const forms = [];
+
+  // Find table rows (skip header row)
+  const rows = Array.from(doc.querySelectorAll('table tbody tr'));
+
+  rows.forEach(row => {
+    try {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 5) return;
+
+      const linkElem = row.querySelector('a');
+      const number = cells[0]?.textContent.trim() || '';
+      const title = cells[1]?.textContent.trim() || '';
+      const edition = cells[2]?.textContent.trim() || '';
+      const controlled = cells[3]?.textContent.trim() || '';
+      const opr = cells[4]?.textContent.trim() || '';
+
+      if (!number) return;
+
+      // Parse date from edition field
+      let pubDate = new Date();
+      let pubDateObj = new Date();
+      if (edition) {
+        try {
+          pubDateObj = new Date(edition);
+          if (isNaN(pubDateObj.getTime())) {
+            pubDateObj = new Date();
+          }
+          pubDate = pubDateObj.toISOString();
+        } catch (e) {
+          pubDate = new Date().toISOString();
+          pubDateObj = new Date();
+        }
+      }
+
+      const form = {
+        id: number,
+        subject: title,
+        link: linkElem ? new URL(linkElem.href, sourceUrl).href : sourceUrl,
+        pubDate: pubDate,
+        pubDateObj: pubDateObj,
+        type: 'dodforms',
+        edition: edition,
+        controlled: controlled,
+        opr: opr,
+        searchText: `${number} ${title} ${opr} ${controlled}`.toLowerCase()
+      };
+
+      forms.push(form);
+    } catch (error) {
+      console.error('Error parsing DoD Forms row:', error);
+    }
+  });
+
+  return forms;
 }
 
 // Fetch full message details from the message page
@@ -660,8 +812,10 @@ function filterMessages() {
     allMessages = [...allAlmars];
   } else if (currentMessageType === 'semperadmin') {
     allMessages = [...allSemperAdminPosts];
+  } else if (currentMessageType === 'dodforms') {
+    allMessages = [...allDodForms];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -781,12 +935,15 @@ function updateResultsCount() {
     totalCount = allAlmars.length;
   } else if (currentMessageType === 'semperadmin') {
     totalCount = allSemperAdminPosts.length;
+  } else if (currentMessageType === 'dodforms') {
+    totalCount = allDodForms.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length;
   }
 
   const typeLabel = currentMessageType === 'all' ? 'Messages' :
                     currentMessageType === 'semperadmin' ? 'Posts' :
+                    currentMessageType === 'dodforms' ? 'Forms' :
                     currentMessageType.toUpperCase() + 's';
 
   const countText = currentMessages.length === totalCount
@@ -846,8 +1003,12 @@ function updateTabCounters() {
         count = getFilteredCount(allSemperAdminPosts);
         baseText = 'Semper Admin';
         break;
+      case 'dodforms':
+        count = getFilteredCount(allDodForms);
+        baseText = 'DoD Forms';
+        break;
       case 'all':
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms]);
         baseText = 'All Messages';
         break;
     }
@@ -870,8 +1031,10 @@ function renderSummaryStats() {
     totalCount = allAlmars.length;
   } else if (currentMessageType === 'semperadmin') {
     totalCount = allSemperAdminPosts.length;
+  } else if (currentMessageType === 'dodforms') {
+    totalCount = allDodForms.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length;
   }
 
   // Get date range
@@ -887,6 +1050,7 @@ function renderSummaryStats() {
     const alnavCount = currentMessages.filter(m => m.type === 'alnav').length;
     const almarCount = currentMessages.filter(m => m.type === 'almar').length;
     const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
+    const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
     typeBreakdown = `
       <div class="stat-item">
         <span class="stat-label">MARADMINs:</span>
@@ -907,6 +1071,10 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">Semper Admin:</span>
         <span class="stat-value">${semperAdminCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">DoD Forms:</span>
+        <span class="stat-value">${dodFormsCount}</span>
       </div>
     `;
   }
@@ -1022,7 +1190,8 @@ function renderCompactView(arr) {
       'mcpub': 'MCPUB',
       'alnav': 'ALNAV',
       'almar': 'ALMAR',
-      'semperadmin': 'SEMPER ADMIN'
+      'semperadmin': 'SEMPER ADMIN',
+      'dodforms': 'DOD FORM'
     };
     const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
     const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
@@ -1324,6 +1493,7 @@ function cacheData() {
     localStorage.setItem("alnav_cache", JSON.stringify(allAlnavs));
     localStorage.setItem("almar_cache", JSON.stringify(allAlmars));
     localStorage.setItem("semperadmin_cache", JSON.stringify(allSemperAdminPosts));
+    localStorage.setItem("dodforms_cache", JSON.stringify(allDodForms));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
@@ -1376,6 +1546,15 @@ function loadCachedData() {
     if (semperAdminCache) {
       allSemperAdminPosts = JSON.parse(semperAdminCache);
       allSemperAdminPosts = allSemperAdminPosts.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    const dodFormsCache = localStorage.getItem("dodforms_cache");
+    if (dodFormsCache) {
+      allDodForms = JSON.parse(dodFormsCache);
+      allDodForms = allDodForms.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
@@ -1539,7 +1718,13 @@ function initKeyboardShortcuts() {
         break;
 
       case '6':
-        // 6 = All Messages tab
+        // 6 = DoD Forms tab
+        e.preventDefault();
+        switchMessageType('dodforms');
+        break;
+
+      case '7':
+        // 7 = All Messages tab
         e.preventDefault();
         switchMessageType('all');
         break;
@@ -1564,7 +1749,7 @@ function showKeyboardShortcuts() {
     t         - Toggle dark/light theme
     f or /    - Focus search box
     Ctrl+P    - Print current view
-    1-6       - Switch between tabs
+    1-7       - Switch between tabs
     Esc       - Clear search focus
     ?         - Show this help
   `;
