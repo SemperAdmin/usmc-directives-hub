@@ -3,9 +3,13 @@ const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
-  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml",
-  youtube: "https://www.youtube.com/feeds/videos.xml?channel_id=UCob5u7jsXrdca9vmarYJ0Cg"
+  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml"
 };
+
+// YouTube Data API v3 configuration
+const YOUTUBE_API_KEY = "AIzaSyBRZapIkBKHl3X1AiW5dUVlKgdxPQejYgM";
+const YOUTUBE_CHANNEL_ID = "UCob5u7jsXrdca9vmarYJ0Cg";
+const YOUTUBE_MAX_RESULTS = 50; // per page
 
 // ALNAV URLs - dynamically built for current/previous year
 function getAlnavUrls() {
@@ -163,7 +167,7 @@ async function fetchAllFeeds() {
   await fetchAlnavMessages(); // Scrape directly from Navy website
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
-  await fetchFeed('youtube', RSS_FEEDS.youtube);
+  await fetchYouTubeVideos(); // Fetch from YouTube Data API
   await fetchSecnavMessages(); // Scrape SECNAV and OPNAV directives from Navy website
 
   // Fetch DoD Forms
@@ -594,6 +598,96 @@ function parseAlnavLinks(doc, sourceUrl) {
 
   console.log(`parseAlnavLinks: Parsed ${messages.length} ALNAVs from ${links.length} links`);
   return messages;
+}
+
+// Fetch YouTube videos using YouTube Data API v3
+async function fetchYouTubeVideos() {
+  console.log('Fetching YouTube videos from YouTube Data API...');
+
+  try {
+    let videos = [];
+    let pageToken = '';
+    let pageCount = 0;
+    const maxPages = 20; // Limit to 20 pages (1000 videos max)
+
+    do {
+      try {
+        // Build API URL
+        const url = new URL('https://www.googleapis.com/youtube/v3/search');
+        url.searchParams.set('key', YOUTUBE_API_KEY);
+        url.searchParams.set('channelId', YOUTUBE_CHANNEL_ID);
+        url.searchParams.set('part', 'snippet');
+        url.searchParams.set('order', 'date');
+        url.searchParams.set('maxResults', YOUTUBE_MAX_RESULTS.toString());
+        url.searchParams.set('type', 'video');
+        if (pageToken) {
+          url.searchParams.set('pageToken', pageToken);
+        }
+
+        // Fetch from API
+        const response = await fetch(url.toString());
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`YouTube API error (${response.status}):`, errorText);
+          break;
+        }
+
+        const data = await response.json();
+
+        // Parse items
+        if (data.items && data.items.length > 0) {
+          data.items.forEach(item => {
+            if (item.id.videoId) {
+              const videoId = item.id.videoId;
+              const title = item.snippet.title;
+              const publishedAt = item.snippet.publishedAt;
+              const url = `https://www.youtube.com/watch?v=${videoId}`;
+              const description = item.snippet.description || '';
+
+              videos.push({
+                id: videoId,
+                numericId: videoId,
+                subject: title,
+                title: title,
+                link: url,
+                pubDate: new Date(publishedAt).toISOString(),
+                pubDateObj: new Date(publishedAt),
+                summary: description.substring(0, 200),
+                description: description,
+                category: '',
+                type: 'youtube',
+                searchText: `${videoId} ${title} ${description}`.toLowerCase(),
+                detailsFetched: false,
+                maradminNumber: null
+              });
+            }
+          });
+
+          console.log(`Fetched page ${pageCount + 1}: ${data.items.length} videos (total: ${videos.length})`);
+        }
+
+        // Check for next page
+        pageToken = data.nextPageToken || '';
+        pageCount++;
+
+        // Stop if no more pages or reached limit
+        if (!pageToken || videos.length >= 1000 || pageCount >= maxPages) {
+          break;
+        }
+
+      } catch (pageError) {
+        console.error('Error fetching YouTube page:', pageError);
+        break;
+      }
+    } while (pageToken && pageCount < maxPages);
+
+    allYouTubePosts = videos;
+    cacheData();
+    console.log(`Total YouTube videos loaded: ${allYouTubePosts.length}`);
+  } catch (error) {
+    console.error('Error fetching YouTube videos:', error);
+  }
 }
 
 // Fetch and parse SECNAV and OPNAV directives from Navy website
