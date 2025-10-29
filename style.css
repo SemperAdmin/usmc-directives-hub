@@ -77,10 +77,10 @@ button:active {
 
 /* Message Type Tabs */
 .message-type-tabs {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 0;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 2rem auto 0 auto;
   padding: 0 1rem;
   border-bottom: 2px solid #ddd;
@@ -91,12 +91,20 @@ button:active {
   color: #666;
   border: none;
   border-bottom: 3px solid transparent;
-  padding: 0.75rem 2rem;
+  padding: 0.75rem 1rem;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   transition: all 0.3s ease;
   border-radius: 0;
+  white-space: nowrap;
+}
+
+/* All Messages button - centered in its own row */
+.message-type-btn.all-messages-btn {
+  grid-column: 2 / 5;
+  justify-self: center;
+  min-width: 200px;
 }
 
 .message-type-btn:hover {
@@ -874,22 +882,11 @@ footer a:hover {
   background: #990000;
 }
 
-.compact-share-btn {
-  background: #666;
-  color: white;
-  padding: 0.4rem 0.6rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.compact-share-btn:hover {
-  background: #555;
-  transform: translateY(-1px);
+/* No actions indicator for message types without buttons */
+.no-actions {
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
 }
 
 .compact-details-row {
@@ -1325,12 +1322,8 @@ body.dark-theme .compact-expand-btn:hover {
   background: #ff6666;
 }
 
-body.dark-theme .compact-share-btn {
-  background: #555;
-}
-
-body.dark-theme .compact-share-btn:hover {
-  background: #666;
+body.dark-theme .no-actions {
+  color: #666;
 }
 
 body.dark-theme .compact-details-row {
@@ -1392,34 +1385,36 @@ body.dark-theme .footer-note {
     font-size: 1.5rem;
   }
 
-  /* Mobile tab navigation - horizontal scroll */
+  /* Mobile tab navigation - stack buttons vertically */
   .message-type-tabs {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    justify-content: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     margin: 1.5rem auto 0 auto;
     padding: 0 0.5rem;
-  }
-
-  .message-type-tabs::-webkit-scrollbar {
-    height: 3px;
-  }
-
-  .message-type-tabs::-webkit-scrollbar-track {
-    background: #f0f0f0;
-  }
-
-  .message-type-tabs::-webkit-scrollbar-thumb {
-    background: #cc0000;
-    border-radius: 3px;
+    border-bottom: none;
   }
 
   .message-type-btn {
-    flex-shrink: 0;
-    padding: 0.6rem 1rem;
+    width: 100%;
+    padding: 0.8rem 1rem;
     font-size: 0.9rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    border-bottom: none !important;
+  }
+
+  .message-type-btn.active {
+    background: rgba(204,0,0,0.1);
+    border-color: #cc0000;
+  }
+
+  .message-type-btn.all-messages-btn {
+    grid-column: auto;
+    justify-self: auto;
+    min-width: auto;
+    margin-top: 0.5rem;
+    background: rgba(204,0,0,0.05);
   }
 
   .tab-counter {
@@ -1512,7 +1507,6 @@ body.dark-theme .footer-note {
   .filters-section,
   .compact-ai-btn,
   .compact-expand-btn,
-  .compact-share-btn,
   .quick-filters,
   .summary-stats,
   footer,
