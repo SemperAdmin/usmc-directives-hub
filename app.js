@@ -511,12 +511,17 @@ function parseAlnavLinks(doc, sourceUrl) {
   // Find all links to PDF, MSG, or TXT files
   const links = doc.querySelectorAll('a[href$=".pdf"], a[href$=".msg"], a[href$=".txt"], a[href$=".PDF"], a[href$=".MSG"], a[href$=".TXT"]');
 
+  console.log(`parseAlnavLinks: Found ${links.length} potential ALNAV links`);
+
   links.forEach(link => {
     try {
       const title = link.textContent.trim();
       const href = new URL(link.getAttribute('href'), sourceUrl).href;
 
-      if (!title || !href) return;
+      if (!title || !href) {
+        console.log('Skipping link - no title or href:', { title, href });
+        return;
+      }
 
       // Extract ALNAV number from title or filename
       // Examples: "ALNAV 001/25", "ALNAV 001-25", "001-25.pdf"
@@ -525,7 +530,10 @@ function parseAlnavLinks(doc, sourceUrl) {
                          title.match(/(\d{3})[\/\-](\d{2,4})/) ||
                          href.match(/(\d{3})[\/\-](\d{2,4})/);
 
-      if (!alnavMatch) return;
+      if (!alnavMatch) {
+        console.log('No ALNAV pattern match:', { title, href });
+        return;
+      }
 
       const number = alnavMatch[1];
       let year = alnavMatch[2];
@@ -584,6 +592,7 @@ function parseAlnavLinks(doc, sourceUrl) {
     }
   });
 
+  console.log(`parseAlnavLinks: Parsed ${messages.length} ALNAVs from ${links.length} links`);
   return messages;
 }
 
@@ -671,12 +680,17 @@ function parseSecnavLinks(doc, sourceUrl) {
   // Find all links to PDF files and table rows
   const links = doc.querySelectorAll('a[href*=".pdf"], a[href*=".PDF"]');
 
+  console.log(`parseSecnavLinks: Found ${links.length} potential PDF links`);
+
   links.forEach(link => {
     try {
       const title = link.textContent.trim();
       const href = new URL(link.getAttribute('href'), sourceUrl).href;
 
-      if (!title || !href) return;
+      if (!title || !href) {
+        console.log('Skipping link - no title or href:', { title, href });
+        return;
+      }
 
       // Determine if this is SECNAV or OPNAV directive
       let directiveType = null;
@@ -721,12 +735,16 @@ function parseSecnavLinks(doc, sourceUrl) {
       if (directiveType && id) {
         const message = createNavyDirectiveMessage(id, title, href, directiveType);
         messages.push(message);
+        console.log(`Found ${directiveType.toUpperCase()}: ${id}`);
+      } else {
+        console.log('No SECNAV/OPNAV pattern match:', { title, href });
       }
     } catch (error) {
       console.error('Error parsing Navy directive link:', error);
     }
   });
 
+  console.log(`parseSecnavLinks: Parsed ${messages.length} directives from ${links.length} links`);
   return messages;
 }
 
