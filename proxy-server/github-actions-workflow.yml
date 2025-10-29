@@ -1,0 +1,175 @@
+name: Fetch Navy Directives Data
+
+# This workflow periodically fetches ALNAV and SECNAV data
+# and commits it as JSON files to the repository
+# This is an alternative to running a proxy server
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  fetch-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          npm install axios cheerio
+
+      - name: Fetch ALNAV data
+        run: |
+          node << 'EOF'
+          const axios = require('axios');
+          const cheerio = require('cheerio');
+          const fs = require('fs');
+
+          async function fetchAlnavData() {
+            const year = new Date().getFullYear();
+            const url = `https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${year}/`;
+
+            try {
+              const response = await axios.get(url, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                },
+                timeout: 30000
+              });
+
+              const $ = cheerio.load(response.data);
+              const alnavs = [];
+
+              // Find all PDF/MSG/TXT links
+              $('a[href$=".pdf"], a[href$=".msg"], a[href$=".txt"]').each((i, elem) => {
+                const title = $(elem).text().trim();
+                const href = $(elem).attr('href');
+
+                if (title && href) {
+                  const fullUrl = new URL(href, url).href;
+
+                  // Extract ALNAV number
+                  const match = title.match(/ALNAV[_\s-]*(\d{3})[\/\-](\d{2,4})/i) ||
+                               href.match(/ALNAV[_\s-]*(\d{3})[\/\-](\d{2,4})/i);
+
+                  if (match) {
+                    alnavs.push({
+                      id: `ALNAV ${match[1]}/${match[2]}`,
+                      subject: title,
+                      link: fullUrl,
+                      pubDate: new Date().toISOString(),
+                      type: 'alnav'
+                    });
+                  }
+                }
+              });
+
+              // Save to file
+              fs.writeFileSync(
+                'data/alnav-data.json',
+                JSON.stringify(alnavs, null, 2)
+              );
+
+              console.log(`Fetched ${alnavs.length} ALNAV messages`);
+            } catch (error) {
+              console.error('Error fetching ALNAV data:', error.message);
+              // Don't fail the workflow if fetch fails
+              process.exit(0);
+            }
+          }
+
+          fetchAlnavData();
+          EOF
+
+      - name: Fetch SECNAV/OPNAV data
+        run: |
+          node << 'EOF'
+          const axios = require('axios');
+          const cheerio = require('cheerio');
+          const fs = require('fs');
+
+          async function fetchSecnavData() {
+            const url = 'https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx';
+
+            try {
+              const response = await axios.get(url, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                },
+                timeout: 30000
+              });
+
+              const $ = cheerio.load(response.data);
+              const directives = [];
+
+              // Parse SharePoint table
+              $('.ms-listviewtable tr').each((i, elem) => {
+                if (i === 0) return; // Skip header
+
+                const cells = $(elem).find('td');
+                if (cells.length >= 3) {
+                  const title = $(cells[1]).text().trim();
+                  const link = $(cells[1]).find('a').attr('href');
+                  const dateStr = $(cells[2]).text().trim();
+
+                  if (title && link) {
+                    const fullUrl = link.startsWith('http') ? link : new URL(link, url).href;
+
+                    // Determine type (SECNAV or OPNAV)
+                    const type = title.match(/OPNAV/i) ? 'opnav' : 'secnav';
+
+                    directives.push({
+                      id: title.split(' ')[0],
+                      subject: title,
+                      link: fullUrl,
+                      pubDate: dateStr || new Date().toISOString(),
+                      type: type
+                    });
+                  }
+                }
+              });
+
+              // Save to file
+              fs.writeFileSync(
+                'data/navy-directives-data.json',
+                JSON.stringify(directives, null, 2)
+              );
+
+              console.log(`Fetched ${directives.length} Navy directives`);
+            } catch (error) {
+              console.error('Error fetching SECNAV data:', error.message);
+              // Don't fail the workflow if fetch fails
+              process.exit(0);
+            }
+          }
+
+          fetchSecnavData();
+          EOF
+
+      - name: Create data directory
+        run: mkdir -p data
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add data/*.json
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update Navy directives data [automated]"
+            git push
+          fi
