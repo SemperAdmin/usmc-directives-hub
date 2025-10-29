@@ -41,7 +41,16 @@ const DOD_FORMS_URLS = [
   "https://www.esd.whs.mil/Directives/forms/dd3000_3499/"
 ];
 
-// Multiple CORS proxies to try as fallbacks
+// Custom Proxy Server Configuration
+// Set this to your deployed proxy server URL to bypass CORS issues
+// Examples:
+//   - Node.js server: "https://your-app.onrender.com"
+//   - Cloudflare Worker: "https://usmc-directives-proxy.your-subdomain.workers.dev"
+//   - Local server: "http://localhost:3000"
+// Leave empty to use fallback CORS proxies (unreliable)
+const CUSTOM_PROXY_URL = "";
+
+// Multiple CORS proxies to try as fallbacks (these are unreliable)
 const CORS_PROXIES = [
   "https://corsproxy.io/?",
   "https://api.allorigins.win/raw?url=",
@@ -462,10 +471,35 @@ async function fetchAlnavMessages() {
 // Fetch and parse a single ALNAV page
 async function fetchAlnavPage(url) {
   try {
-    // Try direct fetch first
-    let text = await tryDirectFetch(url);
+    let text;
 
-    // If direct fails, try proxies
+    // Try custom proxy first if configured
+    if (CUSTOM_PROXY_URL) {
+      try {
+        const year = url.match(/ALNAV-(\d{4})/)?.[1] || new Date().getFullYear();
+        const proxyUrl = `${CUSTOM_PROXY_URL}/api/alnav/${year}`;
+        console.log(`Using custom proxy for ALNAV: ${proxyUrl}`);
+
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+          text = await response.text();
+          console.log('Custom proxy succeeded for ALNAV');
+        }
+      } catch (err) {
+        console.log('Custom proxy failed for ALNAV, trying direct fetch...', err.message);
+      }
+    }
+
+    // Try direct fetch if custom proxy not configured or failed
+    if (!text) {
+      try {
+        text = await tryDirectFetch(url);
+      } catch (err) {
+        console.log('Direct fetch failed for ALNAV, trying fallback proxies...');
+      }
+    }
+
+    // If direct fails, try fallback proxies
     if (!text) {
       for (let i = 0; i < CORS_PROXIES.length; i++) {
         try {
@@ -721,10 +755,34 @@ async function fetchSecnavMessages() {
 // Fetch and parse a single SECNAV page
 async function fetchSecnavPage(url) {
   try {
-    // Try direct fetch first
-    let text = await tryDirectFetch(url);
+    let text;
 
-    // If direct fails, try proxies
+    // Try custom proxy first if configured
+    if (CUSTOM_PROXY_URL) {
+      try {
+        const proxyUrl = `${CUSTOM_PROXY_URL}/api/navy-directives`;
+        console.log(`Using custom proxy for SECNAV/OPNAV: ${proxyUrl}`);
+
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+          text = await response.text();
+          console.log('Custom proxy succeeded for SECNAV/OPNAV');
+        }
+      } catch (err) {
+        console.log('Custom proxy failed for SECNAV, trying direct fetch...', err.message);
+      }
+    }
+
+    // Try direct fetch if custom proxy not configured or failed
+    if (!text) {
+      try {
+        text = await tryDirectFetch(url);
+      } catch (err) {
+        console.log('Direct fetch failed for SECNAV, trying fallback proxies...');
+      }
+    }
+
+    // If direct fails, try fallback proxies
     if (!text) {
       for (let i = 0; i < CORS_PROXIES.length; i++) {
         try {
