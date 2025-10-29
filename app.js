@@ -1,3 +1,19 @@
+// APPLICATION_CONFIG: UI, layout, and message-type rendering rules
+const APPLICATION_CONFIG = {
+  MESSAGE_TEMPLATES: {
+    maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: false },
+    mcpub: { subjectSource: 'summary', showAISummary: false, showDetails: false },
+    almar: { subjectSource: 'summary', showAISummary: false, showDetails: false },
+    semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: true, linkSource: 'semperadminLink' },
+    dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false },
+    dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false },
+    youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true },
+    alnav: { subjectSource: 'subject', showAISummary: false, showDetails: true },
+    secnav: { subjectSource: 'subject', showAISummary: false, showDetails: true },
+    opnav: { subjectSource: 'subject', showAISummary: false, showDetails: true }
+  }
+};
+
 // RSS Feed URLs
 const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
@@ -1999,26 +2015,7 @@ function toggleSummaryStats() {
   }
 }
 
-// Share message - copy link to clipboard
-async function shareMessage(message) {
-  try {
-    await navigator.clipboard.writeText(message.link);
-
-    // Show temporary success message
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '✓';
-    btn.style.background = '#4caf50';
-
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.style.background = '';
-    }, 2000);
-  } catch (err) {
-    console.error('Failed to copy link:', err);
-    alert('Failed to copy link. Please try again.');
-  }
-}
+// Feature removed: Copy link to clipboard functionality has been removed per APPLICATION_CONFIG
 
 // Utilities
 function firstSentence(text) {
@@ -2080,9 +2077,32 @@ function renderCompactView(arr) {
     const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
     const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
 
+    // Get configuration for this message type
+    const config = APPLICATION_CONFIG.MESSAGE_TEMPLATES[item.type] || {
+      subjectSource: 'subject',
+      showAISummary: false,
+      showDetails: true
+    };
+
+    // Determine which field to display as subject
+    const displaySubject = config.subjectSource === 'summary' ? (item.summary || item.subject) : item.subject;
+
+    // Determine link URL (some types use semperadminLink)
+    const linkUrl = config.linkSource === 'semperadminLink' && item.semperadminLink ? item.semperadminLink : item.link;
+
     // Check if message is from today
     const isNew = isMessageNew(item.pubDateObj);
     const newBadge = isNew ? '<span class="new-badge">NEW</span>' : '';
+
+    // Build action buttons based on configuration
+    let actionButtons = '';
+    if (config.showAISummary) {
+      actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">AI Summary</button>`;
+    }
+    if (config.showDetails) {
+      actionButtons += `<button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">Details</button>`;
+    }
+    // Note: Copy link feature removed per APPLICATION_CONFIG
 
     row.innerHTML = `
       <div class="compact-col-id">
@@ -2093,21 +2113,13 @@ function renderCompactView(arr) {
         <span class="compact-date">${formatDate(item.pubDateObj)}</span>
       </div>
       <div class="compact-col-subject">
-        <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="compact-subject">${item.subject}</a>
+        <a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="compact-subject">${displaySubject}</a>
       </div>
       <div class="compact-col-type">
         ${typeBadge}
       </div>
       <div class="compact-col-action">
-        <button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">
-          AI Summary
-        </button>
-        <button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">
-          Details
-        </button>
-        <button class="compact-share-btn" onclick="shareMessage(currentMessages[${index}])" title="Copy link to clipboard">
-          🔗
-        </button>
+        ${actionButtons || '<span class="no-actions">—</span>'}
       </div>
     `;
 

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MARADMIN Tracker</title>
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <header>
@@ -17,17 +17,20 @@
 </header>
 <main>
   <div class="message-type-tabs">
-    <button class="message-type-btn active" data-type="maradmin">MARADMINs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="mcpub">MCPUBs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="alnav">ALNAVs <span class="tab-counter">0</span></button>
+    <!-- Row 1: Alphabetically ordered (ALMARs through MARADMINS) -->
     <button class="message-type-btn" data-type="almar">ALMARs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="semperadmin">Semper Admin <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="dodforms">DoD Forms <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="secnav">SECNAV <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="opnav">OPNAV <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="alnav">ALNAVs <span class="tab-counter">0</span></button>
     <button class="message-type-btn" data-type="dodfmr">DoD FMR <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="dodforms">DoD Forms <span class="tab-counter">0</span></button>
+    <button class="message-type-btn active" data-type="maradmin">MARADMINs <span class="tab-counter">0</span></button>
+    <!-- Row 2: Alphabetically ordered (MCPUBs through YouTube) -->
+    <button class="message-type-btn" data-type="mcpub">MCPUBs <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="opnav">OPNAV <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="secnav">SECNAV <span class="tab-counter">0</span></button>
+    <button class="message-type-btn" data-type="semperadmin">Semper Admin <span class="tab-counter">0</span></button>
     <button class="message-type-btn" data-type="youtube">YouTube <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="all">All Messages <span class="tab-counter">0</span></button>
+    <!-- Bottom row: All Messages centered -->
+    <button class="message-type-btn all-messages-btn" data-type="all">All Messages <span class="tab-counter">0</span></button>
   </div>
   <div class="filters-section">
     <div class="search-container">
@@ -66,6 +69,6 @@
   </p>
   <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
