@@ -11,10 +11,15 @@ const YOUTUBE_API_KEY = "AIzaSyBRZapIkBKHl3X1AiW5dUVlKgdxPQejYgM";
 const YOUTUBE_CHANNEL_ID = "UCob5u7jsXrdca9vmarYJ0Cg";
 const YOUTUBE_MAX_RESULTS = 50; // per page
 
-// ALNAV URLs - New Portals structure
+// ALNAV URLs - References/Messages structure
 function getAlnavUrls() {
-  // New URL structure - Portals/55/Messages/ALNAV/ directory listing
-  return ['https://www.mynavyhr.navy.mil/Portals/55/Messages/ALNAV/'];
+  // Current and previous year to ensure we catch all recent messages
+  const currentYear = new Date().getFullYear();
+  const previousYear = currentYear - 1;
+  return [
+    `https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${currentYear}/`,
+    `https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${previousYear}/`
+  ];
 }
 
 // SECNAV URLs - Secretary of the Navy directives (SharePoint table)
@@ -813,12 +818,29 @@ async function fetchSecnavPage(url) {
 function parseSecnavLinks(doc, sourceUrl) {
   const messages = [];
 
-  // Find the SharePoint table by ID
-  const tableId = 'onetidDoclibViewTbl0';
-  const table = doc.getElementById(tableId);
+  // Try multiple strategies to find the SharePoint table
+  let table = null;
+
+  // Strategy 1: Try the common SharePoint table ID
+  table = doc.getElementById('onetidDoclibViewTbl0');
+
+  // Strategy 2: Try finding by class
+  if (!table) {
+    table = doc.querySelector('.ms-listviewtable');
+    console.log('parseSecnavLinks: Using table found by class .ms-listviewtable');
+  }
+
+  // Strategy 3: Try any table that looks like a SharePoint list
+  if (!table) {
+    table = doc.querySelector('table[summary*="Directives"]') ||
+            doc.querySelector('table[id*="onetid"]') ||
+            doc.querySelector('table.ms-vh');
+    console.log('parseSecnavLinks: Using table found by alternative selectors');
+  }
 
   if (!table) {
-    console.error(`parseSecnavLinks: Table with ID '${tableId}' not found`);
+    console.error('parseSecnavLinks: No SharePoint table found - tried multiple selectors');
+    console.log('Available tables:', Array.from(doc.querySelectorAll('table')).map(t => ({ id: t.id, class: t.className })));
     return messages;
   }
 
@@ -831,45 +853,85 @@ function parseSecnavLinks(doc, sourceUrl) {
       const cells = row.querySelectorAll('td');
 
       // Skip rows that don't have enough columns
-      if (cells.length < 4) {
-        console.log(`Skipping row ${index}: Not enough columns (${cells.length})`);
+      if (cells.length < 3) {
+        if (index < 5) console.log(`Skipping row ${index}: Not enough columns (${cells.length})`);
         return;
       }
 
-      // Column 0: Echelon (SECNAV, OPNAV, etc.)
-      const echelon = cells[0].innerText.trim().toUpperCase();
+      // Find the link element - try different selectors
+      let linkElement = null;
+      let nameCell = null;
+      let echelon = '';
+      let subject = '';
+      let effectiveDate = '';
 
-      // Column 1: Name (Instruction Number with PDF link)
-      const nameCell = cells[1];
-      const linkElement = nameCell.querySelector('a.ms-listlink');
+      // Try standard SharePoint structure first
+      if (cells.length >= 4) {
+        // Column 0: Echelon (SECNAV, OPNAV, etc.)
+        echelon = cells[0].innerText.trim().toUpperCase();
+        nameCell = cells[1];
+        subject = cells[2].innerText.trim();
+        effectiveDate = cells[3] ? cells[3].innerText.trim() : '';
+
+        linkElement = nameCell.querySelector('a.ms-listlink') || nameCell.querySelector('a');
+      }
+
+      // Fallback: Search all cells for a link
+      if (!linkElement) {
+        for (let i = 0; i < cells.length; i++) {
+          const link = cells[i].querySelector('a');
+          if (link && link.href && (link.href.includes('.pdf') || link.href.includes('INST') || link.href.includes('SECNAV') || link.href.includes('OPNAV'))) {
+            linkElement = link;
+            nameCell = cells[i];
+            // Try to extract subject from adjacent cells
+            subject = cells[i + 1] ? cells[i + 1].innerText.trim() : linkElement.textContent.trim();
+            effectiveDate = cells[i + 2] ? cells[i + 2].innerText.trim() : '';
+            // Try to determine echelon from link text
+            const linkText = linkElement.textContent.toUpperCase();
+            if (linkText.includes('SECNAV')) echelon = 'SECNAV';
+            else if (linkText.includes('OPNAV')) echelon = 'OPNAV';
+            break;
+          }
+        }
+      }
 
       if (!linkElement) {
-        console.log(`Skipping row ${index}: No link element found`);
+        if (index < 5) console.log(`Skipping row ${index}: No link element found`);
         return;
       }
 
       const instructionNumber = linkElement.innerText.trim();
-      const pdfLink = linkElement.href;
+      const pdfLink = new URL(linkElement.href, sourceUrl).href;
 
-      // Column 2: Subject
-      const subject = cells[2].innerText.trim();
-
-      // Column 3: Effective Date
-      const effectiveDate = cells[3].innerText.trim();
-
-      // Determine directive type from Echelon column
+      // Determine directive type from Echelon column or instruction number
       let directiveType = null;
       let id = null;
 
+      // Try echelon first
       if (echelon.includes('SECNAV')) {
         directiveType = 'secnav';
         id = `SECNAV ${instructionNumber}`;
       } else if (echelon.includes('OPNAV')) {
         directiveType = 'opnav';
         id = `OPNAV ${instructionNumber}`;
-      } else {
-        console.log(`Skipping row ${index}: Unknown echelon '${echelon}'`);
-        return;
+      }
+      // Fallback: Try to infer from instruction number or link
+      else {
+        const instUpper = instructionNumber.toUpperCase();
+        const linkUpper = pdfLink.toUpperCase();
+
+        if (instUpper.includes('SECNAV') || linkUpper.includes('SECNAV')) {
+          directiveType = 'secnav';
+          id = instructionNumber.includes('SECNAV') ? instructionNumber : `SECNAV ${instructionNumber}`;
+        } else if (instUpper.includes('OPNAV') || linkUpper.includes('OPNAV')) {
+          directiveType = 'opnav';
+          id = instructionNumber.includes('OPNAV') ? instructionNumber : `OPNAV ${instructionNumber}`;
+        } else {
+          // Default to SECNAV if we can't determine (most directives on this page are SECNAV)
+          if (index < 5) console.log(`Row ${index}: Cannot determine type, defaulting to SECNAV. Echelon='${echelon}', Instruction='${instructionNumber}'`);
+          directiveType = 'secnav';
+          id = instructionNumber;
+        }
       }
 
       // Parse effective date
