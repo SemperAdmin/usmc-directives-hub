@@ -11,32 +11,16 @@ const YOUTUBE_API_KEY = "AIzaSyBRZapIkBKHl3X1AiW5dUVlKgdxPQejYgM";
 const YOUTUBE_CHANNEL_ID = "UCob5u7jsXrdca9vmarYJ0Cg";
 const YOUTUBE_MAX_RESULTS = 50; // per page
 
-// ALNAV URLs - dynamically built for current/previous year
+// ALNAV URLs - New Portals structure
 function getAlnavUrls() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const urls = [];
-
-  // Always include current year
-  urls.push(`https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${year}/`);
-
-  // If it's January, also include last year
-  if (now.getMonth() === 0) {
-    urls.push(`https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${year - 1}/`);
-  }
-
-  return urls;
+  // New URL structure - Portals/55/Messages/ALNAV/ directory listing
+  return ['https://www.mynavyhr.navy.mil/Portals/55/Messages/ALNAV/'];
 }
 
-// SECNAV URLs - Secretary of the Navy directives
+// SECNAV URLs - Secretary of the Navy directives (SharePoint table)
 function getSecnavUrls() {
-  // SECNAV current directives page
-  return ['https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx'];
-}
-
-// OPNAV URLs - Office of the Chief of Naval Operations directives
-function getOpnavUrls() {
-  // OPNAV current directives page (same source as SECNAV, will be filtered by type)
+  // SECNAV and OPNAV are both in the same SharePoint table
+  // We'll filter by the Echelon column
   return ['https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx'];
 }
 
@@ -767,78 +751,109 @@ async function fetchSecnavPage(url) {
   }
 }
 
-// Parse SECNAV and OPNAV directive links from HTML document
+// Parse SECNAV and OPNAV directive links from SharePoint table
 function parseSecnavLinks(doc, sourceUrl) {
   const messages = [];
 
-  // Find all links to PDF files and table rows
-  const links = doc.querySelectorAll('a[href*=".pdf"], a[href*=".PDF"]');
+  // Find the SharePoint table by ID
+  const tableId = 'onetidDoclibViewTbl0';
+  const table = doc.getElementById(tableId);
 
-  console.log(`parseSecnavLinks: Found ${links.length} potential PDF links`);
+  if (!table) {
+    console.error(`parseSecnavLinks: Table with ID '${tableId}' not found`);
+    return messages;
+  }
 
-  links.forEach(link => {
+  // Get all rows from tbody
+  const rows = table.querySelectorAll('tbody > tr');
+  console.log(`parseSecnavLinks: Found ${rows.length} rows in SharePoint table`);
+
+  rows.forEach((row, index) => {
     try {
-      const title = link.textContent.trim();
-      const href = new URL(link.getAttribute('href'), sourceUrl).href;
+      const cells = row.querySelectorAll('td');
 
-      if (!title || !href) {
-        console.log('Skipping link - no title or href:', { title, href });
+      // Skip rows that don't have enough columns
+      if (cells.length < 4) {
+        console.log(`Skipping row ${index}: Not enough columns (${cells.length})`);
         return;
       }
 
-      // Determine if this is SECNAV or OPNAV directive
+      // Column 0: Echelon (SECNAV, OPNAV, etc.)
+      const echelon = cells[0].innerText.trim().toUpperCase();
+
+      // Column 1: Name (Instruction Number with PDF link)
+      const nameCell = cells[1];
+      const linkElement = nameCell.querySelector('a.ms-listlink');
+
+      if (!linkElement) {
+        console.log(`Skipping row ${index}: No link element found`);
+        return;
+      }
+
+      const instructionNumber = linkElement.innerText.trim();
+      const pdfLink = linkElement.href;
+
+      // Column 2: Subject
+      const subject = cells[2].innerText.trim();
+
+      // Column 3: Effective Date
+      const effectiveDate = cells[3].innerText.trim();
+
+      // Determine directive type from Echelon column
       let directiveType = null;
       let id = null;
-      let directiveNumber = null;
 
-      // Check for OPNAV directives first
-      // Examples: "OPNAV M-5510.1", "OPNAVINST 5510.1K", "OPNAV 5510.1"
-      const opnavMatch = title.match(/OPNAV(?:INST)?\s*(?:M-?)?(\d+\.\d+[A-Z]*)/i) ||
-                         href.match(/OPNAV(?:INST)?(?:M)?(\d+\.\d+[A-Z]*)/i);
-
-      if (opnavMatch) {
+      if (echelon.includes('SECNAV')) {
+        directiveType = 'secnav';
+        id = `SECNAV ${instructionNumber}`;
+      } else if (echelon.includes('OPNAV')) {
         directiveType = 'opnav';
-        directiveNumber = opnavMatch[1];
-        id = `OPNAV ${directiveNumber}`;
+        id = `OPNAV ${instructionNumber}`;
       } else {
-        // Check for SECNAV directives
-        // Examples: "SECNAV M-5510.30", "SECNAVINST 5510.30C", "SECNAV 5510.30"
-        const secnavMatch = title.match(/SECNAV(?:INST)?\s*(?:M-?)?(\d+\.\d+[A-Z]*)/i) ||
-                            href.match(/SECNAV(?:INST)?(?:M)?(\d+\.\d+[A-Z]*)/i);
+        console.log(`Skipping row ${index}: Unknown echelon '${echelon}'`);
+        return;
+      }
 
-        if (secnavMatch) {
-          directiveType = 'secnav';
-          directiveNumber = secnavMatch[1];
-          id = `SECNAV ${directiveNumber}`;
-        } else {
-          // Try alternative patterns
-          const altOpnavMatch = title.match(/OPNAV\s+([A-Z]+-?\d+[\w.-]+)/i);
-          if (altOpnavMatch) {
-            directiveType = 'opnav';
-            id = `OPNAV ${altOpnavMatch[1]}`;
-          } else {
-            const altSecnavMatch = title.match(/SECNAV\s+([A-Z]+-?\d+[\w.-]+)/i);
-            if (altSecnavMatch) {
-              directiveType = 'secnav';
-              id = `SECNAV ${altSecnavMatch[1]}`;
-            }
+      // Parse effective date
+      let pubDate = new Date('2000-01-01');
+      let pubDateObj = new Date('2000-01-01');
+
+      if (effectiveDate && effectiveDate !== 'N/A') {
+        try {
+          const parsedDate = new Date(effectiveDate);
+          if (!isNaN(parsedDate.getTime())) {
+            pubDateObj = parsedDate;
+            pubDate = parsedDate.toISOString();
           }
+        } catch (e) {
+          console.log(`Could not parse date '${effectiveDate}' for ${id}`);
         }
       }
 
-      if (directiveType && id) {
-        const message = createNavyDirectiveMessage(id, title, href, directiveType);
-        messages.push(message);
-        console.log(`Found ${directiveType.toUpperCase()}: ${id}`);
-      } else {
-        console.log('No SECNAV/OPNAV pattern match:', { title, href });
-      }
+      // Create message object
+      const message = {
+        id: id,
+        subject: subject,
+        title: `${id} - ${subject}`,
+        link: pdfLink,
+        pubDate: pubDate,
+        pubDateObj: pubDateObj,
+        type: directiveType,
+        searchText: `${id} ${subject}`.toLowerCase(),
+        instructionNumber: instructionNumber,
+        echelon: echelon,
+        effectiveDate: effectiveDate
+      };
+
+      messages.push(message);
+      console.log(`Found ${directiveType.toUpperCase()}: ${id}`);
+
     } catch (error) {
-      console.error('Error parsing Navy directive link:', error);
+      console.error(`Error parsing row ${index}:`, error);
     }
   });
 
-  console.log(`parseSecnavLinks: Parsed ${messages.length} directives from ${links.length} links`);
+  console.log(`parseSecnavLinks: Parsed ${messages.length} directives from ${rows.length} rows`);
   return messages;
 }
 
