@@ -30,6 +30,18 @@ function getSecnavUrls() {
   return ['https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx'];
 }
 
+// OPNAV URLs - Office of the Chief of Naval Operations directives
+function getOpnavUrls() {
+  // OPNAV current directives page (same source as SECNAV, will be filtered by type)
+  return ['https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx'];
+}
+
+// DoD FMR URLs - Department of Defense Financial Management Regulation
+function getDodFmrUrls() {
+  // DoD FMR change pages
+  return ['https://comptroller.war.gov/FMR/change/'];
+}
+
 // DoD Forms URLs
 const DOD_FORMS_URLS = [
   "https://www.esd.whs.mil/Directives/forms/dd0001_0499/",
@@ -75,7 +87,9 @@ let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
 let allYouTubePosts = []; // Store all YouTube posts
 let allSecnavs = []; // Store all SECNAV directives
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', 'secnav', or 'all'
+let allOpnavs = []; // Store all OPNAV directives
+let allDodFmr = []; // Store all DoD FMR changes
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', 'secnav', 'opnav', 'dodfmr', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -150,10 +164,13 @@ async function fetchAllFeeds() {
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
   await fetchFeed('youtube', RSS_FEEDS.youtube);
-  await fetchSecnavMessages(); // Scrape SECNAV directives from Navy website
+  await fetchSecnavMessages(); // Scrape SECNAV and OPNAV directives from Navy website
 
   // Fetch DoD Forms
   await fetchDodForms();
+
+  // Fetch DoD FMR changes
+  await fetchDodFmrChanges();
 
   // Update display
   filterMessages();
@@ -570,20 +587,20 @@ function parseAlnavLinks(doc, sourceUrl) {
   return messages;
 }
 
-// Fetch and parse SECNAV directives from Navy website
+// Fetch and parse SECNAV and OPNAV directives from Navy website
 async function fetchSecnavMessages() {
-  console.log('Fetching SECNAV directives from Navy website...');
+  console.log('Fetching SECNAV and OPNAV directives from Navy website...');
 
   try {
-    const urls = getSecnavUrls();
+    const urls = getSecnavUrls(); // Same URLs contain both SECNAV and OPNAV
     const allMessages = [];
 
-    // Fetch all SECNAV pages
+    // Fetch all Navy directive pages
     for (const url of urls) {
       try {
         const messages = await fetchSecnavPage(url);
         allMessages.push(...messages);
-        console.log(`Loaded ${messages.length} SECNAV directives from ${url}`);
+        console.log(`Loaded ${messages.length} Navy directives from ${url}`);
       } catch (error) {
         console.warn(`Skip ${url}:`, error.message);
       }
@@ -602,11 +619,15 @@ async function fetchSecnavMessages() {
     // Sort by date (newest first)
     uniqueMessages.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-    allSecnavs = uniqueMessages;
+    // Separate SECNAV and OPNAV directives
+    allSecnavs = uniqueMessages.filter(msg => msg.type === 'secnav');
+    allOpnavs = uniqueMessages.filter(msg => msg.type === 'opnav');
+
     cacheData();
     console.log(`Total SECNAV directives loaded: ${allSecnavs.length}`);
+    console.log(`Total OPNAV directives loaded: ${allOpnavs.length}`);
   } catch (error) {
-    console.error('Error fetching SECNAV directives:', error);
+    console.error('Error fetching Navy directives:', error);
   }
 }
 
@@ -643,7 +664,7 @@ async function fetchSecnavPage(url) {
   }
 }
 
-// Parse SECNAV directive links from HTML document
+// Parse SECNAV and OPNAV directive links from HTML document
 function parseSecnavLinks(doc, sourceUrl) {
   const messages = [];
 
@@ -657,40 +678,64 @@ function parseSecnavLinks(doc, sourceUrl) {
 
       if (!title || !href) return;
 
-      // Extract SECNAV directive number from title or filename
-      // Examples: "SECNAV M-5510.30", "SECNAVINST 5510.30C", "SECNAV 5510.30"
-      const secnavMatch = title.match(/SECNAV(?:INST)?\s*(?:M-?)?(\d+\.\d+[A-Z]*)/i) ||
-                          href.match(/SECNAV(?:INST)?(?:M)?(\d+\.\d+[A-Z]*)/i);
+      // Determine if this is SECNAV or OPNAV directive
+      let directiveType = null;
+      let id = null;
+      let directiveNumber = null;
 
-      if (!secnavMatch) {
-        // Try to match just "SECNAV" followed by directive info
-        const altMatch = title.match(/SECNAV\s+([A-Z]+-?\d+[\w.-]+)/i);
-        if (altMatch) {
-          const id = `SECNAV ${altMatch[1]}`;
-          const message = createSecnavMessage(id, title, href);
-          messages.push(message);
+      // Check for OPNAV directives first
+      // Examples: "OPNAV M-5510.1", "OPNAVINST 5510.1K", "OPNAV 5510.1"
+      const opnavMatch = title.match(/OPNAV(?:INST)?\s*(?:M-?)?(\d+\.\d+[A-Z]*)/i) ||
+                         href.match(/OPNAV(?:INST)?(?:M)?(\d+\.\d+[A-Z]*)/i);
+
+      if (opnavMatch) {
+        directiveType = 'opnav';
+        directiveNumber = opnavMatch[1];
+        id = `OPNAV ${directiveNumber}`;
+      } else {
+        // Check for SECNAV directives
+        // Examples: "SECNAV M-5510.30", "SECNAVINST 5510.30C", "SECNAV 5510.30"
+        const secnavMatch = title.match(/SECNAV(?:INST)?\s*(?:M-?)?(\d+\.\d+[A-Z]*)/i) ||
+                            href.match(/SECNAV(?:INST)?(?:M)?(\d+\.\d+[A-Z]*)/i);
+
+        if (secnavMatch) {
+          directiveType = 'secnav';
+          directiveNumber = secnavMatch[1];
+          id = `SECNAV ${directiveNumber}`;
+        } else {
+          // Try alternative patterns
+          const altOpnavMatch = title.match(/OPNAV\s+([A-Z]+-?\d+[\w.-]+)/i);
+          if (altOpnavMatch) {
+            directiveType = 'opnav';
+            id = `OPNAV ${altOpnavMatch[1]}`;
+          } else {
+            const altSecnavMatch = title.match(/SECNAV\s+([A-Z]+-?\d+[\w.-]+)/i);
+            if (altSecnavMatch) {
+              directiveType = 'secnav';
+              id = `SECNAV ${altSecnavMatch[1]}`;
+            }
+          }
         }
-        return;
       }
 
-      const directiveNumber = secnavMatch[1];
-      const id = `SECNAV ${directiveNumber}`;
-
-      const message = createSecnavMessage(id, title, href);
-      messages.push(message);
+      if (directiveType && id) {
+        const message = createNavyDirectiveMessage(id, title, href, directiveType);
+        messages.push(message);
+      }
     } catch (error) {
-      console.error('Error parsing SECNAV link:', error);
+      console.error('Error parsing Navy directive link:', error);
     }
   });
 
   return messages;
 }
 
-// Helper function to create SECNAV message object
-function createSecnavMessage(id, title, href) {
-  // Try to extract date from title or use current date as fallback
-  let pubDate = new Date();
-  let pubDateObj = new Date();
+// Helper function to create Navy directive message object (SECNAV or OPNAV)
+function createNavyDirectiveMessage(id, title, href, directiveType) {
+  // Try to extract date from title or use a very old date as fallback (Jan 1, 2000)
+  // This ensures old directives without dates don't appear as new items
+  let pubDate = new Date('2000-01-01');
+  let pubDateObj = new Date('2000-01-01');
 
   // Look for date in title (various formats)
   const dateMatch = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i) ||
@@ -704,8 +749,12 @@ function createSecnavMessage(id, title, href) {
         pubDate = pubDateObj.toISOString();
       }
     } catch (e) {
-      // Use default date
+      // Use default date (Jan 1, 2000)
+      pubDate = pubDateObj.toISOString();
     }
+  } else {
+    // No date found - use default old date
+    pubDate = pubDateObj.toISOString();
   }
 
   return {
@@ -714,7 +763,190 @@ function createSecnavMessage(id, title, href) {
     link: href,
     pubDate: pubDate,
     pubDateObj: pubDateObj,
-    type: 'secnav',
+    type: directiveType, // 'secnav' or 'opnav'
+    searchText: `${id} ${title}`.toLowerCase()
+  };
+}
+
+// Fetch and parse DoD FMR changes from DoD website
+async function fetchDodFmrChanges() {
+  console.log('Fetching DoD FMR changes from DoD website...');
+
+  try {
+    const urls = getDodFmrUrls();
+    const allMessages = [];
+
+    // Fetch all DoD FMR pages
+    for (const url of urls) {
+      try {
+        const messages = await fetchDodFmrPage(url);
+        allMessages.push(...messages);
+        console.log(`Loaded ${messages.length} DoD FMR changes from ${url}`);
+      } catch (error) {
+        console.warn(`Skip ${url}:`, error.message);
+      }
+    }
+
+    // Remove duplicates based on message ID
+    const uniqueMessages = [];
+    const seen = new Set();
+    for (const msg of allMessages) {
+      if (!seen.has(msg.id)) {
+        seen.add(msg.id);
+        uniqueMessages.push(msg);
+      }
+    }
+
+    // Sort by date (newest first)
+    uniqueMessages.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+    allDodFmr = uniqueMessages;
+    cacheData();
+    console.log(`Total DoD FMR changes loaded: ${allDodFmr.length}`);
+  } catch (error) {
+    console.error('Error fetching DoD FMR changes:', error);
+  }
+}
+
+// Fetch and parse a single DoD FMR page
+async function fetchDodFmrPage(url) {
+  try {
+    console.log(`Fetching DoD FMR page: ${url}`);
+
+    // Try direct fetch first with timeout
+    let text = null;
+    try {
+      const directResponse = await Promise.race([
+        fetch(url),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+      ]);
+
+      if (directResponse.ok) {
+        text = await directResponse.text();
+      }
+    } catch (directError) {
+      console.log('Direct fetch failed, trying CORS proxies...');
+    }
+
+    // If direct fetch failed, try CORS proxies
+    if (!text) {
+      for (const proxy of CORS_PROXIES) {
+        try {
+          const proxyUrl = proxy.includes('allorigins')
+            ? proxy + encodeURIComponent(url)
+            : proxy + url;
+
+          const response = await Promise.race([
+            fetch(proxyUrl),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+          ]);
+
+          if (response.ok) {
+            text = await response.text();
+            if (proxy.includes('allorigins')) {
+              const json = JSON.parse(text);
+              text = json.contents;
+            }
+            break;
+          }
+        } catch (proxyError) {
+          continue;
+        }
+      }
+    }
+
+    if (!text) {
+      throw new Error('All fetch attempts failed');
+    }
+
+    // Parse the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+
+    return parseDodFmrLinks(doc, url);
+  } catch (error) {
+    console.error(`Error fetching DoD FMR page ${url}:`, error);
+    return [];
+  }
+}
+
+// Parse DoD FMR change links from HTML document
+function parseDodFmrLinks(doc, sourceUrl) {
+  const messages = [];
+
+  // Find all links to PDF files and relevant content
+  const links = doc.querySelectorAll('a[href*=".pdf"], a[href*=".PDF"], a[href*="change"]');
+
+  links.forEach(link => {
+    try {
+      const title = link.textContent.trim();
+      const href = new URL(link.getAttribute('href'), sourceUrl).href;
+
+      if (!title || !href) return;
+
+      // Extract FMR change identifier from title or filename
+      // Examples: "FMR Change 123", "Change Notice 456", "Volume 7A, Chapter 8"
+      const changeMatch = title.match(/Change\s+(?:Notice\s+)?(\d+)/i) ||
+                         title.match(/FMR\s+Change\s+(\d+)/i) ||
+                         href.match(/change[_-]?(\d+)/i);
+
+      let id = null;
+      if (changeMatch) {
+        id = `FMR Change ${changeMatch[1]}`;
+      } else {
+        // Try to match volume/chapter patterns
+        const volChapterMatch = title.match(/Volume\s+(\d+[A-Z]?),?\s+Chapter\s+(\d+)/i);
+        if (volChapterMatch) {
+          id = `FMR Vol ${volChapterMatch[1]} Ch ${volChapterMatch[2]}`;
+        } else {
+          // Use first 50 characters of title as ID
+          id = title.substring(0, 50);
+        }
+      }
+
+      if (id) {
+        const message = createDodFmrMessage(id, title, href);
+        messages.push(message);
+      }
+    } catch (error) {
+      console.error('Error parsing DoD FMR link:', error);
+    }
+  });
+
+  return messages;
+}
+
+// Helper function to create DoD FMR message object
+function createDodFmrMessage(id, title, href) {
+  // Try to extract date from title or use a very old date as fallback
+  let pubDate = new Date('2000-01-01');
+  let pubDateObj = new Date('2000-01-01');
+
+  // Look for date in title (various formats)
+  const dateMatch = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i) ||
+                    title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/) ||
+                    title.match(/(\d{4})-(\d{2})-(\d{2})/);
+
+  if (dateMatch) {
+    try {
+      pubDateObj = new Date(dateMatch[0]);
+      if (!isNaN(pubDateObj.getTime())) {
+        pubDate = pubDateObj.toISOString();
+      }
+    } catch (e) {
+      pubDate = pubDateObj.toISOString();
+    }
+  } else {
+    pubDate = pubDateObj.toISOString();
+  }
+
+  return {
+    id: id,
+    subject: title,
+    link: href,
+    pubDate: pubDate,
+    pubDateObj: pubDateObj,
+    type: 'dodfmr',
     searchText: `${id} ${title}`.toLowerCase()
   };
 }
@@ -1174,8 +1406,12 @@ function filterMessages() {
     allMessages = [...allYouTubePosts];
   } else if (currentMessageType === 'secnav') {
     allMessages = [...allSecnavs];
+  } else if (currentMessageType === 'opnav') {
+    allMessages = [...allOpnavs];
+  } else if (currentMessageType === 'dodfmr') {
+    allMessages = [...allDodFmr];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allOpnavs, ...allDodFmr];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -1206,12 +1442,12 @@ function filterMessages() {
 
 function clearSearch() {
   searchInput.value = "";
-  dateRangeSelect.value = "7";
+  dateRangeSelect.value = "90";
 
   // Reset quick filter buttons
   quickFilterButtons.forEach(btn => btn.classList.remove('active'));
   quickFilterButtons.forEach(btn => {
-    if (btn.dataset.days === "7") btn.classList.add('active');
+    if (btn.dataset.days === "90") btn.classList.add('active');
   });
 
   filterMessages();
@@ -1378,8 +1614,16 @@ function updateTabCounters() {
         count = getFilteredCount(allSecnavs);
         baseText = 'SECNAV';
         break;
+      case 'opnav':
+        count = getFilteredCount(allOpnavs);
+        baseText = 'OPNAV';
+        break;
+      case 'dodfmr':
+        count = getFilteredCount(allDodFmr);
+        baseText = 'DoD FMR';
+        break;
       case 'all':
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allOpnavs, ...allDodFmr]);
         baseText = 'All Messages';
         break;
     }
@@ -1408,8 +1652,12 @@ function renderSummaryStats() {
     totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'secnav') {
     totalCount = allSecnavs.length;
+  } else if (currentMessageType === 'opnav') {
+    totalCount = allOpnavs.length;
+  } else if (currentMessageType === 'dodfmr') {
+    totalCount = allDodFmr.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allSecnavs.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allSecnavs.length + allOpnavs.length + allDodFmr.length;
   }
 
   // Get date range
@@ -1577,7 +1825,10 @@ function renderCompactView(arr) {
       'almar': 'ALMAR',
       'semperadmin': 'SEMPER ADMIN',
       'dodforms': 'DOD FORM',
-      'youtube': 'YOUTUBE'
+      'youtube': 'YOUTUBE',
+      'secnav': 'SECNAV',
+      'opnav': 'OPNAV',
+      'dodfmr': 'DOD FMR'
     };
     const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
     const typeBadge = `<span class="type-badge type-${item.type}">${typeLabel}</span>`;
@@ -1882,6 +2133,8 @@ function cacheData() {
     localStorage.setItem("dodforms_cache", JSON.stringify(allDodForms));
     localStorage.setItem("youtube_cache", JSON.stringify(allYouTubePosts));
     localStorage.setItem("secnav_cache", JSON.stringify(allSecnavs));
+    localStorage.setItem("opnav_cache", JSON.stringify(allOpnavs));
+    localStorage.setItem("dodfmr_cache", JSON.stringify(allDodFmr));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
   } catch(e) {
@@ -1961,6 +2214,24 @@ function loadCachedData() {
     if (secnavCache) {
       allSecnavs = JSON.parse(secnavCache);
       allSecnavs = allSecnavs.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    const opnavCache = localStorage.getItem("opnav_cache");
+    if (opnavCache) {
+      allOpnavs = JSON.parse(opnavCache);
+      allOpnavs = allOpnavs.map(m => ({
+        ...m,
+        pubDateObj: new Date(m.pubDate)
+      }));
+    }
+
+    const dodfmrCache = localStorage.getItem("dodfmr_cache");
+    if (dodfmrCache) {
+      allDodFmr = JSON.parse(dodfmrCache);
+      allDodFmr = allDodFmr.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
