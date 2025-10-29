@@ -1004,15 +1004,28 @@ function generateBasicSummary(content, message) {
 function parseRSS(xmlText, type){
   const parser = new DOMParser();
   const xml = parser.parseFromString(xmlText,"application/xml");
-  const items = Array.from(xml.querySelectorAll("item"));
+  // Handle both RSS (item) and Atom (entry) formats
+  let items = Array.from(xml.querySelectorAll("item"));
+  if (items.length === 0) {
+    items = Array.from(xml.querySelectorAll("entry"));
+  }
 
   console.log(`Total RSS items found for ${type}: ${items.length}`);
 
   const parsed = items.map((item, index) => {
     const title = item.querySelector("title")?.textContent || "";
-    const link = item.querySelector("link")?.textContent || "";
-    const pubDate = item.querySelector("pubDate")?.textContent || "";
-    const description = item.querySelector("description")?.textContent || "";
+    // Handle both RSS (link as text) and Atom (link as href attribute)
+    let link = item.querySelector("link")?.textContent || "";
+    if (!link) {
+      link = item.querySelector("link")?.getAttribute("href") || "";
+    }
+    // Handle both RSS (pubDate) and Atom (published/updated)
+    const pubDate = item.querySelector("pubDate")?.textContent ||
+                    item.querySelector("published")?.textContent ||
+                    item.querySelector("updated")?.textContent || "";
+    const description = item.querySelector("description")?.textContent ||
+                       item.querySelector("media\\:description")?.textContent ||
+                       item.querySelector("summary")?.textContent || "";
     const category = item.querySelector("category")?.textContent || "";
 
     let id, numericId, subject;
@@ -1075,6 +1088,21 @@ function parseRSS(xmlText, type){
       // For Semper Admin posts, use title as-is
       id = title.substring(0, 50);
       numericId = String(index + 1);
+      subject = title;
+    } else if (type === 'youtube') {
+      // For YouTube videos, extract video ID and use title as subject
+      const videoIdElement = item.querySelector("yt\\:videoId");
+      const videoId = videoIdElement?.textContent || "";
+
+      // If videoId not found in element, try to extract from link
+      let extractedId = videoId;
+      if (!extractedId && link) {
+        const linkMatch = link.match(/watch\?v=([^&]+)/);
+        extractedId = linkMatch ? linkMatch[1] : String(index + 1);
+      }
+
+      id = extractedId || `Video ${index + 1}`;
+      numericId = extractedId || String(index + 1);
       subject = title;
     }
 
