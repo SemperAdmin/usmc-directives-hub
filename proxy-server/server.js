@@ -11,12 +11,30 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// API Keys - Load from environment variables for security
-// Set these in your hosting environment (Render, Heroku, etc.)
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyC2dl-YRdL6Fl5j3zAbTL2ATPRBfgY02C8";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA0SE-MOkBQY2Wzf5r1WKzyDo2POK4dQkI";
+// API Keys - MUST be set as environment variables
+// In production: Set as GitHub Secrets or hosting environment variables
+// NO HARDCODED KEYS - Security requirement
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+
+// Validate required environment variables
+if (!YOUTUBE_API_KEY) {
+  console.error('❌ CRITICAL: YOUTUBE_API_KEY environment variable is not set');
+  console.error('   Set it in your hosting environment or GitHub Secrets');
+}
+
+if (!GEMINI_API_KEY) {
+  console.error('❌ CRITICAL: GEMINI_API_KEY environment variable is not set');
+  console.error('   Set it in your hosting environment or GitHub Secrets');
+}
+
+// Warn if running without keys (will cause API calls to fail)
+if (!YOUTUBE_API_KEY || !GEMINI_API_KEY) {
+  console.warn('⚠️  Server starting WITHOUT API keys - API endpoints will fail');
+  console.warn('   This is OK for development, but REQUIRED for production');
+}
 
 // Enable CORS for your GitHub Pages site
 app.use(cors({
@@ -203,6 +221,15 @@ app.get('/api/summaries', async (req, res) => {
 
 // Proxy endpoint for YouTube API
 app.get('/api/youtube/videos', async (req, res) => {
+  // Check if API key is configured
+  if (!YOUTUBE_API_KEY) {
+    return res.status(503).json({
+      success: false,
+      error: 'YouTube API key not configured',
+      message: 'Server administrator must set YOUTUBE_API_KEY environment variable'
+    });
+  }
+
   try {
     const { pageToken, maxResults = 50 } = req.query;
 
@@ -237,6 +264,15 @@ app.get('/api/youtube/videos', async (req, res) => {
 
 // Proxy endpoint for Gemini API (with stricter rate limiting)
 app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
+  // Check if API key is configured
+  if (!GEMINI_API_KEY) {
+    return res.status(503).json({
+      success: false,
+      error: 'Gemini API key not configured',
+      message: 'Server administrator must set GEMINI_API_KEY environment variable'
+    });
+  }
+
   try {
     const { content, messageType } = req.body;
 

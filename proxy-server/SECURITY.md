@@ -1,5 +1,63 @@
 # Security Guide for USMC Directives Proxy Server
 
+## API Keys and GitHub Secrets
+
+### ✅ Current Status: API Keys Secured
+
+All API keys have been **removed from the codebase** and are now managed via environment variables.
+
+**What we changed:**
+- ❌ REMOVED: Hardcoded API keys from `server.js`
+- ✅ ADDED: Environment variable-only configuration
+- ✅ ADDED: GitHub Repository Secrets for `YOUTUBE_API_KEY` and `GEMINI_API_KEY`
+- ✅ ADDED: Validation checks that fail gracefully if keys are missing
+
+### Using GitHub Secrets
+
+GitHub Secrets are already configured in your repository:
+- `YOUTUBE_API_KEY` - ✅ Set in repository secrets
+- `GEMINI_API_KEY` - ✅ Set in repository secrets
+
+**How to use them:**
+
+#### Method 1: Render.com (Recommended - Easiest)
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Set environment variables in Render dashboard:
+   - `YOUTUBE_API_KEY`: Copy value from GitHub Secrets
+   - `GEMINI_API_KEY`: Copy value from GitHub Secrets
+4. Render will automatically deploy on push to main
+
+#### Method 2: Heroku
+```bash
+# After setting up Heroku app
+heroku config:set YOUTUBE_API_KEY="<value_from_github_secret>" --app your-app-name
+heroku config:set GEMINI_API_KEY="<value_from_github_secret>" --app your-app-name
+```
+
+#### Method 3: Custom Server with GitHub Actions
+Use the provided workflow at `.github/workflows/deploy-proxy-server.yml` which automatically injects secrets during deployment.
+
+#### Method 4: Manual Deployment
+```bash
+# On your server
+export YOUTUBE_API_KEY="value_here"
+export GEMINI_API_KEY="value_here"
+npm start
+```
+
+### Rotating API Keys
+
+If you need to rotate (change) your API keys:
+
+1. **Generate new keys** at Google Cloud Console
+2. **Update GitHub Secrets:**
+   - Go to repository Settings → Secrets → Actions
+   - Click on secret name → Update secret
+   - Paste new value
+3. **Update hosting environment** (Render, Heroku, etc.)
+4. **Restart your server** to load new keys
+
 ## File Permissions for AI Summaries
 
 The `ai-summaries.json` file stores AI-generated summaries and may contain sensitive military information. Proper file permissions are critical.
