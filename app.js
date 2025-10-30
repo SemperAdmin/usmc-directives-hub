@@ -21,7 +21,7 @@ const RSS_FEEDS = {
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
   semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss",
   alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
-  secnav: "https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml"
+  secnav: "https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx?SPZ=rss"
 };
 
 // YouTube Data API v3 configuration
