@@ -2197,7 +2197,8 @@ function renderCompactView(arr) {
     if (config.showAISummary) {
       actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">AI Summary</button>`;
     }
-    if (config.showDetails) {
+    // Details button: Only show for MARADMINs when AI Summary is enabled
+    if (item.type === 'maradmin' && config.showAISummary) {
       actionButtons += `<button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">Details</button>`;
     }
     // Note: Copy link feature removed per APPLICATION_CONFIG
