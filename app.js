@@ -1,7 +1,7 @@
 // APPLICATION_CONFIG: UI, layout, and message-type rendering rules
 const APPLICATION_CONFIG = {
   MESSAGE_TEMPLATES: {
-    maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: false },
+    maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: true },
     mcpub: { subjectSource: 'summary', showAISummary: false, showDetails: false },
     almar: { subjectSource: 'summary', showAISummary: false, showDetails: false },
     semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: true, linkSource: 'semperadminLink' },
