@@ -19,7 +19,7 @@ const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
-  semperadmin: "https://rss.app/feeds/HFohMep8OQ0JVoKW.xml"
+  semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss"
 };
 
 // YouTube Data API v3 configuration
