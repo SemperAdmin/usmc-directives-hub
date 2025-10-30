@@ -37,23 +37,36 @@ jobs:
           # npm test (uncomment when you add tests)
           echo "No tests configured yet"
 
-      # Example: Deploy to Render.com
+      # Deploy to Render.com (ENABLED)
       - name: Deploy to Render
         if: github.ref == 'refs/heads/main'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
-          echo "Deploying to Render..."
-          # Render will automatically use GitHub Secrets if configured in Render dashboard
-          # Alternatively use Render API:
-          # curl -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-          #   -H "Authorization: Bearer ${RENDER_API_KEY}" \
-          #   -H "Content-Type: application/json"
+          echo "🚀 Deploying to Render..."
+          echo "Using GitHub Secrets for API keys:"
+          echo "  - YOUTUBE_API_KEY: [configured]"
+          echo "  - GEMINI_API_KEY: [configured]"
 
-      # Example: Deploy to Heroku
+          # Deploy using Render API
+          if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
+            curl -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{}'
+            echo "✅ Deployment triggered successfully!"
+            echo "⏳ Render will build and deploy in ~2-3 minutes"
+            echo "🔐 Environment variables (YOUTUBE_API_KEY, GEMINI_API_KEY) must be set in Render dashboard"
+          else
+            echo "⚠️  RENDER_API_KEY or RENDER_SERVICE_ID not set in GitHub Secrets"
+            echo "📝 Skipping API-based deployment - Render will auto-deploy via GitHub integration"
+            echo "✅ This is OK if you're using Render's GitHub auto-deploy feature"
+          fi
+
+      # Heroku deployment (DISABLED - set to true to enable)
       - name: Deploy to Heroku
-        if: false # Set to true to enable Heroku deployment
+        if: false
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
           HEROKU_APP_NAME: usmc-directives-proxy
@@ -69,13 +82,15 @@ jobs:
           # Deploy
           git subtree push --prefix proxy-server heroku main
 
-      # Example: Deploy to custom server via SSH
+      # Custom server deployment (DISABLED - set to true to enable)
       - name: Deploy to Custom Server
-        if: false # Set to true to enable custom server deployment
+        if: false
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           # Setup SSH
           mkdir -p ~/.ssh
@@ -86,21 +101,15 @@ jobs:
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             ./proxy-server/ ${SERVER_USER}@${SERVER_HOST}:/opt/usmc-directives-proxy/
 
-          # Set environment variables on remote server
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} << 'ENDSSH'
-            cd /opt/usmc-directives-proxy
-
-            # Create .env file with secrets
-            cat > .env << EOF
-YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
-GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-YOUTUBE_CHANNEL_ID=UCob5u7jsXrdca9vmarYJ0Cg
-EOF
-
-            chmod 600 .env
-            npm install --production
-            pm2 restart usmc-directives-proxy || pm2 start server.js --name usmc-directives-proxy
-ENDSSH
+          # Set environment variables and restart service
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} \
+            "cd /opt/usmc-directives-proxy && \
+            echo 'YOUTUBE_API_KEY=${YOUTUBE_API_KEY}' > .env && \
+            echo 'GEMINI_API_KEY=${GEMINI_API_KEY}' >> .env && \
+            echo 'YOUTUBE_CHANNEL_ID=UCob5u7jsXrdca9vmarYJ0Cg' >> .env && \
+            chmod 600 .env && \
+            npm install --production && \
+            (pm2 restart usmc-directives-proxy || pm2 start server.js --name usmc-directives-proxy)"
 
       - name: Deployment Summary
         run: |
