@@ -20,7 +20,7 @@ const RSS_FEEDS = {
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
   semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss",
-  alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
+  alnav: "https://www.navy.mil/Leadership/Chief-of-Naval-Personnel/NAVADMIN-ALNAV/rss.xml",
   secnav: "https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx?SPZ=rss"
 };
 
