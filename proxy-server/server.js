@@ -5,8 +5,18 @@ const https = require('https');
 const fs = require('fs').promises;
 const path = require('path');
 
+// Rate limiting to prevent abuse
+const rateLimit = require('express-rate-limit');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// API Keys - Load from environment variables for security
+// Set these in your hosting environment (Render, Heroku, etc.)
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyC2dl-YRdL6Fl5j3zAbTL2ATPRBfgY02C8";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA0SE-MOkBQY2Wzf5r1WKzyDo2POK4dQkI";
+const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
 // Enable CORS for your GitHub Pages site
 app.use(cors({
@@ -17,6 +27,26 @@ app.use(cors({
 
 // Enable JSON body parsing
 app.use(express.json());
+
+// Rate limiting middleware
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: { success: false, error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const summaryLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // Limit AI summary generation to 10 per minute
+  message: { success: false, error: 'Too many summary requests, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
 
 // Disable SSL verification for Navy sites (they may have certificate issues)
 const httpsAgent = new https.Agent({
@@ -168,6 +198,121 @@ app.get('/api/summaries', async (req, res) => {
   } catch (error) {
     console.error('Error retrieving summaries:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Proxy endpoint for YouTube API
+app.get('/api/youtube/videos', async (req, res) => {
+  try {
+    const { pageToken, maxResults = 50 } = req.query;
+
+    const params = {
+      part: 'snippet',
+      channelId: YOUTUBE_CHANNEL_ID,
+      maxResults: Math.min(maxResults, 50),
+      order: 'date',
+      type: 'video',
+      key: YOUTUBE_API_KEY
+    };
+
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+
+    const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      params,
+      timeout: 30000
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('YouTube API error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: 'Failed to fetch YouTube videos',
+      message: error.message
+    });
+  }
+});
+
+// Proxy endpoint for Gemini API (with stricter rate limiting)
+app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
+  try {
+    const { content, messageType } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ success: false, error: 'Content is required' });
+    }
+
+    const prompt = `You are a military document summarizer. Your task is to analyze this ${messageType?.toUpperCase() || 'MILITARY'} message and create a structured summary.
+
+YOU MUST FOLLOW THIS EXACT FORMAT - DO NOT DEVIATE:
+
+💰 [WRITE THE MAIN TITLE IN ALL CAPS HERE] 💰
+---
+**5W OVERVIEW:**
+* **WHO:** [Write who is affected - units, personnel, ranks, etc.]
+* **WHAT:** [Write what is the main action, change, or requirement]
+* **WHEN:** [Write the effective date or deadline - format as "DD MMM YYYY" or "N/A"]
+* **WHERE:** [Write where this applies - location, command, worldwide, etc.]
+* **WHY:** [Write the reason or purpose in one sentence]
+
+---
+🎯 **KEY POINTS/ACTIONS:**
+
+[WRITE SECTION HEADERS IN ALL CAPS]
+• [Bullet point with key action or information]
+• [Another bullet point]
+• [Continue with all important details]
+
+[ANOTHER SECTION HEADER IN ALL CAPS]
+• [More bullet points as needed]
+
+CRITICAL RULES:
+1. Start with the title line EXACTLY as shown above
+2. Include ALL FIVE W's in the 5W OVERVIEW section - do not skip any
+3. Keep each W answer to ONE LINE
+4. Use bullet points (•) for all lists
+5. Section headers MUST be in ALL CAPS
+6. Keep total length under 500 words
+7. Focus on actionable information and deadlines
+
+Message to analyze:
+${content}`;
+
+    const response = await axios.post(
+      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        }
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000
+      }
+    );
+
+    const summary = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'Summary generation failed';
+    res.json({ success: true, summary });
+
+  } catch (error) {
+    console.error('Gemini API error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: 'Failed to generate summary',
+      message: error.message
+    });
   }
 });
 

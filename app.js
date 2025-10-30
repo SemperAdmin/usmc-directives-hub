@@ -19,30 +19,23 @@ const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
-  semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss"
+  semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss",
+  alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
+  secnav: "https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml"
 };
 
 // YouTube Data API v3 configuration
-const YOUTUBE_API_KEY = "AIzaSyC2dl-YRdL6Fl5j3zAbTL2ATPRBfgY02C8";
-const YOUTUBE_CHANNEL_ID = "UCob5u7jsXrdca9vmarYJ0Cg";
+// API keys moved to backend for security - DO NOT add keys here
 const YOUTUBE_MAX_RESULTS = 500; // per page
 
-// ALNAV URLs - References/Messages structure
+// ALNAV URLs - Now using RSS feed (deprecated HTML scraping removed)
 function getAlnavUrls() {
-  // Current and previous year to ensure we catch all recent messages
-  const currentYear = new Date().getFullYear();
-  const previousYear = currentYear - 1;
-  return [
-    `https://rss.app/feeds/bXh2lQfxozJQMNec.xml/`,
-    `https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${previousYear}/`
-  ];
+  return [RSS_FEEDS.alnav];
 }
 
-// SECNAV URLs - Secretary of the Navy directives (SharePoint table)
+// SECNAV URLs - Now using RSS feed (deprecated HTML scraping removed)
 function getSecnavUrls() {
-  // SECNAV and OPNAV are both in the same SharePoint table
-  // We'll filter by the Echelon column
-  return ['https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml'];
+  return [RSS_FEEDS.secnav];
 }
 
 // DoD FMR URLs - Department of Defense Financial Management Regulation
@@ -92,9 +85,7 @@ const clearSearchBtn = document.getElementById("clearSearch");
 const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 const quickFilterButtons = document.querySelectorAll(".quick-filter-btn");
 
-// Gemini API configuration
-const GEMINI_API_KEY = "AIzaSyA0SE-MOkBQY2Wzf5r1WKzyDo2POK4dQkI";
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+// Gemini API configuration - API keys moved to backend for security
 
 let currentMessages = [];
 let allMaradmins = []; // Store all MARADMINs
@@ -129,7 +120,8 @@ refreshBtn.addEventListener("click", () => {
   });
 });
 themeToggle.addEventListener("click", toggleTheme);
-searchInput.addEventListener("input", filterMessages);
+// Debounce search input for better performance (300ms delay)
+searchInput.addEventListener("input", debounce(filterMessages, 300));
 dateRangeSelect.addEventListener("change", handleDateRangeChange);
 clearSearchBtn.addEventListener("click", clearSearch);
 messageTypeButtons.forEach(btn => {
@@ -178,11 +170,12 @@ async function fetchAllFeeds() {
   // Fetch all feed types
   await fetchFeed('maradmin', RSS_FEEDS.maradmin);
   await fetchFeed('mcpub', RSS_FEEDS.mcpub);
-  await fetchAlnavMessages(); // Scrape directly from Navy website
+  await fetchFeed('alnav', RSS_FEEDS.alnav); // Fetch from RSS feed
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
   await fetchYouTubeVideos(); // Fetch from YouTube Data API
-  await fetchSecnavMessages(); // Scrape SECNAV and OPNAV directives from Navy website
+  await fetchFeed('secnav', RSS_FEEDS.secnav); // Fetch SECNAV from RSS feed
+  await fetchFeed('opnav', RSS_FEEDS.secnav); // OPNAV is in same feed, will be filtered
 
   // Fetch DoD Forms
   await fetchDodForms();
@@ -226,7 +219,11 @@ async function fetchFeed(type, url) {
         // Last proxy failed
         const messages = type === 'maradmin' ? allMaradmins : allMcpubs;
         if (messages.length === 0) {
-          showError(`Unable to fetch ${type.toUpperCase()}s. All proxies failed.`);
+          showError(
+            `Unable to fetch ${type.toUpperCase()}s.`,
+            'All connection methods failed. Please check your internet connection or try again later.',
+            'error'
+          );
         }
       }
     }
@@ -289,7 +286,11 @@ async function tryProxyFetch(proxy, rssUrl) {
   return text;
 }
 
-// Process the RSS data once fetched
+/**
+ * Process the RSS data once fetched
+ * @param {string} text - Raw RSS/XML text
+ * @param {string} type - Message type (maradmin, mcpub, alnav, etc.)
+ */
 function processRSSData(text, type) {
   const parsed = parseRSS(text, type);
   parsed.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
@@ -304,8 +305,19 @@ function processRSSData(text, type) {
     allSemperAdminPosts = parsed;
   } else if (type === 'youtube') {
     allYouTubePosts = parsed;
+  } else if (type === 'alnav') {
+    allAlnavs = parsed;
+  } else if (type === 'secnav') {
+    // Filter SECNAV from the feed
+    allSecnavs = parsed.filter(msg =>
+      msg.id && (msg.id.includes('SECNAV') || msg.subject?.includes('SECNAV'))
+    );
+  } else if (type === 'opnav') {
+    // Filter OPNAV from the feed
+    allOpnavs = parsed.filter(msg =>
+      msg.id && (msg.id.includes('OPNAV') || msg.subject?.includes('OPNAV'))
+    );
   }
-
 
   cacheData();
   console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
@@ -651,19 +663,24 @@ async function fetchYouTubeVideos() {
 
     do {
       try {
+        // Use backend API endpoint instead of direct YouTube API call
+        const apiUrl = CUSTOM_PROXY_URL
+          ? `${CUSTOM_PROXY_URL}/api/youtube/videos`
+          : null;
+
+        if (!apiUrl) {
+          console.warn('Proxy server not configured. Skipping YouTube fetch.');
+          break;
+        }
+
         // Build API URL
-        const url = new URL('https://www.googleapis.com/youtube/v3/search');
-        url.searchParams.set('key', YOUTUBE_API_KEY);
-        url.searchParams.set('channelId', YOUTUBE_CHANNEL_ID);
-        url.searchParams.set('part', 'snippet');
-        url.searchParams.set('order', 'date');
-        url.searchParams.set('maxResults', YOUTUBE_MAX_RESULTS.toString());
-        url.searchParams.set('type', 'video');
+        const url = new URL(apiUrl);
+        url.searchParams.set('maxResults', '50'); // Server enforces max of 50
         if (pageToken) {
           url.searchParams.set('pageToken', pageToken);
         }
 
-        // Fetch from API
+        // Fetch from backend API
         const response = await fetch(url.toString());
 
         if (!response.ok) {
@@ -1439,54 +1456,68 @@ async function generateAISummary(message, buttonElement) {
   }
 }
 
-// Call Gemini API to generate formatted summary
+/**
+ * Call Gemini API to generate formatted summary
+ * @param {string} content - Message content to summarize
+ * @param {Object} message - Message object with metadata
+ * @returns {Promise<string>} Formatted summary text
+ */
 async function callGeminiAPI(content, message) {
-  const prompt = `Analyze this Marine Corps ${message.type.toUpperCase()} message and create a structured summary following this exact format, focusing on the 5W concept (Who, What, When, Where, Why):
+  const prompt = `You are a military document summarizer. Your task is to analyze this ${message.type.toUpperCase()} message and create a structured summary.
 
-💰 [TITLE IN CAPS] 💰
+YOU MUST FOLLOW THIS EXACT FORMAT - DO NOT DEVIATE:
+
+💰 [WRITE THE MAIN TITLE IN ALL CAPS HERE] 💰
 ---
 **5W OVERVIEW:**
-* **WHO** is the primary audience/responsible party? (Unit, Personnel, etc.)
-* **WHAT** is the main subject/task/change?
-* **WHEN** is it effective or when is the deadline? (Date if mentioned, or N/A)
-* **WHERE** does this apply (Location, Command, etc.)? (Or N/A)
-* **WHY** is this message being issued (Reason/Purpose)?
+* **WHO:** [Write who is affected - units, personnel, ranks, etc.]
+* **WHAT:** [Write what is the main action, change, or requirement]
+* **WHEN:** [Write the effective date or deadline - format as "DD MMM YYYY" or "N/A"]
+* **WHERE:** [Write where this applies - location, command, worldwide, etc.]
+* **WHY:** [Write the reason or purpose in one sentence]
 
 ---
 🎯 **KEY POINTS/ACTIONS:**
 
-[SECTION HEADERS IN CAPS:]
-[Content organized by logical sections]
+[WRITE SECTION HEADERS IN ALL CAPS]
+• [Bullet point with key action or information]
+• [Another bullet point]
+• [Continue with all important details]
 
-**INSTRUCTIONS FOR SUMMARY GENERATION:**
-1.  **Format:** Strictly adhere to the output format provided above.
-2.  **5W:** Keep the **5W OVERVIEW** section extremely concise, addressing each point directly.
-3.  **Clarity:** Use relevant emojis (💰 📅 ⚠️ 🎯 📋 ✅ ❌ 🔔 📢 etc.) sparingly to highlight important information.
-4.  **Structure:** Break down the main content into clear sections with **HEADERS IN CAPS**.
-5.  **Detail:** Use bullet points (•) for lists within the **KEY POINTS/ACTIONS** section.
-6.  **Actionable:** Highlight **deadlines**, **actions required**, and **important dates** within the main content.
+[ANOTHER SECTION HEADER IN ALL CAPS]
+• [More bullet points as needed]
 
-Message content:
+CRITICAL RULES:
+1. Start with the title line EXACTLY as shown above
+2. Include ALL FIVE W's in the 5W OVERVIEW section - do not skip any
+3. Keep each W answer to ONE LINE
+4. Use bullet points (•) for all lists
+5. Section headers MUST be in ALL CAPS
+6. Keep total length under 500 words
+7. Focus on actionable information and deadlines
+
+Message to analyze:
 ${content}`;
 
+
   try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    // Use backend API endpoint instead of direct Gemini API call
+    const apiUrl = CUSTOM_PROXY_URL
+      ? `${CUSTOM_PROXY_URL}/api/gemini/summarize`
+      : null;
+
+    if (!apiUrl) {
+      throw new Error('Proxy server not configured. Please set CUSTOM_PROXY_URL.');
+    }
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.4,
-          topK: 32,
-          topP: 1,
-          maxOutputTokens: 2048,
-        }
+        content: content,
+        messageType: message.type
       })
     });
 
@@ -1495,7 +1526,7 @@ ${content}`;
     }
 
     const data = await response.json();
-    const summary = data.candidates[0]?.content?.parts[0]?.text || 'Summary generation failed';
+    const summary = data.success ? data.summary : 'Summary generation failed';
 
     return summary;
 
@@ -1631,6 +1662,18 @@ function parseRSS(xmlText, type){
         subject = title.replace(/ALMAR\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
       } else {
         id = `ALMAR ${index + 1}`;
+        numericId = String(index + 1);
+        subject = title;
+      }
+    } else if (type === 'secnav' || type === 'opnav') {
+      // Extract SECNAV/OPNAV ID from title (e.g., "SECNAV 5000.1", "OPNAV 1234.5")
+      const directiveMatch = title.match(/(SECNAV|OPNAV)\s+[\d.]+[A-Z]*/i);
+      if (directiveMatch) {
+        id = directiveMatch[0];
+        numericId = directiveMatch[0];
+        subject = title.replace(/(SECNAV|OPNAV)\s+[\d.]+[A-Z]*\s*[-:]?\s*/i, "").trim();
+      } else {
+        id = `${type.toUpperCase()} ${index + 1}`;
         numericId = String(index + 1);
         subject = title;
       }
@@ -2425,16 +2468,75 @@ function isMessageNew(pubDate) {
   return messageDate.getTime() === today.getTime();
 }
 
-function showError(msg) {
-  errorDiv.innerHTML = msg;
-  errorDiv.classList.remove("hidden");
+/**
+ * Show error message to user with detailed information
+ * @param {string} msg - Main error message
+ * @param {string} details - Additional details (optional)
+ * @param {string} type - Error type: 'error', 'warning', 'info'
+ */
+function showError(msg, details = null, type = 'error') {
+  let fullMessage = msg;
+  if (details) {
+    fullMessage += `<br><small>${details}</small>`;
+  }
 
-  // Auto-hide after showing cached data successfully
-  if (allMaradmins.length > 0) {
+  errorDiv.innerHTML = fullMessage;
+  errorDiv.classList.remove("hidden");
+  errorDiv.className = `error-message ${type}`;
+
+  // Auto-hide based on severity (and if we have cached data)
+  const hasData = allMaradmins.length > 0 || allMcpubs.length > 0;
+  if (hasData) {
+    const hideDelay = type === 'info' ? 5000 : type === 'warning' ? 10000 : 15000;
     setTimeout(() => {
       errorDiv.classList.add("hidden");
-    }, 10000);
+    }, hideDelay);
   }
+}
+
+/**
+ * Retry a fetch operation with exponential backoff
+ * @param {Function} fetchFn - Function that returns a Promise
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @param {string} operationName - Name of operation for logging
+ * @returns {Promise} Result of the fetch operation
+ */
+async function retryWithBackoff(fetchFn, maxRetries = 3, operationName = 'operation') {
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fetchFn();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s delay
+        console.log(`${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw new Error(`${operationName} failed after ${maxRetries + 1} attempts: ${lastError.message}`);
+}
+
+/**
+ * Debounce function to limit rate of function calls
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 function cacheData() {
