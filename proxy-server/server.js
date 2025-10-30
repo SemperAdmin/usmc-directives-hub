@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const https = require('https');
+const fs = require('fs').promises;
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,14 +11,42 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS for your GitHub Pages site
 app.use(cors({
   origin: ['https://semperadmin.github.io', 'http://localhost:8000'],
-  methods: ['GET'],
+  methods: ['GET', 'POST', 'PUT'],
   credentials: true
 }));
+
+// Enable JSON body parsing
+app.use(express.json());
 
 // Disable SSL verification for Navy sites (they may have certificate issues)
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
+
+// AI Summary storage configuration
+const SUMMARIES_FILE = path.join(__dirname, 'ai-summaries.json');
+
+// Load summaries from file
+async function loadSummaries() {
+  try {
+    const data = await fs.readFile(SUMMARIES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    // File doesn't exist yet, return empty object
+    return {};
+  }
+}
+
+// Save summaries to file
+async function saveSummaries(summaries) {
+  try {
+    await fs.writeFile(SUMMARIES_FILE, JSON.stringify(summaries, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error saving summaries:', error);
+    return false;
+  }
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -78,6 +108,69 @@ app.get('/api/navy-directives', async (req, res) => {
   }
 });
 
+// Get AI summary for a specific message
+app.get('/api/summary/:messageKey', async (req, res) => {
+  try {
+    const messageKey = req.params.messageKey;
+    const summaries = await loadSummaries();
+
+    if (summaries[messageKey]) {
+      res.json({
+        success: true,
+        summary: summaries[messageKey].summary,
+        timestamp: summaries[messageKey].timestamp
+      });
+    } else {
+      res.status(404).json({ success: false, message: 'Summary not found' });
+    }
+  } catch (error) {
+    console.error('Error retrieving summary:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Save AI summary for a specific message
+app.post('/api/summary', async (req, res) => {
+  try {
+    const { messageKey, summary, messageType, messageId } = req.body;
+
+    if (!messageKey || !summary) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const summaries = await loadSummaries();
+    summaries[messageKey] = {
+      summary,
+      messageType,
+      messageId,
+      timestamp: new Date().toISOString()
+    };
+
+    const saved = await saveSummaries(summaries);
+
+    if (saved) {
+      res.json({ success: true, message: 'Summary saved successfully' });
+    } else {
+      res.status(500).json({ success: false, error: 'Failed to save summary' });
+    }
+  } catch (error) {
+    console.error('Error saving summary:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get all summaries (for debugging/admin purposes)
+app.get('/api/summaries', async (req, res) => {
+  try {
+    const summaries = await loadSummaries();
+    const count = Object.keys(summaries).length;
+    res.json({ success: true, count, summaries });
+  } catch (error) {
+    console.error('Error retrieving summaries:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Generic proxy endpoint (use with caution)
 app.get('/api/proxy', async (req, res) => {
   const targetUrl = req.query.url;
@@ -131,4 +224,7 @@ app.listen(PORT, () => {
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`ALNAV endpoint: http://localhost:${PORT}/api/alnav/2025`);
   console.log(`SECNAV endpoint: http://localhost:${PORT}/api/navy-directives`);
+  console.log(`AI Summaries endpoint: http://localhost:${PORT}/api/summaries`);
+  console.log(`Save summary: POST http://localhost:${PORT}/api/summary`);
+  console.log(`Get summary: GET http://localhost:${PORT}/api/summary/:messageKey`);
 });
