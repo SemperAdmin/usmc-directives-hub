@@ -62,7 +62,7 @@ const DOD_FORMS_URLS = [
 //   - Cloudflare Worker: "https://usmc-directives-proxy.your-subdomain.workers.dev"
 //   - Local server: "http://localhost:3000"
 // Leave empty to use fallback CORS proxies (unreliable)
-const CUSTOM_PROXY_URL = "";
+const CUSTOM_PROXY_URL = "https://usmc-directives-proxy.onrender.com";
 
 // Multiple CORS proxies to try as fallbacks (these are unreliable)
 const CORS_PROXIES = [
