@@ -280,40 +280,68 @@ app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Content is required' });
     }
 
-    const prompt = `You are a military document summarizer. Your task is to analyze this ${messageType?.toUpperCase() || 'MILITARY'} message and create a structured summary.
+    const prompt = `You are a military document summarizer. Analyze the ${messageType?.toUpperCase() || 'MILITARY'} message below and provide a summary in the EXACT format specified.
 
-YOU MUST FOLLOW THIS EXACT FORMAT - DO NOT DEVIATE:
+REQUIRED OUTPUT FORMAT (copy this structure exactly):
 
-💰 [WRITE THE MAIN TITLE IN ALL CAPS HERE] 💰
+💰 [TITLE OF MESSAGE IN ALL CAPS] 💰
 ---
 **5W OVERVIEW:**
-* **WHO:** [Write who is affected - units, personnel, ranks, etc.]
-* **WHAT:** [Write what is the main action, change, or requirement]
-* **WHEN:** [Write the effective date or deadline - format as "DD MMM YYYY" or "N/A"]
-* **WHERE:** [Write where this applies - location, command, worldwide, etc.]
-* **WHY:** [Write the reason or purpose in one sentence]
+* **WHO:** [affected personnel/units]
+* **WHAT:** [main action/change/requirement]
+* **WHEN:** [effective date in format "01 JAN 2025" or "N/A"]
+* **WHERE:** [location/command or "All Marines" or "N/A"]
+* **WHY:** [reason/purpose in one sentence]
 
 ---
 🎯 **KEY POINTS/ACTIONS:**
 
-[WRITE SECTION HEADERS IN ALL CAPS]
-• [Bullet point with key action or information]
-• [Another bullet point]
-• [Continue with all important details]
+**[FIRST SECTION IN CAPS]:**
+• [key point or action item]
+• [key point or action item]
 
-[ANOTHER SECTION HEADER IN ALL CAPS]
-• [More bullet points as needed]
+**[SECOND SECTION IN CAPS]:**
+• [key point or action item]
+• [key point or action item]
 
-CRITICAL RULES:
-1. Start with the title line EXACTLY as shown above
-2. Include ALL FIVE W's in the 5W OVERVIEW section - do not skip any
-3. Keep each W answer to ONE LINE
-4. Use bullet points (•) for all lists
-5. Section headers MUST be in ALL CAPS
-6. Keep total length under 500 words
-7. Focus on actionable information and deadlines
+EXAMPLE OUTPUT:
 
-Message to analyze:
+💰 ANNUAL TRAINING REQUIREMENTS FOR FY 2025 💰
+---
+**5W OVERVIEW:**
+* **WHO:** All Active Duty and Reserve Marines
+* **WHAT:** Mandatory completion of annual training requirements
+* **WHEN:** 31 MAR 2025
+* **WHERE:** All Marine Corps installations worldwide
+* **WHY:** Ensure readiness and compliance with DoD training standards
+
+---
+🎯 **KEY POINTS/ACTIONS:**
+
+**REQUIRED TRAINING:**
+• Annual Cyber Awareness Challenge - due 31 JAN 2025
+• Sexual Assault Prevention training - due 28 FEB 2025
+• Operational Security (OPSEC) training - due 31 MAR 2025
+
+**COMPLETION PROCESS:**
+• Access training via MarineNet portal
+• Complete assessments with 80% minimum score
+• Submit completion certificates to unit training officer
+
+**NON-COMPLIANCE:**
+• May result in negative administrative action
+• Unit commanders will track and report compliance monthly
+
+STRICT REQUIREMENTS:
+1. The 5W OVERVIEW section is MANDATORY - all 5 must be answered
+2. Keep each W answer to ONE line maximum
+3. Use bullet points (•) for all lists
+4. Section headers in KEY POINTS must be ALL CAPS and end with colon
+5. Keep total output under 400 words
+6. Focus only on actionable information and critical deadlines
+
+Now analyze this message:
+
 ${content}`;
 
     const response = await axios.post(

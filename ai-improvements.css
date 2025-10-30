@@ -1,0 +1,155 @@
+/* Additional CSS for AI Summary improvements */
+
+/* Cache indicator badge */
+.cache-indicator {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  background: #4CAF50;
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.cache-indicator.new {
+  background: #FF9800;
+  animation: pulse 2s ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Loading state for AI button */
+.compact-ai-btn.loading {
+  animation: buttonLoading 1.5s ease-in-out infinite;
+}
+
+@keyframes buttonLoading {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Active state for AI Summary button */
+.compact-ai-btn.active {
+  background: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.compact-ai-btn.active:hover {
+  background: #1976D2;
+  border-color: #1976D2;
+}
+
+/* Fade in animation for Details button */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Improved AI Summary display */
+.ai-summary-display {
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-left: 4px solid #2196F3;
+  border-radius: 4px;
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.ai-summary-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2196F3;
+}
+
+.ai-summary-text {
+  line-height: 1.8;
+  color: #333;
+}
+
+/* Dark theme for new elements */
+body.dark-theme .cache-indicator {
+  background: #66BB6A;
+}
+
+body.dark-theme .cache-indicator.new {
+  background: #FFA726;
+}
+
+body.dark-theme .compact-ai-btn.active {
+  background: #42A5F5;
+  border-color: #42A5F5;
+}
+
+body.dark-theme .compact-ai-btn.active:hover {
+  background: #2196F3;
+  border-color: #2196F3;
+}
+
+body.dark-theme .ai-summary-display {
+  background: #2a2a2a;
+  border-left-color: #42A5F5;
+}
+
+body.dark-theme .ai-summary-header {
+  border-bottom-color: #404040;
+}
+
+body.dark-theme .ai-summary-title {
+  color: #42A5F5;
+}
+
+body.dark-theme .ai-summary-text {
+  color: #e0e0e0;
+}
+
+/* Compact expand button improvements */
+.compact-expand-btn {
+  margin-left: 5px;
+  transition: all 0.2s ease;
+}
+
+/* Error message improvements */
+.error-message.warning {
+  background: #FFF3CD;
+  border-left-color: #FFC107;
+  color: #856404;
+}
+
+.error-message.info {
+  background: #D1ECF1;
+  border-left-color: #17A2B8;
+  color: #0C5460;
+}
+
+body.dark-theme .error-message.warning {
+  background: #3e3000;
+  color: #FFC107;
+}
+
+body.dark-theme .error-message.info {
+  background: #003544;
+  color: #17A2B8;
+}
