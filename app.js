@@ -25,7 +25,7 @@ const RSS_FEEDS = {
 // YouTube Data API v3 configuration
 const YOUTUBE_API_KEY = "AIzaSyC2dl-YRdL6Fl5j3zAbTL2ATPRBfgY02C8";
 const YOUTUBE_CHANNEL_ID = "UCob5u7jsXrdca9vmarYJ0Cg";
-const YOUTUBE_MAX_RESULTS = 50; // per page
+const YOUTUBE_MAX_RESULTS = 500; // per page
 
 // ALNAV URLs - References/Messages structure
 function getAlnavUrls() {
