@@ -4,7 +4,7 @@ const APPLICATION_CONFIG = {
     maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: true },
     mcpub: { subjectSource: 'summary', showAISummary: false, showDetails: false },
     almar: { subjectSource: 'summary', showAISummary: false, showDetails: false },
-    semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: true, linkSource: 'semperadminLink' },
+    semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink' },
     dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false },
     dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false },
     youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true },
