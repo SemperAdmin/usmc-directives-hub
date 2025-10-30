@@ -2195,11 +2195,11 @@ function renderCompactView(arr) {
     // Build action buttons based on configuration
     let actionButtons = '';
     if (config.showAISummary) {
-      actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">AI Summary</button>`;
+      actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">🤖 AI Summary</button>`;
     }
-    // Details button: Only show for MARADMINs when AI Summary is enabled
+    // Details button: Hidden initially, will be shown after AI Summary is generated (for MARADMINs only)
     if (item.type === 'maradmin' && config.showAISummary) {
-      actionButtons += `<button class="compact-expand-btn" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">Details</button>`;
+      actionButtons += `<button class="compact-expand-btn" id="details-btn-${index}" onclick="toggleCompactDetails(${index}, currentMessages[${index}])" style="display:none;">📋 Details</button>`;
     }
     // Note: Copy link feature removed per APPLICATION_CONFIG
 
@@ -2250,13 +2250,29 @@ function renderCompactView(arr) {
 function toggleCompactDetails(index, message) {
   const detailsRow = document.getElementById(`compact-details-${index}`);
   const btn = event.target;
+  const aiSummary = detailsRow.querySelector('.ai-summary-display');
 
-  if (detailsRow.style.display === 'block') {
-    detailsRow.style.display = 'none';
-    btn.textContent = 'Details';
+  // Don't close the details row if AI summary is showing - just hide/show the message details
+  const summarySection = detailsRow.querySelector('.compact-summary');
+  const descSection = detailsRow.querySelector('.compact-description');
+  const categorySection = detailsRow.querySelector('.compact-category');
+  const actionsSection = detailsRow.querySelector('.compact-actions');
+
+  if (btn.textContent.includes('Hide')) {
+    // Hide message details but keep AI summary visible
+    if (summarySection) summarySection.style.display = 'none';
+    if (descSection) descSection.style.display = 'none';
+    if (categorySection) categorySection.style.display = 'none';
+    if (actionsSection) actionsSection.style.display = 'none';
+    btn.textContent = '📋 Details';
   } else {
+    // Show message details
     detailsRow.style.display = 'block';
-    btn.textContent = 'Hide';
+    if (summarySection) summarySection.style.display = 'block';
+    if (descSection) descSection.style.display = 'block';
+    if (categorySection) categorySection.style.display = 'block';
+    if (actionsSection) actionsSection.style.display = 'block';
+    btn.textContent = '📋 Hide Details';
   }
 }
 
@@ -2264,6 +2280,7 @@ function toggleCompactDetails(index, message) {
 async function toggleAISummary(index, message) {
   const btn = event.target;
   const detailsRow = document.getElementById(`compact-details-${index}`);
+  const detailsBtn = document.getElementById(`details-btn-${index}`);
 
   if (!detailsRow) return;
 
@@ -2273,10 +2290,18 @@ async function toggleAISummary(index, message) {
   if (existingSummary) {
     if (existingSummary.style.display === 'none') {
       existingSummary.style.display = 'block';
-      btn.textContent = 'Hide Summary';
+      detailsRow.style.display = 'block';
+      btn.textContent = '🤖 Hide Summary';
+      btn.classList.add('active');
+      // Show details button when summary is visible
+      if (detailsBtn) detailsBtn.style.display = 'inline-block';
     } else {
       existingSummary.style.display = 'none';
-      btn.textContent = 'AI Summary';
+      detailsRow.style.display = 'none';
+      btn.textContent = '🤖 AI Summary';
+      btn.classList.remove('active');
+      // Hide details button when summary is hidden
+      if (detailsBtn) detailsBtn.style.display = 'none';
     }
     return;
   }
@@ -2285,15 +2310,21 @@ async function toggleAISummary(index, message) {
   try {
     const messageKey = `${message.type}_${message.numericId}`;
     let summary = summaryCache[messageKey] || message.aiSummary;
+    let isCached = !!summary;
 
     if (!summary) {
       btn.disabled = true;
-      btn.textContent = 'Generating...';
+      btn.innerHTML = '⏳ Generating...';
+      btn.classList.add('loading');
 
       summary = await generateAISummary(message, btn);
 
       btn.disabled = false;
+      btn.classList.remove('loading');
     }
+
+    // Show the details row
+    detailsRow.style.display = 'block';
 
     // Add summary to details row - properly escape HTML
     const summaryDiv = document.createElement('div');
@@ -2301,7 +2332,8 @@ async function toggleAISummary(index, message) {
 
     const header = document.createElement('div');
     header.className = 'ai-summary-header';
-    header.innerHTML = '<span class="ai-summary-title">🤖 AI-Generated Summary</span>';
+    const cacheIndicator = isCached ? '<span class="cache-indicator" title="Loaded from cache">⚡ Cached</span>' : '<span class="cache-indicator new" title="Newly generated">✨ New</span>';
+    header.innerHTML = `<span class="ai-summary-title">🤖 AI-Generated Summary</span>${cacheIndicator}`;
 
     const textDiv = document.createElement('div');
     textDiv.className = 'ai-summary-text';
@@ -2319,13 +2351,27 @@ async function toggleAISummary(index, message) {
       content.appendChild(summaryDiv);
     }
 
-    btn.textContent = 'Hide Summary';
+    btn.textContent = '🤖 Hide Summary';
+    btn.classList.add('active');
+
+    // Show the Details button now that AI Summary has been generated (MARADMINs only)
+    if (detailsBtn) {
+      detailsBtn.style.display = 'inline-block';
+      detailsBtn.classList.add('fade-in');
+    }
 
   } catch (error) {
     console.error('Error displaying AI summary:', error);
     btn.disabled = false;
-    btn.textContent = '❌ Retry';
-    alert('Failed to generate summary. Please try again.');
+    btn.classList.remove('loading');
+    btn.innerHTML = '❌ Retry';
+
+    // Show user-friendly error message
+    const errorMsg = error.message.includes('Proxy server not configured')
+      ? 'AI Summary requires server configuration. Please contact administrator.'
+      : 'Failed to generate summary. Please try again.';
+
+    showError('AI Summary Error', errorMsg, 'error');
   }
 }
 
