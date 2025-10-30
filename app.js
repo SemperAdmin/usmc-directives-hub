@@ -1329,7 +1329,7 @@ function extractMCPubInfo(content) {
 async function generateAISummary(message, buttonElement) {
   const messageKey = `${message.type}_${message.numericId}`;
 
-  // Check cache first
+  // Check local cache first
   if (summaryCache[messageKey]) {
     return summaryCache[messageKey];
   }
@@ -1338,6 +1338,30 @@ async function generateAISummary(message, buttonElement) {
     if (buttonElement) {
       buttonElement.disabled = true;
       buttonElement.textContent = '⏳';
+    }
+
+    // Check proxy server for existing summary (shared across all users)
+    if (CUSTOM_PROXY_URL) {
+      try {
+        const serverResponse = await fetch(`${CUSTOM_PROXY_URL}/api/summary/${encodeURIComponent(messageKey)}`);
+        if (serverResponse.ok) {
+          const data = await serverResponse.json();
+          if (data.success && data.summary) {
+            console.log(`Found cached summary on server for ${messageKey}`);
+            summaryCache[messageKey] = data.summary;
+            message.aiSummary = data.summary;
+            cacheData();
+
+            if (buttonElement) {
+              buttonElement.textContent = '🤖';
+              buttonElement.disabled = false;
+            }
+            return data.summary;
+          }
+        }
+      } catch (serverError) {
+        console.log('Server cache check failed, will generate new summary:', serverError.message);
+      }
     }
 
     // Try to fetch message content
@@ -1369,12 +1393,34 @@ async function generateAISummary(message, buttonElement) {
     // Generate summary using Gemini API
     const summary = await callGeminiAPI(messageContent, message);
 
-    // Cache the summary
+    // Cache the summary locally
     summaryCache[messageKey] = summary;
     message.aiSummary = summary;
 
-    // Update cache
+    // Save to local storage
     cacheData();
+
+    // Save to proxy server for sharing across users
+    if (CUSTOM_PROXY_URL) {
+      try {
+        await fetch(`${CUSTOM_PROXY_URL}/api/summary`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messageKey,
+            summary,
+            messageType: message.type,
+            messageId: message.numericId
+          })
+        });
+        console.log(`Saved summary to server for ${messageKey}`);
+      } catch (serverError) {
+        console.error('Failed to save summary to server:', serverError);
+        // Continue anyway - local cache still works
+      }
+    }
 
     if (buttonElement) {
       buttonElement.textContent = '🤖';
@@ -1395,21 +1441,30 @@ async function generateAISummary(message, buttonElement) {
 
 // Call Gemini API to generate formatted summary
 async function callGeminiAPI(content, message) {
-  const prompt = `Analyze this Marine Corps ${message.type.toUpperCase()} message and create a structured summary following this exact format:
+  const prompt = `Analyze this Marine Corps ${message.type.toUpperCase()} message and create a structured summary following this exact format, focusing on the 5W concept (Who, What, When, Where, Why):
 
 💰 [TITLE IN CAPS] 💰
-📅 EFFECTIVE: [Date if mentioned]
-⚠️ REASON/PURPOSE: [Brief reason]
-🎯 KEY POINTS:
+---
+**5W OVERVIEW:**
+* **WHO** is the primary audience/responsible party? (Unit, Personnel, etc.)
+* **WHAT** is the main subject/task/change?
+* **WHEN** is it effective or when is the deadline? (Date if mentioned, or N/A)
+* **WHERE** does this apply (Location, Command, etc.)? (Or N/A)
+* **WHY** is this message being issued (Reason/Purpose)?
+
+---
+🎯 **KEY POINTS/ACTIONS:**
 
 [SECTION HEADERS IN CAPS:]
 [Content organized by logical sections]
 
-Use relevant emojis (💰 📅 ⚠️ 🎯 📋 ✅ ❌ 🔔 📢 etc.) to highlight important information.
-Break down into clear sections with HEADERS IN CAPS.
-Use bullet points (•) for lists.
-Keep it concise but capture all critical information.
-Highlight deadlines, actions required, and important dates.
+**INSTRUCTIONS FOR SUMMARY GENERATION:**
+1.  **Format:** Strictly adhere to the output format provided above.
+2.  **5W:** Keep the **5W OVERVIEW** section extremely concise, addressing each point directly.
+3.  **Clarity:** Use relevant emojis (💰 📅 ⚠️ 🎯 📋 ✅ ❌ 🔔 📢 etc.) sparingly to highlight important information.
+4.  **Structure:** Break down the main content into clear sections with **HEADERS IN CAPS**.
+5.  **Detail:** Use bullet points (•) for lists within the **KEY POINTS/ACTIONS** section.
+6.  **Actionable:** Highlight **deadlines**, **actions required**, and **important dates** within the main content.
 
 Message content:
 ${content}`;
