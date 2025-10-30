@@ -42,7 +42,7 @@ function getAlnavUrls() {
 function getSecnavUrls() {
   // SECNAV and OPNAV are both in the same SharePoint table
   // We'll filter by the Echelon column
-  return ['https://www.secnav.navy.mil/doni/Directives/Forms/Secnav%20Current.aspx'];
+  return ['https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml'];
 }
 
 // DoD FMR URLs - Department of Defense Financial Management Regulation
