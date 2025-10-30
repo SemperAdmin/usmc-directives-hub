@@ -33,7 +33,7 @@ function getAlnavUrls() {
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
   return [
-    `https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${currentYear}/`,
+    `https://rss.app/feeds/bXh2lQfxozJQMNec.xml/`,
     `https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${previousYear}/`
   ];
 }
