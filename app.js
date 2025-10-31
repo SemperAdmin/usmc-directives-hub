@@ -789,7 +789,7 @@ async function fetchYouTubeVideos() {
 
 // Fetch Semper Admin posts from Facebook API via backend proxy
 async function fetchSemperAdminPosts() {
-  console.log('Fetching Semper Admin posts from Facebook API...');
+  console.log('🔵 [Semper Admin] Starting Facebook API fetch...');
 
   try {
     // Use backend API endpoint for Facebook posts
@@ -797,25 +797,52 @@ async function fetchSemperAdminPosts() {
       ? `${CUSTOM_PROXY_URL}/api/facebook/semperadmin`
       : null;
 
+    console.log('🔵 [Semper Admin] Proxy URL:', CUSTOM_PROXY_URL);
+    console.log('🔵 [Semper Admin] API endpoint:', apiUrl);
+
     if (!apiUrl) {
-      console.warn('Proxy server not configured. Skipping Semper Admin fetch.');
+      console.error('❌ [Semper Admin] Proxy server not configured. Skipping Semper Admin fetch.');
       return;
     }
 
+    console.log('🔵 [Semper Admin] Fetching from:', apiUrl);
     const response = await fetch(apiUrl);
+
+    console.log('🔵 [Semper Admin] Response status:', response.status);
+    console.log('🔵 [Semper Admin] Response ok:', response.ok);
+    console.log('🔵 [Semper Admin] Response headers:', {
+      'content-type': response.headers.get('content-type'),
+      'content-length': response.headers.get('content-length')
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Facebook API error (${response.status}):`, errorText);
+      console.error('❌ [Semper Admin] Facebook API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText
+      });
       return;
     }
 
     const data = await response.json();
+    console.log('🔵 [Semper Admin] Raw response data:', data);
+    console.log('🔵 [Semper Admin] data.success:', data.success);
+    console.log('🔵 [Semper Admin] data.posts:', data.posts ? `${data.posts.length} posts` : 'undefined');
 
     if (!data.success || !data.posts) {
-      console.error('Invalid response from Facebook API:', data);
+      console.error('❌ [Semper Admin] Invalid response from Facebook API:', {
+        success: data.success,
+        postsExists: !!data.posts,
+        postsLength: data.posts?.length,
+        error: data.error,
+        message: data.message,
+        fullData: data
+      });
       return;
     }
+
+    console.log('🔵 [Semper Admin] Processing', data.posts.length, 'posts...');
 
     // Parse Facebook posts into our message format
     const posts = data.posts.map((post, index) => {
@@ -856,9 +883,13 @@ async function fetchSemperAdminPosts() {
 
     allSemperAdminPosts = posts;
     cacheData();
-    console.log(`Total Semper Admin posts loaded: ${allSemperAdminPosts.length}`);
+    console.log('✅ [Semper Admin] Total Semper Admin posts loaded:', allSemperAdminPosts.length);
   } catch (error) {
-    console.error('Error fetching Semper Admin posts:', error);
+    console.error('❌ [Semper Admin] Error fetching Semper Admin posts:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
   }
 }
 
