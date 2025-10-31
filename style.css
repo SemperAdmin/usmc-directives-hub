@@ -1267,6 +1267,24 @@ body.dark-theme .compact-view {
   background: #2a2a2a;
 }
 
+body.dark-theme .compact-card {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+body.dark-theme .compact-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+body.dark-theme .compact-card-header {
+  background: linear-gradient(135deg, #3a3a3a 0%, #2d2d2d 100%);
+  border-bottom-color: #555;
+}
+
+body.dark-theme .compact-detail-label {
+  color: #888;
+}
+
 body.dark-theme .compact-header {
   background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
 }
