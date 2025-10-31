@@ -19,7 +19,7 @@ const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14336",
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
-  semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss",
+  // semperadmin now uses Facebook Graph API via /api/facebook/semperadmin endpoint
   alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
   secnav: "https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml",
   jtr: "https://www.travel.dod.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1311&Category=22932&isdashboardselected=0&max=1000"
@@ -347,8 +347,6 @@ function processRSSData(text, type) {
     allMcpubs = parsed;
   } else if (type === 'almar') {
     allAlmars = parsed;
-  } else if (type === 'semperadmin') {
-    allSemperAdminPosts = parsed;
   } else if (type === 'youtube') {
     allYouTubePosts = parsed;
   } else if (type === 'alnav') {
@@ -360,6 +358,7 @@ function processRSSData(text, type) {
     // JTR (Joint Travel Regulations) updates
     allJtrs = parsed;
   }
+  // Note: semperadmin now uses Facebook Graph API, not RSS
 
   cacheData();
   console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
