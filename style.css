@@ -862,6 +862,11 @@ footer a:hover {
   color: #e65100;
 }
 
+.type-badge.type-dodfmr {
+  background: #e8eaf6;
+  color: #3f51b5;
+}
+
 .compact-ai-btn {
   background: #1565c0;
   color: white;
@@ -1362,6 +1367,11 @@ body.dark-theme .type-badge.type-secnav {
 body.dark-theme .type-badge.type-jtr {
   background: #3a2a1a;
   color: #ffb74d;
+}
+
+body.dark-theme .type-badge.type-dodfmr {
+  background: #1a1a3a;
+  color: #9fa8da;
 }
 
 body.dark-theme .compact-expand-btn {

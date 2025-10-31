@@ -1496,10 +1496,42 @@ function switchMessageType(type) {
   filterMessages();
 }
 
+// Show humorous error message for ALNAV/SECNAV
+function showAlnavSecnavErrorMessage() {
+  resultsDiv.innerHTML = `
+    <div style="max-width: 800px; margin: 3rem auto; padding: 2rem; background: linear-gradient(135deg, #fff3cd 0%, #f8d7da 100%); border: 3px solid #cc0000; border-radius: 12px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
+      <h2 style="color: #cc0000; font-size: 2rem; font-weight: 800; margin-bottom: 1rem; text-transform: uppercase;">
+        🦅 SEMPER GUMBY! We're Flexible. 🦅
+      </h2>
+      <div style="background: white; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border-left: 4px solid #cc0000;">
+        <p style="color: #333; font-size: 1.1rem; line-height: 1.8; margin: 0;">
+          <strong style="color: #cc0000;">Attention to orders!</strong> The official guidance feed is currently under scheduled (but violent) maintenance. The engineers are wrestling with the ${currentMessageType.toUpperCase()} API link to get the latest directives loaded.
+        </p>
+      </div>
+      <p style="color: #721c24; font-size: 1rem; font-weight: 600; margin-top: 1.5rem;">
+        ⛔ Do not attempt to pass this point! We'll be back online before you can muster a fresh pot of coffee. Ooh-rah!
+      </p>
+    </div>
+  `;
+  statusDiv.textContent = `${currentMessageType.toUpperCase()} feed temporarily unavailable`;
+
+  // Hide summary stats
+  const summaryStats = document.getElementById('summaryStats');
+  if (summaryStats) {
+    summaryStats.classList.add('hidden');
+  }
+}
+
 // Filter and Search Functions
 function filterMessages() {
   const searchTerm = searchInput.value.toLowerCase().trim();
   const dateRange = parseInt(dateRangeSelect.value);
+
+  // Show humorous error message for ALNAV/SECNAV
+  if (currentMessageType === 'alnav' || currentMessageType === 'secnav') {
+    showAlnavSecnavErrorMessage();
+    return;
+  }
 
   // Get messages based on current type
   let allMessages = [];
@@ -1507,8 +1539,6 @@ function filterMessages() {
     allMessages = [...allMaradmins];
   } else if (currentMessageType === 'mcpub') {
     allMessages = [...allMcpubs];
-  } else if (currentMessageType === 'alnav') {
-    allMessages = [...allAlnavs];
   } else if (currentMessageType === 'almar') {
     allMessages = [...allAlmars];
   } else if (currentMessageType === 'semperadmin') {
@@ -1517,14 +1547,13 @@ function filterMessages() {
     allMessages = [...allDodForms];
   } else if (currentMessageType === 'youtube') {
     allMessages = [...allYouTubePosts];
-  } else if (currentMessageType === 'secnav') {
-    allMessages = [...allSecnavs];
   } else if (currentMessageType === 'jtr') {
     allMessages = [...allJtrs];
   } else if (currentMessageType === 'dodfmr') {
     allMessages = [...allDodFmr];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allJtrs, ...allDodFmr];
+    // Exclude ALNAV and SECNAV from "All Messages"
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -1649,7 +1678,8 @@ function updateResultsCount() {
   } else if (currentMessageType === 'youtube') {
     totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length;
+    // Exclude ALNAV and SECNAV from All Messages count
+    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
   }
 
   const typeLabel = currentMessageType === 'all' ? 'Messages' :
@@ -1736,7 +1766,8 @@ function updateTabCounters() {
         baseText = 'DoD FMR';
         break;
       case 'all':
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allJtrs, ...allDodFmr]);
+        // Exclude ALNAV and SECNAV from All Messages count
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
         baseText = 'All Messages';
         break;
     }
@@ -1770,7 +1801,8 @@ function renderSummaryStats() {
   } else if (currentMessageType === 'dodfmr') {
     totalCount = allDodFmr.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allSecnavs.length + allJtrs.length + allDodFmr.length;
+    // Exclude ALNAV and SECNAV from total count
+    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
   }
 
   // Get date range
@@ -1778,17 +1810,17 @@ function renderSummaryStats() {
   const oldestDate = dates.length > 0 ? formatDate(dates[0]) : 'N/A';
   const newestDate = dates.length > 0 ? formatDate(dates[dates.length - 1]) : 'N/A';
 
-  // Count by type if showing all
+  // Count by type if showing all (ALNAV and SECNAV excluded from All Messages)
   let typeBreakdown = '';
   if (currentMessageType === 'all') {
     const maradminCount = currentMessages.filter(m => m.type === 'maradmin').length;
     const mcpubCount = currentMessages.filter(m => m.type === 'mcpub').length;
-    const alnavCount = currentMessages.filter(m => m.type === 'alnav').length;
     const almarCount = currentMessages.filter(m => m.type === 'almar').length;
     const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
     const youtubeCount = currentMessages.filter(m => m.type === 'youtube').length;
-    const secnavCount = currentMessages.filter(m => m.type === 'secnav').length;
+    const jtrCount = currentMessages.filter(m => m.type === 'jtr').length;
+    const dodfmrCount = currentMessages.filter(m => m.type === 'dodfmr').length;
     typeBreakdown = `
       <div class="stat-item">
         <span class="stat-label">MARADMINs:</span>
@@ -1797,10 +1829,6 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">MCPUBs:</span>
         <span class="stat-value">${mcpubCount}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">ALNAVs:</span>
-        <span class="stat-value">${alnavCount}</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">ALMARs:</span>
@@ -1819,8 +1847,12 @@ function renderSummaryStats() {
         <span class="stat-value">${youtubeCount}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">SECNAV:</span>
-        <span class="stat-value">${secnavCount}</span>
+        <span class="stat-label">JTR:</span>
+        <span class="stat-value">${jtrCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">DoD FMR:</span>
+        <span class="stat-value">${dodfmrCount}</span>
       </div>
     `;
   }
