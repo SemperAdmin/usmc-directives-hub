@@ -401,7 +401,8 @@ app.get('/api/proxy', async (req, res) => {
     'navy.mil',
     'marines.mil',        // USMC RSS feeds (MARADMIN, MCPUB, ALMAR)
     'rss.app',            // RSS feed proxy for ALNAV, SECNAV
-    'fetchrss.com'        // RSS feed proxy for SemperAdmin
+    'fetchrss.com',       // RSS feed proxy for SemperAdmin
+    'travel.dod.mil'      // DoD JTR (Joint Travel Regulations)
   ];
 
   const urlObj = new URL(targetUrl);

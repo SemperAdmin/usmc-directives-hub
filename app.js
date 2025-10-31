@@ -97,9 +97,9 @@ let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
 let allYouTubePosts = []; // Store all YouTube posts
 let allSecnavs = []; // Store all SECNAV directives
-let allOpnavs = []; // Store all OPNAV directives
+let allJtrs = []; // Store all JTR (Joint Travel Regulations) updates
 let allDodFmr = []; // Store all DoD FMR changes
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', 'secnav', 'opnav', 'dodfmr', or 'all'
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -176,7 +176,7 @@ async function fetchAllFeeds() {
   await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
   await fetchYouTubeVideos(); // Fetch from YouTube Data API
   await fetchFeed('secnav', RSS_FEEDS.secnav); // Fetch SECNAV from RSS feed
-  await fetchFeed('opnav', RSS_FEEDS.secnav); // OPNAV is in same feed, will be filtered
+  await fetchFeed('jtr', RSS_FEEDS.jtr); // Fetch JTR (Joint Travel Regulations) updates
 
   // Fetch DoD Forms
   await fetchDodForms();
@@ -345,15 +345,11 @@ function processRSSData(text, type) {
   } else if (type === 'alnav') {
     allAlnavs = parsed;
   } else if (type === 'secnav') {
-    // Filter SECNAV from the feed
-    allSecnavs = parsed.filter(msg =>
-      msg.id && (msg.id.includes('SECNAV') || msg.subject?.includes('SECNAV'))
-    );
-  } else if (type === 'opnav') {
-    // Filter OPNAV from the feed
-    allOpnavs = parsed.filter(msg =>
-      msg.id && (msg.id.includes('OPNAV') || msg.subject?.includes('OPNAV'))
-    );
+    // SECNAV now has its own dedicated RSS feed
+    allSecnavs = parsed;
+  } else if (type === 'jtr') {
+    // JTR (Joint Travel Regulations) updates
+    allJtrs = parsed;
   }
 
   cacheData();
@@ -781,308 +777,6 @@ async function fetchYouTubeVideos() {
   } catch (error) {
     console.error('Error fetching YouTube videos:', error);
   }
-}
-
-// Fetch and parse SECNAV and OPNAV directives from Navy website
-async function fetchSecnavMessages() {
-  console.log('Fetching SECNAV and OPNAV directives from Navy website...');
-
-  try {
-    const urls = getSecnavUrls(); // Same URLs contain both SECNAV and OPNAV
-    const allMessages = [];
-
-    // Fetch all Navy directive pages
-    for (const url of urls) {
-      try {
-        const messages = await fetchSecnavPage(url);
-        allMessages.push(...messages);
-        console.log(`Loaded ${messages.length} Navy directives from ${url}`);
-      } catch (error) {
-        console.warn(`Skip ${url}:`, error.message);
-      }
-    }
-
-    // Remove duplicates based on message ID
-    const uniqueMessages = [];
-    const seen = new Set();
-    for (const msg of allMessages) {
-      if (!seen.has(msg.id)) {
-        seen.add(msg.id);
-        uniqueMessages.push(msg);
-      }
-    }
-
-    // Sort by date (newest first)
-    uniqueMessages.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-    // Separate SECNAV and OPNAV directives
-    allSecnavs = uniqueMessages.filter(msg => msg.type === 'secnav');
-    allOpnavs = uniqueMessages.filter(msg => msg.type === 'opnav');
-
-    cacheData();
-    console.log(`Total SECNAV directives loaded: ${allSecnavs.length}`);
-    console.log(`Total OPNAV directives loaded: ${allOpnavs.length}`);
-  } catch (error) {
-    console.error('Error fetching Navy directives:', error);
-  }
-}
-
-// Fetch and parse a single SECNAV page
-async function fetchSecnavPage(url) {
-  try {
-    let text;
-
-    // Try custom proxy first if configured
-    if (CUSTOM_PROXY_URL) {
-      try {
-        const proxyUrl = `${CUSTOM_PROXY_URL}/api/navy-directives`;
-        console.log(`Using custom proxy for SECNAV/OPNAV: ${proxyUrl}`);
-
-        const response = await fetch(proxyUrl);
-        if (response.ok) {
-          text = await response.text();
-          console.log('Custom proxy succeeded for SECNAV/OPNAV');
-        }
-      } catch (err) {
-        console.log('Custom proxy failed for SECNAV, trying direct fetch...', err.message);
-      }
-    }
-
-    // Try direct fetch if custom proxy not configured or failed
-    if (!text) {
-      try {
-        text = await tryDirectFetch(url);
-      } catch (err) {
-        console.log('Direct fetch failed for SECNAV, trying fallback proxies...');
-      }
-    }
-
-    // If direct fails, try fallback proxies
-    if (!text) {
-      for (let i = 0; i < CORS_PROXIES.length; i++) {
-        try {
-          text = await tryProxyFetch(CORS_PROXIES[i], url);
-          if (text) break;
-        } catch (err) {
-          console.log(`Proxy ${i + 1} failed for SECNAV page, trying next...`);
-        }
-      }
-    }
-
-    if (!text) {
-      throw new Error('All fetch attempts failed');
-    }
-
-    // Parse the HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-
-    return parseSecnavLinks(doc, url);
-  } catch (error) {
-    console.error(`Error fetching SECNAV page ${url}:`, error);
-    return [];
-  }
-}
-
-// Parse SECNAV and OPNAV directive links from SharePoint table
-function parseSecnavLinks(doc, sourceUrl) {
-  const messages = [];
-
-  // Try multiple strategies to find the SharePoint table
-  let table = null;
-
-  // Strategy 1: Try the common SharePoint table ID
-  table = doc.getElementById('onetidDoclibViewTbl0');
-
-  // Strategy 2: Try finding by class
-  if (!table) {
-    table = doc.querySelector('.ms-listviewtable');
-    console.log('parseSecnavLinks: Using table found by class .ms-listviewtable');
-  }
-
-  // Strategy 3: Try any table that looks like a SharePoint list
-  if (!table) {
-    table = doc.querySelector('table[summary*="Directives"]') ||
-            doc.querySelector('table[id*="onetid"]') ||
-            doc.querySelector('table.ms-vh');
-    console.log('parseSecnavLinks: Using table found by alternative selectors');
-  }
-
-  if (!table) {
-    console.error('parseSecnavLinks: No SharePoint table found - tried multiple selectors');
-    console.log('Available tables:', Array.from(doc.querySelectorAll('table')).map(t => ({ id: t.id, class: t.className })));
-    return messages;
-  }
-
-  // Get all rows from tbody
-  const rows = table.querySelectorAll('tbody > tr');
-  console.log(`parseSecnavLinks: Found ${rows.length} rows in SharePoint table`);
-
-  rows.forEach((row, index) => {
-    try {
-      const cells = row.querySelectorAll('td');
-
-      // Skip rows that don't have enough columns
-      if (cells.length < 3) {
-        if (index < 5) console.log(`Skipping row ${index}: Not enough columns (${cells.length})`);
-        return;
-      }
-
-      // Find the link element - try different selectors
-      let linkElement = null;
-      let nameCell = null;
-      let echelon = '';
-      let subject = '';
-      let effectiveDate = '';
-
-      // Try standard SharePoint structure first
-      if (cells.length >= 4) {
-        // Column 0: Echelon (SECNAV, OPNAV, etc.)
-        echelon = cells[0].innerText.trim().toUpperCase();
-        nameCell = cells[1];
-        subject = cells[2].innerText.trim();
-        effectiveDate = cells[3] ? cells[3].innerText.trim() : '';
-
-        linkElement = nameCell.querySelector('a.ms-listlink') || nameCell.querySelector('a');
-      }
-
-      // Fallback: Search all cells for a link
-      if (!linkElement) {
-        for (let i = 0; i < cells.length; i++) {
-          const link = cells[i].querySelector('a');
-          if (link && link.href && (link.href.includes('.pdf') || link.href.includes('INST') || link.href.includes('SECNAV') || link.href.includes('OPNAV'))) {
-            linkElement = link;
-            nameCell = cells[i];
-            // Try to extract subject from adjacent cells
-            subject = cells[i + 1] ? cells[i + 1].innerText.trim() : linkElement.textContent.trim();
-            effectiveDate = cells[i + 2] ? cells[i + 2].innerText.trim() : '';
-            // Try to determine echelon from link text
-            const linkText = linkElement.textContent.toUpperCase();
-            if (linkText.includes('SECNAV')) echelon = 'SECNAV';
-            else if (linkText.includes('OPNAV')) echelon = 'OPNAV';
-            break;
-          }
-        }
-      }
-
-      if (!linkElement) {
-        if (index < 5) console.log(`Skipping row ${index}: No link element found`);
-        return;
-      }
-
-      const instructionNumber = linkElement.innerText.trim();
-      const pdfLink = new URL(linkElement.href, sourceUrl).href;
-
-      // Determine directive type from Echelon column or instruction number
-      let directiveType = null;
-      let id = null;
-
-      // Try echelon first
-      if (echelon.includes('SECNAV')) {
-        directiveType = 'secnav';
-        id = `SECNAV ${instructionNumber}`;
-      } else if (echelon.includes('OPNAV')) {
-        directiveType = 'opnav';
-        id = `OPNAV ${instructionNumber}`;
-      }
-      // Fallback: Try to infer from instruction number or link
-      else {
-        const instUpper = instructionNumber.toUpperCase();
-        const linkUpper = pdfLink.toUpperCase();
-
-        if (instUpper.includes('SECNAV') || linkUpper.includes('SECNAV')) {
-          directiveType = 'secnav';
-          id = instructionNumber.includes('SECNAV') ? instructionNumber : `SECNAV ${instructionNumber}`;
-        } else if (instUpper.includes('OPNAV') || linkUpper.includes('OPNAV')) {
-          directiveType = 'opnav';
-          id = instructionNumber.includes('OPNAV') ? instructionNumber : `OPNAV ${instructionNumber}`;
-        } else {
-          // Default to SECNAV if we can't determine (most directives on this page are SECNAV)
-          if (index < 5) console.log(`Row ${index}: Cannot determine type, defaulting to SECNAV. Echelon='${echelon}', Instruction='${instructionNumber}'`);
-          directiveType = 'secnav';
-          id = instructionNumber;
-        }
-      }
-
-      // Parse effective date
-      let pubDate = new Date('2000-01-01');
-      let pubDateObj = new Date('2000-01-01');
-
-      if (effectiveDate && effectiveDate !== 'N/A') {
-        try {
-          const parsedDate = new Date(effectiveDate);
-          if (!isNaN(parsedDate.getTime())) {
-            pubDateObj = parsedDate;
-            pubDate = parsedDate.toISOString();
-          }
-        } catch (e) {
-          console.log(`Could not parse date '${effectiveDate}' for ${id}`);
-        }
-      }
-
-      // Create message object
-      const message = {
-        id: id,
-        subject: subject,
-        title: `${id} - ${subject}`,
-        link: pdfLink,
-        pubDate: pubDate,
-        pubDateObj: pubDateObj,
-        type: directiveType,
-        searchText: `${id} ${subject}`.toLowerCase(),
-        instructionNumber: instructionNumber,
-        echelon: echelon,
-        effectiveDate: effectiveDate
-      };
-
-      messages.push(message);
-      console.log(`Found ${directiveType.toUpperCase()}: ${id}`);
-
-    } catch (error) {
-      console.error(`Error parsing row ${index}:`, error);
-    }
-  });
-
-  console.log(`parseSecnavLinks: Parsed ${messages.length} directives from ${rows.length} rows`);
-  return messages;
-}
-
-// Helper function to create Navy directive message object (SECNAV or OPNAV)
-function createNavyDirectiveMessage(id, title, href, directiveType) {
-  // Try to extract date from title or use a very old date as fallback (Jan 1, 2000)
-  // This ensures old directives without dates don't appear as new items
-  let pubDate = new Date('2000-01-01');
-  let pubDateObj = new Date('2000-01-01');
-
-  // Look for date in title (various formats)
-  const dateMatch = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i) ||
-                    title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/) ||
-                    title.match(/(\d{4})-(\d{2})-(\d{2})/);
-
-  if (dateMatch) {
-    try {
-      pubDateObj = new Date(dateMatch[0]);
-      if (!isNaN(pubDateObj.getTime())) {
-        pubDate = pubDateObj.toISOString();
-      }
-    } catch (e) {
-      // Use default date (Jan 1, 2000)
-      pubDate = pubDateObj.toISOString();
-    }
-  } else {
-    // No date found - use default old date
-    pubDate = pubDateObj.toISOString();
-  }
-
-  return {
-    id: id,
-    subject: title,
-    link: href,
-    pubDate: pubDate,
-    pubDateObj: pubDateObj,
-    type: directiveType, // 'secnav' or 'opnav'
-    searchText: `${id} ${title}`.toLowerCase()
-  };
 }
 
 // Fetch and parse DoD FMR changes from DoD website
@@ -1702,18 +1396,23 @@ function parseRSS(xmlText, type){
         numericId = String(index + 1);
         subject = title;
       }
-    } else if (type === 'secnav' || type === 'opnav') {
-      // Extract SECNAV/OPNAV ID from title (e.g., "SECNAV 5000.1", "OPNAV 1234.5")
-      const directiveMatch = title.match(/(SECNAV|OPNAV)\s+[\d.]+[A-Z]*/i);
+    } else if (type === 'secnav') {
+      // Extract SECNAV ID from title (e.g., "SECNAV 5000.1")
+      const directiveMatch = title.match(/SECNAV\s+[\d.]+[A-Z]*/i);
       if (directiveMatch) {
         id = directiveMatch[0];
         numericId = directiveMatch[0];
-        subject = title.replace(/(SECNAV|OPNAV)\s+[\d.]+[A-Z]*\s*[-:]?\s*/i, "").trim();
+        subject = title.replace(/SECNAV\s+[\d.]+[A-Z]*\s*[-:]?\s*/i, "").trim();
       } else {
-        id = `${type.toUpperCase()} ${index + 1}`;
+        id = `SECNAV ${index + 1}`;
         numericId = String(index + 1);
         subject = title;
       }
+    } else if (type === 'jtr') {
+      // JTR items - use title as-is or extract from RSS feed
+      id = title.substring(0, 50);
+      numericId = String(index + 1);
+      subject = title;
     } else if (type === 'semperadmin') {
       // For Semper Admin posts, use title as-is
       id = title.substring(0, 50);
@@ -1804,12 +1503,12 @@ function filterMessages() {
     allMessages = [...allYouTubePosts];
   } else if (currentMessageType === 'secnav') {
     allMessages = [...allSecnavs];
-  } else if (currentMessageType === 'opnav') {
-    allMessages = [...allOpnavs];
+  } else if (currentMessageType === 'jtr') {
+    allMessages = [...allJtrs];
   } else if (currentMessageType === 'dodfmr') {
     allMessages = [...allDodFmr];
   } else if (currentMessageType === 'all') {
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allOpnavs, ...allDodFmr];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allJtrs, ...allDodFmr];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -2012,16 +1711,16 @@ function updateTabCounters() {
         count = getFilteredCount(allSecnavs);
         baseText = 'SECNAV';
         break;
-      case 'opnav':
-        count = getFilteredCount(allOpnavs);
-        baseText = 'OPNAV';
+      case 'jtr':
+        count = getFilteredCount(allJtrs);
+        baseText = 'JTR';
         break;
       case 'dodfmr':
         count = getFilteredCount(allDodFmr);
         baseText = 'DoD FMR';
         break;
       case 'all':
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allOpnavs, ...allDodFmr]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlnavs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allSecnavs, ...allJtrs, ...allDodFmr]);
         baseText = 'All Messages';
         break;
     }
@@ -2050,12 +1749,12 @@ function renderSummaryStats() {
     totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'secnav') {
     totalCount = allSecnavs.length;
-  } else if (currentMessageType === 'opnav') {
-    totalCount = allOpnavs.length;
+  } else if (currentMessageType === 'jtr') {
+    totalCount = allJtrs.length;
   } else if (currentMessageType === 'dodfmr') {
     totalCount = allDodFmr.length;
   } else if (currentMessageType === 'all') {
-    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allSecnavs.length + allOpnavs.length + allDodFmr.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlnavs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allSecnavs.length + allJtrs.length + allDodFmr.length;
   }
 
   // Get date range
@@ -2206,7 +1905,7 @@ function renderCompactView(arr) {
       'dodforms': 'DOD FORM',
       'youtube': 'YOUTUBE',
       'secnav': 'SECNAV',
-      'opnav': 'OPNAV',
+      'jtr': 'JTR',
       'dodfmr': 'DOD FMR'
     };
     const typeLabel = typeLabels[item.type] || item.type.toUpperCase();
@@ -2624,7 +2323,7 @@ function cacheData() {
     localStorage.setItem("dodforms_cache", JSON.stringify(allDodForms));
     localStorage.setItem("youtube_cache", JSON.stringify(allYouTubePosts));
     localStorage.setItem("secnav_cache", JSON.stringify(allSecnavs));
-    localStorage.setItem("opnav_cache", JSON.stringify(allOpnavs));
+    localStorage.setItem("jtr_cache", JSON.stringify(allJtrs));
     localStorage.setItem("dodfmr_cache", JSON.stringify(allDodFmr));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", new Date().toISOString());
@@ -2710,10 +2409,10 @@ function loadCachedData() {
       }));
     }
 
-    const opnavCache = localStorage.getItem("opnav_cache");
-    if (opnavCache) {
-      allOpnavs = JSON.parse(opnavCache);
-      allOpnavs = allOpnavs.map(m => ({
+    const jtrCache = localStorage.getItem("jtr_cache");
+    if (jtrCache) {
+      allJtrs = JSON.parse(jtrCache);
+      allJtrs = allJtrs.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
