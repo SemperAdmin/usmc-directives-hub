@@ -137,20 +137,29 @@ function showSkeletonLoaders() {
   statusDiv.textContent = "Loading...";
   resultsDiv.innerHTML = `
     <div class="skeleton-loader">
-      <div class="compact-header">
-        <div>ID / Type</div>
-        <div>Date</div>
-        <div>Subject</div>
-        <div>Keywords</div>
-        <div>Actions</div>
-      </div>
       ${Array(8).fill(0).map(() => `
         <div class="skeleton-row">
-          <div class="skeleton-item skeleton-id"></div>
-          <div class="skeleton-item skeleton-date"></div>
-          <div class="skeleton-item skeleton-subject"></div>
-          <div class="skeleton-item skeleton-keywords"></div>
-          <div class="skeleton-item skeleton-actions"></div>
+          <div style="padding: 1rem 1.25rem; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-bottom: 2px solid #d1d5db;">
+            <div class="skeleton-item" style="height: 28px; width: 80%;"></div>
+          </div>
+          <div style="padding: 1rem 1.25rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+            <div>
+              <div class="skeleton-item" style="height: 12px; width: 40%; margin-bottom: 0.5rem;"></div>
+              <div class="skeleton-item" style="height: 20px; width: 70%;"></div>
+            </div>
+            <div>
+              <div class="skeleton-item" style="height: 12px; width: 50%; margin-bottom: 0.5rem;"></div>
+              <div class="skeleton-item" style="height: 20px; width: 80%;"></div>
+            </div>
+            <div>
+              <div class="skeleton-item" style="height: 12px; width: 40%; margin-bottom: 0.5rem;"></div>
+              <div class="skeleton-item" style="height: 24px; width: 60%;"></div>
+            </div>
+            <div>
+              <div class="skeleton-item" style="height: 12px; width: 50%; margin-bottom: 0.5rem;"></div>
+              <div class="skeleton-item" style="height: 30px; width: 90%;"></div>
+            </div>
+          </div>
         </div>
       `).join('')}
     </div>
@@ -1876,25 +1885,14 @@ function renderMaradmins(arr) {
 
 // Render compact list view
 function renderCompactView(arr) {
-  const table = document.createElement("div");
-  table.className = "compact-view";
+  const container = document.createElement("div");
+  container.className = "compact-view";
 
-  // Create table structure
-  table.innerHTML = `
-    <div class="compact-header">
-      <div class="compact-col-id">ID</div>
-      <div class="compact-col-date">Date</div>
-      <div class="compact-col-subject">Subject</div>
-      <div class="compact-col-type">Type</div>
-      <div class="compact-col-action">Action</div>
-    </div>
-  `;
-
-  // Add rows
+  // Add cards
   arr.forEach((item, index) => {
-    const row = document.createElement("div");
-    row.className = "compact-row";
-    row.dataset.index = index;
+    const card = document.createElement("div");
+    card.className = "compact-card";
+    card.dataset.index = index;
 
     const typeLabels = {
       'maradmin': 'MARADMIN',
@@ -1932,26 +1930,44 @@ function renderCompactView(arr) {
     let actionButtons = '';
     if (config.showAISummary) {
       actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">🤖 AI Summary</button>`;
+    } else {
+      actionButtons = '<span class="no-actions">—</span>';
     }
-    // Note: Copy link feature removed per APPLICATION_CONFIG
-    // Note: Details button removed - AI Summary button now handles expand/collapse
 
-    row.innerHTML = `
-      <div class="compact-col-id">
-        <span class="compact-id">${item.id}</span>
-        ${newBadge}
-      </div>
-      <div class="compact-col-date">
-        <span class="compact-date">${formatDate(item.pubDateObj)}</span>
-      </div>
-      <div class="compact-col-subject">
+    card.innerHTML = `
+      <!-- Subject Header Row -->
+      <div class="compact-card-header">
         <a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="compact-subject">${displaySubject}</a>
       </div>
-      <div class="compact-col-type">
-        ${typeBadge}
-      </div>
-      <div class="compact-col-action">
-        ${actionButtons || '<span class="no-actions">—</span>'}
+
+      <!-- Details Grid -->
+      <div class="compact-card-details">
+        <div class="compact-detail-col">
+          <span class="compact-detail-label">ID</span>
+          <div class="compact-detail-value">
+            <span class="compact-id">${item.id}</span>
+            ${newBadge}
+          </div>
+        </div>
+
+        <div class="compact-detail-col">
+          <span class="compact-detail-label">Date</span>
+          <span class="compact-detail-value compact-date">${formatDate(item.pubDateObj)}</span>
+        </div>
+
+        <div class="compact-detail-col">
+          <span class="compact-detail-label">Type</span>
+          <div class="compact-detail-value">
+            ${typeBadge}
+          </div>
+        </div>
+
+        <div class="compact-detail-col">
+          <span class="compact-detail-label">Action</span>
+          <div class="compact-detail-value">
+            ${actionButtons}
+          </div>
+        </div>
       </div>
     `;
 
@@ -1972,11 +1988,11 @@ function renderCompactView(arr) {
       </div>
     `;
 
-    table.appendChild(row);
-    table.appendChild(detailsRow);
+    container.appendChild(card);
+    container.appendChild(detailsRow);
   });
 
-  resultsDiv.appendChild(table);
+  resultsDiv.appendChild(container);
 }
 
 // Toggle details in compact view
