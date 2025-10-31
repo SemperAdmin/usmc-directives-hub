@@ -1,16 +1,16 @@
 // APPLICATION_CONFIG: UI, layout, and message-type rendering rules
 const APPLICATION_CONFIG = {
   MESSAGE_TEMPLATES: {
-    maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: true },
-    mcpub: { subjectSource: 'summary', showAISummary: false, showDetails: false },
-    almar: { subjectSource: 'summary', showAISummary: false, showDetails: false },
-    semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink' },
-    dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false },
-    dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false },
-    youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true },
-    alnav: { subjectSource: 'subject', showAISummary: false, showDetails: true },
-    secnav: { subjectSource: 'subject', showAISummary: false, showDetails: true },
-    jtr: { subjectSource: 'subject', showAISummary: false, showDetails: true }
+    maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: true, prependIdToTitle: true, hideIdColumn: true },
+    mcpub: { subjectSource: 'summary', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
+    almar: { subjectSource: 'summary', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
+    semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink', prependIdToTitle: false, hideIdColumn: true },
+    dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
+    dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: false, hideIdColumn: true },
+    youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
+    alnav: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
+    secnav: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
+    jtr: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: true }
   }
 };
 
@@ -1394,8 +1394,15 @@ function parseRSS(xmlText, type){
         subject = title;
       }
     } else if (type === 'almar') {
-      // Extract ALMAR ID from title (e.g., "ALMAR 001/25")
-      const almarMatch = title.match(/ALMAR\s+(\d+[-\/]\d+)/i);
+      // Extract ALMAR ID from description field first, then fall back to title
+      let almarMatch = null;
+      if (description) {
+        almarMatch = description.match(/ALMAR\s+(\d+[-\/]\d+)/i);
+      }
+      if (!almarMatch) {
+        almarMatch = title.match(/ALMAR\s+(\d+[-\/]\d+)/i);
+      }
+
       if (almarMatch) {
         id = almarMatch[0];
         numericId = almarMatch[1];
@@ -1913,11 +1920,18 @@ function renderCompactView(arr) {
     const config = APPLICATION_CONFIG.MESSAGE_TEMPLATES[item.type] || {
       subjectSource: 'subject',
       showAISummary: false,
-      showDetails: true
+      showDetails: true,
+      prependIdToTitle: false,
+      hideIdColumn: false
     };
 
     // Determine which field to display as subject
-    const displaySubject = config.subjectSource === 'summary' ? (item.summary || item.subject) : item.subject;
+    let displaySubject = config.subjectSource === 'summary' ? (item.summary || item.subject) : item.subject;
+
+    // Prepend ID to title if configured
+    if (config.prependIdToTitle && item.id) {
+      displaySubject = `${item.id}: ${displaySubject}`;
+    }
 
     // Determine link URL (some types use semperadminLink)
     const linkUrl = config.linkSource === 'semperadminLink' && item.semperadminLink ? item.semperadminLink : item.link;
@@ -1934,21 +1948,26 @@ function renderCompactView(arr) {
       actionButtons = '<span class="no-actions">—</span>';
     }
 
-    card.innerHTML = `
-      <!-- Subject Header Row -->
-      <div class="compact-card-header">
-        <a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="compact-subject">${displaySubject}</a>
-      </div>
-
-      <!-- Details Grid -->
-      <div class="compact-card-details">
+    // Build ID column HTML (conditionally shown)
+    const idColumnHtml = config.hideIdColumn ? '' : `
         <div class="compact-detail-col">
           <span class="compact-detail-label">ID</span>
           <div class="compact-detail-value">
             <span class="compact-id">${item.id}</span>
-            ${newBadge}
           </div>
-        </div>
+        </div>`;
+
+    card.innerHTML = `
+      <!-- Subject Header Row -->
+      <div class="compact-card-header">
+        <a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="compact-subject">${displaySubject}</a>
+        ${config.hideIdColumn ? newBadge : ''}
+      </div>
+
+      <!-- Details Grid -->
+      <div class="compact-card-details">
+        ${idColumnHtml}
+        ${!config.hideIdColumn && newBadge ? `<div class="compact-detail-col" style="grid-column: span 1;"><div class="compact-detail-value">${newBadge}</div></div>` : ''}
 
         <div class="compact-detail-col">
           <span class="compact-detail-label">Date</span>
