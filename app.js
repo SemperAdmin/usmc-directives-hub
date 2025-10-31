@@ -2,8 +2,8 @@
 const APPLICATION_CONFIG = {
   MESSAGE_TEMPLATES: {
     maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: true, prependIdToTitle: true, hideIdColumn: true },
-    mcpub: { subjectSource: 'summary', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
-    almar: { subjectSource: 'summary', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
+    mcpub: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
+    almar: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
     semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink', prependIdToTitle: false, hideIdColumn: true },
     dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
     dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: false, hideIdColumn: true },
@@ -1954,6 +1954,7 @@ function renderCompactView(arr) {
           <span class="compact-detail-label">ID</span>
           <div class="compact-detail-value">
             <span class="compact-id">${item.id}</span>
+            ${newBadge}
           </div>
         </div>`;
 
@@ -1967,7 +1968,6 @@ function renderCompactView(arr) {
       <!-- Details Grid -->
       <div class="compact-card-details">
         ${idColumnHtml}
-        ${!config.hideIdColumn && newBadge ? `<div class="compact-detail-col" style="grid-column: span 1;"><div class="compact-detail-value">${newBadge}</div></div>` : ''}
 
         <div class="compact-detail-col">
           <span class="compact-detail-label">Date</span>
