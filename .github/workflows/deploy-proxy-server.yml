@@ -48,6 +48,7 @@ jobs:
           echo "Using GitHub Secrets for API keys:"
           echo "  - YOUTUBE_API_KEY: [configured]"
           echo "  - GEMINI_API_KEY: [configured]"
+          echo "  - SEMPER_ADMIN_API_KEY: [configured]"
 
           # Deploy using Render API
           if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
@@ -57,7 +58,7 @@ jobs:
               -d '{}'
             echo "✅ Deployment triggered successfully!"
             echo "⏳ Render will build and deploy in ~2-3 minutes"
-            echo "🔐 Environment variables (YOUTUBE_API_KEY, GEMINI_API_KEY) must be set in Render dashboard"
+            echo "🔐 Environment variables (YOUTUBE_API_KEY, GEMINI_API_KEY, SEMPER_ADMIN_API_KEY) must be set in Render dashboard"
           else
             echo "⚠️  RENDER_API_KEY or RENDER_SERVICE_ID not set in GitHub Secrets"
             echo "📝 Skipping API-based deployment - Render will auto-deploy via GitHub integration"
@@ -115,4 +116,4 @@ jobs:
         run: |
           echo "✅ Deployment completed!"
           echo "🔐 API keys loaded from GitHub Secrets"
-          echo "📡 Server will use YOUTUBE_API_KEY and GEMINI_API_KEY from environment"
+          echo "📡 Server will use YOUTUBE_API_KEY, GEMINI_API_KEY, and SEMPER_ADMIN_API_KEY from environment"
