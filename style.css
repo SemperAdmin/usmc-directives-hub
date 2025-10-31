@@ -1544,7 +1544,7 @@ body.dark-theme .footer-note {
     border-bottom: 1px solid #000 !important;
   }
 
-  .compact-detail-col:last-child {
+  .compact-detail-col--action {
     display: none !important; /* Hide action column in print */
   }
 
