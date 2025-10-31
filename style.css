@@ -13,7 +13,12 @@ header {
   background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
   color: #fff;
   padding: 1.5rem 1rem;
-  text-align: center;
+  /* MODIFIED FOR BRANDING */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* END MODIFICATION */
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   position: sticky;
   top: 0;
@@ -21,27 +26,82 @@ header {
   transition: padding 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* --- NEW BRANDING STYLES --- */
+.branding-link {
+  text-decoration: none;
+  color: #fff;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.branding-link:hover {
+  background: rgba(0,0,0,0.1);
+}
+
+.branding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.header-logo {
+  height: 45px;
+  width: auto;
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.byline {
+  margin: -5px 0 0 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+/* --- END NEW BRANDING STYLES --- */
+
+
 header.scrolled {
   padding: 0.75rem 1rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
+/* MODIFIED FOR BRANDING */
 header.scrolled h1 {
   font-size: 1.5rem;
 }
+
+/* --- NEW SCROLLED STYLES --- */
+header.scrolled .byline {
+  display: none; /* Hide byline on scroll */
+}
+
+header.scrolled .header-logo {
+  height: 30px; /* Smaller logo on scroll */
+}
+
+header.scrolled .branding {
+  padding: 0;
+}
+/* --- END NEW SCROLLED STYLES --- */
 
 header.scrolled .subtitle {
   display: none;
 }
 
 header h1 {
-  margin: 0 0 0.25rem 0;
+  margin: 0; /* Removed bottom margin */
   font-size: 2rem;
   font-weight: bold;
 }
 
 header .subtitle {
-  margin: 0 0 1rem 0;
+  margin: 0.5rem 0 1rem 0; /* Adjusted margin */
   opacity: 0.9;
   font-size: 0.95rem;
 }
@@ -627,6 +687,28 @@ footer a:hover {
   text-decoration: underline;
 }
 
+/* --- NEW FOOTER BRANDING --- */
+.semper-admin-branding {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.semper-admin-branding a {
+  color: #fff;
+  text-decoration: none;
+  /* Uses purple from .type-semperadmin badge */
+  border-bottom: 2px solid #7b1fa2; 
+  padding-bottom: 2px;
+  transition: all 0.3s ease;
+}
+
+.semper-admin-branding a:hover {
+  color: #eee;
+  border-bottom-color: #ce93d8; /* Lighter purple */
+}
+/* --- END NEW FOOTER BRANDING --- */
+
 .footer-note {
   color: #aaa;
   font-size: 0.85rem;
@@ -1093,6 +1175,18 @@ body.dark-theme footer a {
   color: #ff4444;
 }
 
+/* --- NEW DARK MODE FOOTER --- */
+body.dark-theme .semper-admin-branding a {
+  color: #fff;
+  border-bottom-color: #ce93d8; /* Lighter purple */
+}
+
+body.dark-theme .semper-admin-branding a:hover {
+  border-bottom-color: #7b1fa2; /* Darker purple */
+}
+/* --- END NEW DARK MODE FOOTER --- */
+
+
 body.dark-theme .expand-btn {
   background: #ff4444;
 }
@@ -1441,9 +1535,18 @@ body.dark-theme .footer-note {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  /* MODIFIED FOR BRANDING */
   header h1 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
+  .byline {
+    font-size: 0.8rem;
+    margin-top: -2px;
+  }
+  .header-logo {
+    height: 35px;
+  }
+  /* END MODIFICATION */
 
   /* Mobile tab navigation - stack buttons vertically */
   .message-type-tabs {
@@ -1548,14 +1651,30 @@ body.dark-theme .footer-note {
     position: static;
     border-bottom: 2px solid #000;
   }
+  
+  /* UPDATED PRINT HEADER */
+  .branding {
+    padding: 0 !important;
+  }
+  .header-logo {
+    height: 30px !important;
+  }
+  .byline {
+    display: block !important;
+    font-size: 0.8rem !important;
+    color: #555 !important;
+    margin-top: 0 !important;
+  }
 
   header h1 {
     font-size: 1.5rem;
     margin-bottom: 0.25rem;
   }
+  /* END UPDATED PRINT HEADER */
 
   header .subtitle {
     font-size: 0.9rem;
+    display: block !important;
   }
 
   /* Show status */
