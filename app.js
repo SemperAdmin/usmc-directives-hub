@@ -182,7 +182,7 @@ async function fetchAllFeeds() {
   await fetchFeed('mcpub', RSS_FEEDS.mcpub);
   await fetchFeed('alnav', RSS_FEEDS.alnav); // Fetch from RSS feed
   await fetchFeed('almar', RSS_FEEDS.almar);
-  await fetchFeed('semperadmin', RSS_FEEDS.semperadmin);
+  await fetchSemperAdminPosts(); // Fetch from Facebook API
   await fetchYouTubeVideos(); // Fetch from YouTube Data API
   await fetchFeed('secnav', RSS_FEEDS.secnav); // Fetch SECNAV from RSS feed
   await fetchFeed('jtr', RSS_FEEDS.jtr); // Fetch JTR (Joint Travel Regulations) updates
@@ -785,6 +785,81 @@ async function fetchYouTubeVideos() {
     console.log(`Total YouTube videos loaded: ${allYouTubePosts.length}`);
   } catch (error) {
     console.error('Error fetching YouTube videos:', error);
+  }
+}
+
+// Fetch Semper Admin posts from Facebook API via backend proxy
+async function fetchSemperAdminPosts() {
+  console.log('Fetching Semper Admin posts from Facebook API...');
+
+  try {
+    // Use backend API endpoint for Facebook posts
+    const apiUrl = CUSTOM_PROXY_URL
+      ? `${CUSTOM_PROXY_URL}/api/facebook/semperadmin`
+      : null;
+
+    if (!apiUrl) {
+      console.warn('Proxy server not configured. Skipping Semper Admin fetch.');
+      return;
+    }
+
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Facebook API error (${response.status}):`, errorText);
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.posts) {
+      console.error('Invalid response from Facebook API:', data);
+      return;
+    }
+
+    // Parse Facebook posts into our message format
+    const posts = data.posts.map((post, index) => {
+      // Extract post ID (use Facebook post ID or generate one)
+      const postId = post.id || `Post ${index + 1}`;
+
+      // Use message as subject, or fall back to a default
+      const subject = post.message || post.story || `Semper Admin Update ${index + 1}`;
+
+      // Get permalink URL
+      const link = post.permalink_url || `https://www.facebook.com/${postId}`;
+
+      // Parse creation date
+      const pubDate = post.created_time ? new Date(post.created_time) : new Date();
+
+      // Extract description/summary (first sentence of message)
+      const description = post.message || post.story || '';
+      const summary = firstSentence(description);
+
+      return {
+        id: postId,
+        numericId: postId,
+        subject: subject.substring(0, 200), // Limit length
+        title: subject,
+        link: link,
+        semperadminLink: link, // Use for config.linkSource
+        pubDate: pubDate.toISOString(),
+        pubDateObj: pubDate,
+        summary: summary,
+        description: description,
+        category: '',
+        type: 'semperadmin',
+        searchText: `${postId} ${subject} ${description}`.toLowerCase(),
+        detailsFetched: false,
+        maradminNumber: null
+      };
+    });
+
+    allSemperAdminPosts = posts;
+    cacheData();
+    console.log(`Total Semper Admin posts loaded: ${allSemperAdminPosts.length}`);
+  } catch (error) {
+    console.error('Error fetching Semper Admin posts:', error);
   }
 }
 
