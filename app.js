@@ -2197,9 +2197,9 @@ function renderCompactView(arr) {
     if (config.showAISummary) {
       actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">🤖 AI Summary</button>`;
     }
-    // Details button: Hidden initially, will be shown after AI Summary is generated (for MARADMINs only)
+    // Details button: Hidden initially using CSS class, will be shown after AI Summary is generated (for MARADMINs only)
     if (item.type === 'maradmin' && config.showAISummary) {
-      actionButtons += `<button class="compact-expand-btn" id="details-btn-${index}" onclick="toggleCompactDetails(${index}, currentMessages[${index}])" style="display:none;">📋 Details</button>`;
+      actionButtons += `<button class="compact-expand-btn hidden" id="details-btn-${index}" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">📋 Details</button>`;
     }
     // Note: Copy link feature removed per APPLICATION_CONFIG
 
@@ -2252,19 +2252,23 @@ function toggleCompactDetails(index, message) {
   const btn = event.target;
   const aiSummary = detailsRow.querySelector('.ai-summary-display');
 
+  // Use CSS class to track state instead of checking textContent (more maintainable)
+  const isExpanded = btn.classList.contains('details-expanded');
+
   // Don't close the details row if AI summary is showing - just hide/show the message details
   const summarySection = detailsRow.querySelector('.compact-summary');
   const descSection = detailsRow.querySelector('.compact-description');
   const categorySection = detailsRow.querySelector('.compact-category');
   const actionsSection = detailsRow.querySelector('.compact-actions');
 
-  if (btn.textContent.includes('Hide')) {
+  if (isExpanded) {
     // Hide message details but keep AI summary visible
     if (summarySection) summarySection.style.display = 'none';
     if (descSection) descSection.style.display = 'none';
     if (categorySection) categorySection.style.display = 'none';
     if (actionsSection) actionsSection.style.display = 'none';
     btn.textContent = '📋 Details';
+    btn.classList.remove('details-expanded');
   } else {
     // Show message details
     detailsRow.style.display = 'block';
@@ -2273,6 +2277,7 @@ function toggleCompactDetails(index, message) {
     if (categorySection) categorySection.style.display = 'block';
     if (actionsSection) actionsSection.style.display = 'block';
     btn.textContent = '📋 Hide Details';
+    btn.classList.add('details-expanded');
   }
 }
 
@@ -2294,14 +2299,20 @@ async function toggleAISummary(index, message) {
       btn.textContent = '🤖 Hide Summary';
       btn.classList.add('active');
       // Show details button when summary is visible
-      if (detailsBtn) detailsBtn.style.display = 'inline-block';
+      if (detailsBtn) {
+        detailsBtn.classList.remove('hidden');
+        detailsBtn.style.display = 'inline-block';
+      }
     } else {
       existingSummary.style.display = 'none';
       detailsRow.style.display = 'none';
       btn.textContent = '🤖 AI Summary';
       btn.classList.remove('active');
       // Hide details button when summary is hidden
-      if (detailsBtn) detailsBtn.style.display = 'none';
+      if (detailsBtn) {
+        detailsBtn.classList.add('hidden');
+        detailsBtn.style.display = 'none';
+      }
     }
     return;
   }
@@ -2356,6 +2367,7 @@ async function toggleAISummary(index, message) {
 
     // Show the Details button now that AI Summary has been generated (MARADMINs only)
     if (detailsBtn) {
+      detailsBtn.classList.remove('hidden');
       detailsBtn.style.display = 'inline-block';
       detailsBtn.classList.add('fade-in');
     }

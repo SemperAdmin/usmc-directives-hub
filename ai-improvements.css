@@ -1,3 +1,46 @@
+/* CSS Custom Properties for better theming and maintainability */
+:root {
+  /* Cache indicator colors */
+  --color-cached-bg: #4CAF50;
+  --color-cached-text: white;
+  --color-new-bg: #FF9800;
+  --color-new-text: white;
+
+  /* AI Summary colors */
+  --color-ai-summary-bg: #f8f9fa;
+  --color-ai-summary-border: #2196F3;
+  --color-ai-summary-text: #333;
+  --color-ai-summary-header-border: #e0e0e0;
+
+  /* Button active states */
+  --color-ai-btn-active: #2196F3;
+  --color-ai-btn-active-hover: #1976D2;
+
+  /* Error message colors */
+  --color-warning-bg: #FFF3CD;
+  --color-warning-border: #FFC107;
+  --color-warning-text: #856404;
+  --color-info-bg: #D1ECF1;
+  --color-info-border: #17A2B8;
+  --color-info-text: #0C5460;
+}
+
+/* Dark theme color overrides */
+body.dark-theme {
+  --color-cached-bg: #66BB6A;
+  --color-new-bg: #FFA726;
+  --color-ai-summary-bg: #2a2a2a;
+  --color-ai-summary-border: #42A5F5;
+  --color-ai-summary-text: #e0e0e0;
+  --color-ai-summary-header-border: #404040;
+  --color-ai-btn-active: #42A5F5;
+  --color-ai-btn-active-hover: #2196F3;
+  --color-warning-bg: #3e3000;
+  --color-warning-text: #FFC107;
+  --color-info-bg: #003544;
+  --color-info-text: #17A2B8;
+}
+
 /* Additional CSS for AI Summary improvements */
 
 /* Cache indicator badge */
@@ -5,15 +48,16 @@
   display: inline-block;
   margin-left: 10px;
   padding: 2px 8px;
-  background: #4CAF50;
-  color: white;
+  background: var(--color-cached-bg);
+  color: var(--color-cached-text);
   font-size: 0.75rem;
   border-radius: 12px;
   font-weight: 600;
 }
 
 .cache-indicator.new {
-  background: #FF9800;
+  background: var(--color-new-bg);
+  color: var(--color-new-text);
   animation: pulse 2s ease-in-out;
 }
 
@@ -34,14 +78,14 @@
 
 /* Active state for AI Summary button */
 .compact-ai-btn.active {
-  background: #2196F3;
+  background: var(--color-ai-btn-active);
   color: white;
-  border-color: #2196F3;
+  border-color: var(--color-ai-btn-active);
 }
 
 .compact-ai-btn.active:hover {
-  background: #1976D2;
-  border-color: #1976D2;
+  background: var(--color-ai-btn-active-hover);
+  border-color: var(--color-ai-btn-active-hover);
 }
 
 /* Fade in animation for Details button */
@@ -64,8 +108,8 @@
 .ai-summary-display {
   margin: 15px 0;
   padding: 15px;
-  background: #f8f9fa;
-  border-left: 4px solid #2196F3;
+  background: var(--color-ai-summary-bg);
+  border-left: 4px solid var(--color-ai-summary-border);
   border-radius: 4px;
 }
 
@@ -75,18 +119,18 @@
   justify-content: space-between;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-ai-summary-header-border);
 }
 
 .ai-summary-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #2196F3;
+  color: var(--color-ai-summary-border);
 }
 
 .ai-summary-text {
   line-height: 1.8;
-  color: #333;
+  color: var(--color-ai-summary-text);
 }
 
 /* Dark theme for new elements */
@@ -133,23 +177,13 @@ body.dark-theme .ai-summary-text {
 
 /* Error message improvements */
 .error-message.warning {
-  background: #FFF3CD;
-  border-left-color: #FFC107;
-  color: #856404;
+  background: var(--color-warning-bg);
+  border-left-color: var(--color-warning-border);
+  color: var(--color-warning-text);
 }
 
 .error-message.info {
-  background: #D1ECF1;
-  border-left-color: #17A2B8;
-  color: #0C5460;
-}
-
-body.dark-theme .error-message.warning {
-  background: #3e3000;
-  color: #FFC107;
-}
-
-body.dark-theme .error-message.info {
-  background: #003544;
-  color: #17A2B8;
+  background: var(--color-info-bg);
+  border-left-color: var(--color-info-border);
+  color: var(--color-info-text);
 }
