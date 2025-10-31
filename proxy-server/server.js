@@ -392,7 +392,10 @@ app.get('/api/proxy', async (req, res) => {
   const allowedDomains = [
     'mynavyhr.navy.mil',
     'secnav.navy.mil',
-    'navy.mil'
+    'navy.mil',
+    'marines.mil',        // USMC RSS feeds (MARADMIN, MCPUB, ALMAR)
+    'rss.app',            // RSS feed proxy for ALNAV, SECNAV
+    'fetchrss.com'        // RSS feed proxy for SemperAdmin
   ];
 
   const urlObj = new URL(targetUrl);
@@ -413,11 +416,17 @@ app.get('/api/proxy', async (req, res) => {
       timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8,application/rss+xml'
       }
     });
 
-    res.type('html').send(response.data);
+    // Detect content type from response or URL
+    const contentType = response.headers['content-type'] ||
+                       (targetUrl.includes('.xml') || targetUrl.includes('/rss') || targetUrl.includes('rss.')
+                         ? 'application/xml'
+                         : 'text/html');
+
+    res.type(contentType).send(response.data);
   } catch (error) {
     console.error(`Error proxying request: ${error.message}`);
     res.status(error.response?.status || 500).json({
