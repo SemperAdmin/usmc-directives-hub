@@ -19,7 +19,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-const FACEBOOK_PAGE_ID = "61558093420252"; // Semper Admin Facebook Page
+const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || "61558093420252"; // Semper Admin Facebook Page
+const FACEBOOK_API_VERSION = "v18.0"; // Facebook Graph API version
 
 // Validate required environment variables
 if (!YOUTUBE_API_KEY) {
@@ -290,12 +291,14 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
 
   try {
     const response = await axios.get(
-      `https://graph.facebook.com/v18.0/${FACEBOOK_PAGE_ID}/posts`,
+      `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`,
       {
+        headers: {
+          'Authorization': `Bearer ${SEMPER_ADMIN_API_KEY}`
+        },
         params: {
           fields: 'id,message,story,created_time,permalink_url,full_picture',
-          limit: 100,
-          access_token: SEMPER_ADMIN_API_KEY
+          limit: 100
         },
         timeout: 30000
       }
