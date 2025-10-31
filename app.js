@@ -139,10 +139,10 @@ function showSkeletonLoaders() {
     <div class="skeleton-loader">
       ${Array(8).fill(0).map(() => `
         <div class="skeleton-row">
-          <div style="padding: 1rem 1.25rem; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-bottom: 2px solid #d1d5db;">
+          <div class="compact-card-header">
             <div class="skeleton-item" style="height: 28px; width: 80%;"></div>
           </div>
-          <div style="padding: 1rem 1.25rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+          <div class="compact-card-details">
             <div>
               <div class="skeleton-item" style="height: 12px; width: 40%; margin-bottom: 0.5rem;"></div>
               <div class="skeleton-item" style="height: 20px; width: 70%;"></div>
@@ -1962,7 +1962,7 @@ function renderCompactView(arr) {
           </div>
         </div>
 
-        <div class="compact-detail-col">
+        <div class="compact-detail-col compact-detail-col--action">
           <span class="compact-detail-label">Action</span>
           <div class="compact-detail-value">
             ${actionButtons}
