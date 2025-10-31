@@ -38,10 +38,16 @@ if (!YOUTUBE_API_KEY || !GEMINI_API_KEY) {
 
 // Enable CORS for your GitHub Pages site
 app.use(cors({
-  origin: ['https://semperadmin.github.io', 'http://localhost:8000'],
-  methods: ['GET', 'POST', 'PUT'],
-  credentials: true
+  origin: ['https://semperadmin.github.io', 'http://localhost:8000', 'http://127.0.0.1:8000'],
+  methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type'],
+  maxAge: 86400 // 24 hours
 }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 // Enable JSON body parsing
 app.use(express.json());
@@ -353,9 +359,9 @@ ${content}`;
           }]
         }],
         generationConfig: {
-          temperature: 0.3,
-          topK: 40,
-          topP: 0.95,
+          temperature: 0.1,  // Very low for maximum format consistency
+          topK: 20,
+          topP: 0.8,
           maxOutputTokens: 1024,
         }
       },

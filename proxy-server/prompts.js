@@ -7,66 +7,82 @@
  * - {content} - The message content to summarize
  */
 
-module.exports.summaryPrompt = `You are a military document summarizer. Analyze the {messageType} message below and provide a summary in the EXACT format specified.
+module.exports.summaryPrompt = `CRITICAL INSTRUCTION: You MUST output ONLY in the exact format below. DO NOT create your own section headers. DO NOT use headers like "PURPOSE:", "OVERVIEW:", "ACTIVE RESERVE:", etc. You MUST use ONLY the 5W format specified.
 
-REQUIRED OUTPUT FORMAT (copy this structure exactly):
+Fill in this template with information from the message:
 
-💰 [TITLE OF MESSAGE IN ALL CAPS] 💰
+💰 [EXTRACT TITLE FROM MESSAGE - USE ALL CAPS] 💰
 ---
 **5W OVERVIEW:**
-* **WHO:** [affected personnel/units]
-* **WHAT:** [main action/change/requirement]
-* **WHEN:** [effective date in format "01 JAN 2025" or "N/A"]
-* **WHERE:** [location/command or "All Marines" or "N/A"]
-* **WHY:** [reason/purpose in one sentence]
+* **WHO:** [Write one line: who is affected - specific ranks, units, or "All Marines"]
+* **WHAT:** [Write one line: what is the main action, change, or requirement]
+* **WHEN:** [Write one line: key dates in format "DD MMM YYYY" or "N/A"]
+* **WHERE:** [Write one line: location/command or "All Marines" or "Worldwide" or "N/A"]
+* **WHY:** [Write one line: the reason or purpose - keep to ONE sentence]
 
 ---
 🎯 **KEY POINTS/ACTIONS:**
 
-**[FIRST SECTION IN CAPS]:**
-• [key point or action item]
-• [key point or action item]
+**[PICK A SECTION NAME IN ALL CAPS]:**
+• [First key point]
+• [Second key point]
+• [Third key point if needed]
 
-**[SECOND SECTION IN CAPS]:**
-• [key point or action item]
-• [key point or action item]
+**[PICK ANOTHER SECTION NAME IN ALL CAPS]:**
+• [First key point]
+• [Second key point]
 
-EXAMPLE OUTPUT:
+**[ADD MORE SECTIONS AS NEEDED - KEEP SECTIONS BRIEF]:**
+• [Key points here]
 
-💰 ANNUAL TRAINING REQUIREMENTS FOR FY 2025 💰
+REQUIREMENTS - READ CAREFULLY:
+1. START with the 5W OVERVIEW section - this is MANDATORY and comes FIRST
+2. Each W (WHO, WHAT, WHEN, WHERE, WHY) gets EXACTLY ONE line - no exceptions
+3. DO NOT create custom section headers - use only "5W OVERVIEW" and "KEY POINTS/ACTIONS"
+4. Under KEY POINTS, you MAY create subsections in ALL CAPS (e.g., "REQUIRED TRAINING:", "DEADLINES:", "ELIGIBILITY:")
+5. Use bullet points (•) for all lists
+6. Keep total under 400 words
+7. Focus on actionable items and critical dates
+
+WRONG FORMAT EXAMPLES (DO NOT DO THIS):
+❌ **PURPOSE:** ...
+❌ **OVERVIEW:** ...
+❌ **ACTIVE RESERVE:** ...
+❌ **INELIGIBILITY CRITERIA:** ... (don't use as main section)
+❌ Creating sections outside of KEY POINTS/ACTIONS
+
+CORRECT FORMAT EXAMPLE:
+✅
+💰 FISCAL YEAR 2026 TOTAL FORCE INTEGRATOR BOARD 💰
 ---
 **5W OVERVIEW:**
-* **WHO:** All Active Duty and Reserve Marines
-* **WHAT:** Mandatory completion of annual training requirements
-* **WHEN:** 31 MAR 2025
-* **WHERE:** All Marine Corps installations worldwide
-* **WHY:** Ensure readiness and compliance with DoD training standards
+* **WHO:** Active Reserve (AR) Marines interested in force integration roles
+* **WHAT:** FY26/FY27 Total Force Integrator Free MOS Selection Board convening
+* **WHEN:** Board convenes 2 DEC 2025, applications due 24 NOV 2025
+* **WHERE:** Billets at DC PP&O, I MEF, II MEF, III MEF
+* **WHY:** Enable Total Force preparedness for large-scale mobilization planning
 
 ---
 🎯 **KEY POINTS/ACTIONS:**
 
-**REQUIRED TRAINING:**
-• Annual Cyber Awareness Challenge - due 31 JAN 2025
-• Sexual Assault Prevention training - due 28 FEB 2025
-• Operational Security (OPSEC) training - due 31 MAR 2025
+**ELIGIBILITY:**
+• Must be currently serving in Active Reserve Program
+• Must apply via online portal and be board-selected
+• Alternates can fill primary vacancies
 
-**COMPLETION PROCESS:**
-• Access training via MarineNet portal
-• Complete assessments with 80% minimum score
-• Submit completion certificates to unit training officer
+**APPLICATION DEADLINE:**
+• Submit by 24 NOV 2025 via https://www2.manpower.usmc.mil/application_cac/
+• Email backup: joinar@usmc.mil for portal issues
 
-**NON-COMPLIANCE:**
-• May result in negative administrative action
-• Unit commanders will track and report compliance monthly
+**TRAINING TIMELINE:**
+• FY26 selectees: Enroll 1 FEB 2026, complete by 1 JUN 2026
+• FY26 Marines: Report for duty 15 AUG 2026
+• FY27 selectees: Enroll 15 JUN 2026, complete by 15 DEC 2026
 
-STRICT REQUIREMENTS:
-1. The 5W OVERVIEW section is MANDATORY - all 5 must be answered
-2. Keep each W answer to ONE line maximum
-3. Use bullet points (•) for all lists
-4. Section headers in KEY POINTS must be ALL CAPS and end with colon
-5. Keep total output under 400 words
-6. Focus only on actionable information and critical deadlines
+**AVAILABLE BILLETS:**
+• LtCol/Maj/MSgt positions at DC PP&O
+• LtCol/Maj/MSgt/GySgt positions at I/II/III MEF
 
-Now analyze this message:
+Now extract information from this {messageType} message and fill in the template above:
 
 {content}`;
