@@ -834,6 +834,11 @@ footer a:hover {
   color: #01579b;
 }
 
+.type-badge.type-jtr {
+  background: #fff3e0;
+  color: #e65100;
+}
+
 .compact-col-action {
   display: flex;
   gap: 0.5rem;
@@ -1315,6 +1320,11 @@ body.dark-theme .type-badge.type-youtube {
 body.dark-theme .type-badge.type-secnav {
   background: #1a2a3a;
   color: #4fc3f7;
+}
+
+body.dark-theme .type-badge.type-jtr {
+  background: #3a2a1a;
+  color: #ffb74d;
 }
 
 body.dark-theme .compact-expand-btn {
