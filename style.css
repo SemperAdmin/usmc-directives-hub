@@ -770,10 +770,13 @@ footer a:hover {
   color: #222;
   text-decoration: none;
   font-weight: 500;
-  display: block;
-  white-space: nowrap;
+  font-size: 0.875rem; /* Smaller font to show more text */
+  display: -webkit-box; /* Allow multi-line with line clamp */
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
   transition: color 0.3s ease;
 }
 
@@ -1478,7 +1481,8 @@ body.dark-theme .footer-note {
   }
 
   .compact-subject {
-    white-space: normal;
+    /* Inherits line-clamp behavior from main style */
+    -webkit-line-clamp: 3; /* Allow 3 lines on mobile for better readability */
   }
 
   .stats-grid {

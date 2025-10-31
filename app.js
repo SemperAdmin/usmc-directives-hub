@@ -62,7 +62,7 @@ const DOD_FORMS_URLS = [
 //   - Cloudflare Worker: "https://usmc-directives-proxy.your-subdomain.workers.dev"
 //   - Local server: "http://localhost:3000"
 // Leave empty to use fallback CORS proxies (unreliable)
-const CUSTOM_PROXY_URL = "";
+const CUSTOM_PROXY_URL = "https://usmc-directives-proxy.onrender.com";
 
 // Multiple CORS proxies to try as fallbacks (these are unreliable)
 const CORS_PROXIES = [
@@ -193,7 +193,43 @@ async function fetchAllFeeds() {
 async function fetchFeed(type, url) {
   console.log(`Fetching ${type.toUpperCase()}s...`);
 
-  // Try direct fetch first
+  // Try custom proxy server first if configured (most reliable)
+  if (CUSTOM_PROXY_URL) {
+    try {
+      const proxyUrl = `${CUSTOM_PROXY_URL}/api/proxy?url=${encodeURIComponent(url)}`;
+      console.log(`Trying custom proxy for ${type}...`);
+
+      // Retry logic for when proxy is spinning up (Render free tier)
+      let retries = 3;
+      let delay = 2000; // Start with 2 second delay
+
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const response = await fetch(proxyUrl, { timeout: 15000 });
+          if (response.ok) {
+            const text = await response.text();
+            processRSSData(text, type);
+            return;
+          }
+          // If we get a response but it's not ok, don't retry
+          if (response.status !== 503 && response.status !== 502) {
+            break;
+          }
+        } catch(fetchErr) {
+          if (attempt < retries - 1) {
+            console.log(`Custom proxy attempt ${attempt + 1} failed, retrying in ${delay/1000}s...`);
+            statusDiv.textContent = `Waking up proxy server... (${attempt + 1}/${retries})`;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+          }
+        }
+      }
+    } catch(err) {
+      console.log(`Custom proxy failed for ${type}, trying direct fetch...`, err.message);
+    }
+  }
+
+  // Try direct fetch
   try {
     const text = await tryDirectFetch(url);
     if (text) {
@@ -201,10 +237,10 @@ async function fetchFeed(type, url) {
       return;
     }
   } catch(err) {
-    console.log(`Direct fetch for ${type} failed, trying proxies...`, err);
+    console.log(`Direct fetch for ${type} failed, trying fallback proxies...`, err);
   }
 
-  // Try each CORS proxy
+  // Try each fallback CORS proxy
   for (let i = 0; i < CORS_PROXIES.length; i++) {
     try {
       statusDiv.textContent = `Fetching ${type.toUpperCase()}s... (attempt ${i + 1}/${CORS_PROXIES.length})`;
