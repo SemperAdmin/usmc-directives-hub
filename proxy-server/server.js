@@ -16,8 +16,10 @@ const PORT = process.env.PORT || 3000;
 // NO HARDCODED KEYS - Security requirement
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+const FACEBOOK_PAGE_ID = "61558093420252"; // Semper Admin Facebook Page
 
 // Validate required environment variables
 if (!YOUTUBE_API_KEY) {
@@ -30,8 +32,13 @@ if (!GEMINI_API_KEY) {
   console.error('   Set it in your hosting environment or GitHub Secrets');
 }
 
+if (!SEMPER_ADMIN_API_KEY) {
+  console.error('❌ CRITICAL: SEMPER_ADMIN_API_KEY environment variable is not set');
+  console.error('   Set it in your hosting environment or GitHub Secrets');
+}
+
 // Warn if running without keys (will cause API calls to fail)
-if (!YOUTUBE_API_KEY || !GEMINI_API_KEY) {
+if (!YOUTUBE_API_KEY || !GEMINI_API_KEY || !SEMPER_ADMIN_API_KEY) {
   console.warn('⚠️  Server starting WITHOUT API keys - API endpoints will fail');
   console.warn('   This is OK for development, but REQUIRED for production');
 }
@@ -268,6 +275,46 @@ app.get('/api/youtube/videos', async (req, res) => {
   }
 });
 
+// Proxy endpoint for Facebook API - Semper Admin posts
+app.get('/api/facebook/semperadmin', async (req, res) => {
+  // Check if API key is configured
+  if (!SEMPER_ADMIN_API_KEY) {
+    return res.status(503).json({
+      success: false,
+      error: 'Facebook API key not configured',
+      message: 'Server administrator must set SEMPER_ADMIN_API_KEY environment variable'
+    });
+  }
+
+  console.log('Fetching Semper Admin posts from Facebook...');
+
+  try {
+    const response = await axios.get(
+      `https://graph.facebook.com/v18.0/${FACEBOOK_PAGE_ID}/posts`,
+      {
+        params: {
+          fields: 'id,message,story,created_time,permalink_url,full_picture',
+          limit: 100,
+          access_token: SEMPER_ADMIN_API_KEY
+        },
+        timeout: 30000
+      }
+    );
+
+    res.json({
+      success: true,
+      posts: response.data.data || []
+    });
+  } catch (error) {
+    console.error('Facebook API error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: 'Failed to fetch Semper Admin posts',
+      message: error.message
+    });
+  }
+});
+
 // Proxy endpoint for Gemini API (with stricter rate limiting)
 app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
   // Check if API key is configured
@@ -449,6 +496,7 @@ app.listen(PORT, () => {
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`ALNAV endpoint: http://localhost:${PORT}/api/alnav/2025`);
   console.log(`SECNAV endpoint: http://localhost:${PORT}/api/navy-directives`);
+  console.log(`Facebook endpoint: http://localhost:${PORT}/api/facebook/semperadmin`);
   console.log(`AI Summaries endpoint: http://localhost:${PORT}/api/summaries`);
   console.log(`Save summary: POST http://localhost:${PORT}/api/summary`);
   console.log(`Get summary: GET http://localhost:${PORT}/api/summary/:messageKey`);
