@@ -10,7 +10,7 @@ const APPLICATION_CONFIG = {
     youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true },
     alnav: { subjectSource: 'subject', showAISummary: false, showDetails: true },
     secnav: { subjectSource: 'subject', showAISummary: false, showDetails: true },
-    opnav: { subjectSource: 'subject', showAISummary: false, showDetails: true }
+    jtr: { subjectSource: 'subject', showAISummary: false, showDetails: true }
   }
 };
 
@@ -20,8 +20,9 @@ const RSS_FEEDS = {
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=1000",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1000&category=14335",
   semperadmin: "https://fetchrss.com/feed/aQLpjq4CcuXyaQLpmQps99Aj.rss",
-  alnav: "https://www.navy.mil/Leadership/Chief-of-Naval-Personnel/NAVADMIN-ALNAV/rss.xml",
-  secnav: "https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx?SPZ=rss"
+  alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
+  secnav: "https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml",
+  jtr: "https://www.travel.dod.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1311&Category=22932&isdashboardselected=0&max=1000"
 };
 
 // YouTube Data API v3 configuration
@@ -2233,11 +2234,8 @@ function renderCompactView(arr) {
     if (config.showAISummary) {
       actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">🤖 AI Summary</button>`;
     }
-    // Details button: Hidden initially using CSS class, will be shown after AI Summary is generated (for MARADMINs only)
-    if (item.type === 'maradmin' && config.showAISummary) {
-      actionButtons += `<button class="compact-expand-btn hidden" id="details-btn-${index}" onclick="toggleCompactDetails(${index}, currentMessages[${index}])">📋 Details</button>`;
-    }
     // Note: Copy link feature removed per APPLICATION_CONFIG
+    // Note: Details button removed - AI Summary button now handles expand/collapse
 
     row.innerHTML = `
       <div class="compact-col-id">
@@ -2321,7 +2319,6 @@ function toggleCompactDetails(index, message) {
 async function toggleAISummary(index, message) {
   const btn = event.target;
   const detailsRow = document.getElementById(`compact-details-${index}`);
-  const detailsBtn = document.getElementById(`details-btn-${index}`);
 
   if (!detailsRow) return;
 
@@ -2334,21 +2331,11 @@ async function toggleAISummary(index, message) {
       detailsRow.style.display = 'block';
       btn.textContent = '🤖 Hide Summary';
       btn.classList.add('active');
-      // Show details button when summary is visible
-      if (detailsBtn) {
-        detailsBtn.classList.remove('hidden');
-        detailsBtn.style.display = 'inline-block';
-      }
     } else {
       existingSummary.style.display = 'none';
       detailsRow.style.display = 'none';
       btn.textContent = '🤖 AI Summary';
       btn.classList.remove('active');
-      // Hide details button when summary is hidden
-      if (detailsBtn) {
-        detailsBtn.classList.add('hidden');
-        detailsBtn.style.display = 'none';
-      }
     }
     return;
   }
@@ -2400,13 +2387,6 @@ async function toggleAISummary(index, message) {
 
     btn.textContent = '🤖 Hide Summary';
     btn.classList.add('active');
-
-    // Show the Details button now that AI Summary has been generated (MARADMINs only)
-    if (detailsBtn) {
-      detailsBtn.classList.remove('hidden');
-      detailsBtn.style.display = 'inline-block';
-      detailsBtn.classList.add('fade-in');
-    }
 
   } catch (error) {
     console.error('Error displaying AI summary:', error);
