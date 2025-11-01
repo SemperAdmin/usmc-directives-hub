@@ -336,67 +336,73 @@ app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Content is required' });
     }
 
-    const prompt = `You are a military document summarizer. Analyze the ${messageType?.toUpperCase() || 'MILITARY'} message below and provide a summary in the EXACT format specified.
+    const prompt = `You are a military document summarizer. You MUST analyze the ${messageType?.toUpperCase() || 'MILITARY'} message and provide ONLY a structured summary in the EXACT format specified below.
 
-REQUIRED OUTPUT FORMAT (copy this structure exactly):
+CRITICAL: Do NOT include any raw message text, headers, or unformatted content. ONLY output the formatted summary as shown.
 
-💰 [TITLE OF MESSAGE IN ALL CAPS] 💰
+REQUIRED OUTPUT FORMAT - FOLLOW EXACTLY:
+
+💰 [WRITE CONCISE TITLE IN ALL CAPS - NO MESSAGE HEADERS] 💰
 ---
 **5W OVERVIEW:**
-* **WHO:** [affected personnel/units]
-* **WHAT:** [main action/change/requirement]
-* **WHEN:** [effective date in format "01 JAN 2025" or "N/A"]
-* **WHERE:** [location/command or "All Marines" or "N/A"]
-* **WHY:** [reason/purpose in one sentence]
+* **WHO:** [Specific personnel affected - ranks, units, MOSs, or "All Marines"]
+* **WHAT:** [The main action, policy change, or requirement in ONE clear sentence]
+* **WHEN:** [Effective date in "DD MMM YYYY" format OR deadline OR "Immediate" OR "N/A"]
+* **WHERE:** [Geographic scope - specific bases, CONUS, OCONUS, worldwide, or "N/A"]
+* **WHY:** [Purpose or justification in ONE sentence - avoid vague statements]
 
 ---
-🎯 **KEY POINTS/ACTIONS:**
+🎯 **KEY POINTS:**
 
-**[FIRST SECTION IN CAPS]:**
-• [key point or action item]
-• [key point or action item]
+**[SECTION NAME IN ALL CAPS]:**
+• [Actionable bullet point]
+• [Actionable bullet point]
 
-**[SECOND SECTION IN CAPS]:**
-• [key point or action item]
-• [key point or action item]
+**[ANOTHER SECTION IN ALL CAPS]:**
+• [Actionable bullet point]
+• [Actionable bullet point]
 
-EXAMPLE OUTPUT:
+EXAMPLE OF CORRECT OUTPUT:
 
-💰 ANNUAL TRAINING REQUIREMENTS FOR FY 2025 💰
+💰 OFFICER PROMOTIONS FOR NOVEMBER 2025 💰
 ---
 **5W OVERVIEW:**
-* **WHO:** All Active Duty and Reserve Marines
-* **WHAT:** Mandatory completion of annual training requirements
-* **WHEN:** 31 MAR 2025
-* **WHERE:** All Marine Corps installations worldwide
-* **WHY:** Ensure readiness and compliance with DoD training standards
+* **WHO:** Selected officers listed in this message
+* **WHAT:** Promotion to next higher rank effective 1 November 2025
+* **WHEN:** 01 NOV 2025
+* **WHERE:** All commands worldwide
+* **WHY:** Recognition of demonstrated performance and time in grade
 
 ---
-🎯 **KEY POINTS/ACTIONS:**
+🎯 **KEY POINTS:**
 
-**REQUIRED TRAINING:**
-• Annual Cyber Awareness Challenge - due 31 JAN 2025
-• Sexual Assault Prevention training - due 28 FEB 2025
-• Operational Security (OPSEC) training - due 31 MAR 2025
+**PROMOTION AUTHORITY:**
+• Authorized by Secretary of the Navy under Title 10 USC 624
+• Commanding officers may effect promotions immediately upon message receipt
+• Commissions will be mailed within 4-6 weeks (not required for promotion)
 
-**COMPLETION PROCESS:**
-• Access training via MarineNet portal
-• Complete assessments with 80% minimum score
-• Submit completion certificates to unit training officer
+**OFFICER ACTIONS:**
+• Verify name appears on promotion list
+• Coordinate with S-1/Admin for rank update in MCTFS
+• Update all official documents with new rank
 
-**NON-COMPLIANCE:**
-• May result in negative administrative action
-• Unit commanders will track and report compliance monthly
+**WHAT NOT TO DO:**
+- DO NOT copy/paste message headers (SUBJ/, REF/, GENTEXT, etc.)
+- DO NOT include raw authority references or legal citations
+- DO NOT leave any W field blank or use just "/"
+- DO NOT exceed 350 words total
+- DO NOT include message formatting artifacts
 
-STRICT REQUIREMENTS:
-1. The 5W OVERVIEW section is MANDATORY - all 5 must be answered
-2. Keep each W answer to ONE line maximum
-3. Use bullet points (•) for all lists
-4. Section headers in KEY POINTS must be ALL CAPS and end with colon
-5. Keep total output under 400 words
-6. Focus only on actionable information and critical deadlines
+MANDATORY RULES:
+1. ALL FIVE Ws MUST have meaningful answers - "N/A" only if truly not applicable
+2. Each W answer must be ONE line maximum
+3. Start with the title line using 💰 emoji
+4. Use bullet points (•) for all lists under KEY POINTS
+5. Section headers must be ALL CAPS followed by colon
+6. Maximum 350 words total - be concise and actionable
+7. Focus on WHO is affected, WHAT they must do, and WHEN it's due
 
-Now analyze this message:
+Now analyze this message and output ONLY the formatted summary:
 
 ${content}`;
 
