@@ -1392,7 +1392,7 @@ ${content}`;
   }
 }
 
-// Fallback basic summary generation
+// Fallback basic summary generation - follows 5W format
 function generateBasicSummary(content, message) {
   let summary = '';
 
@@ -1400,37 +1400,55 @@ function generateBasicSummary(content, message) {
   const subjMatch = content.match(/SUBJ\/(.*?)(?:\/\/|REF)/is);
   const subject = subjMatch ? subjMatch[1].trim() : message.subject;
 
-  summary += `📋 ${subject.toUpperCase()} 📋\n\n`;
+  summary += `💰 ${subject.toUpperCase()} 💰\n---\n`;
 
-  // Extract date if available
-  const dateMatch = content.match(/R\s+(\d{6}Z\s+[A-Z]+\s+\d{2,4})/i) ||
-                   content.match(/Date Signed:\s+(.*?)(?:\||$)/i);
-  if (dateMatch) {
-    summary += `📅 DATE: ${dateMatch[1].trim()}\n\n`;
-  }
+  // Try to extract 5Ws from the message content
+  summary += `**5W OVERVIEW:**\n`;
 
-  // Extract purpose/remarks
+  // WHO - Try to extract affected personnel
+  const whoMatch = content.match(/(?:applies to|personnel|marines|sailors|all|ranks)([^.\n]{10,100})/i);
+  const who = whoMatch ? whoMatch[0].trim() : 'See message for specific personnel';
+  summary += `* **WHO:** ${who}\n`;
+
+  // WHAT - Use subject or purpose
+  const whatMatch = content.match(/(?:Purpose|Action)[.:]?\s*(?:\d+\.)?\s*([^.\n]{10,150})/is) ||
+                    content.match(/(?:This message|This MARADMIN|This order)\s+([^.\n]{10,150})/is);
+  const what = whatMatch ? whatMatch[1].trim() : subject;
+  summary += `* **WHAT:** ${what}\n`;
+
+  // WHEN - Extract date or deadline
+  const whenMatch = content.match(/(?:effective|deadline|due|by|NLT)\s*:?\s*(\d{1,2}\s+[A-Z]{3}\s+\d{4}|\d{6}Z)/i) ||
+                    content.match(/R\s+(\d{6}Z\s+[A-Z]+\s+\d{2,4})/i) ||
+                    content.match(/Date Signed:\s+(.*?)(?:\||$)/i);
+  const when = whenMatch ? whenMatch[1].trim() : message.pubDate ? new Date(message.pubDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase() : 'See message for dates';
+  summary += `* **WHEN:** ${when}\n`;
+
+  // WHERE - Extract location/scope
+  const whereMatch = content.match(/(?:location|worldwide|CONUS|OCONUS|all commands|installations)([^.\n]{5,80})/i);
+  const where = whereMatch ? whereMatch[0].trim() : 'All applicable commands';
+  summary += `* **WHERE:** ${where}\n`;
+
+  // WHY - Extract purpose
+  const whyMatch = content.match(/(?:Purpose|Reason|in order to)[.:]?\s*(?:\d+\.)?\s*([^.\n]{10,150})/is);
+  const why = whyMatch ? whyMatch[1].trim() : 'See message for purpose';
+  summary += `* **WHY:** ${why}\n`;
+
+  summary += `\n---\n🎯 **KEY POINTS:**\n\n`;
+
+  // Extract purpose/remarks section
   const purposeMatch = content.match(/(?:Purpose|Remarks)[.:]?\s*(?:\d+\.)?\s*(.*?)(?:\n\n|\d+\.|$)/is);
   if (purposeMatch) {
-    summary += `🎯 PURPOSE:\n${purposeMatch[1].trim()}\n\n`;
+    summary += `**PURPOSE:**\n• ${purposeMatch[1].trim().substring(0, 200)}\n\n`;
   }
 
-  // Extract key sections
-  const sections = [];
-  const sectionMatches = content.matchAll(/(\d+)\.\s+([A-Za-z\s]+)[.:]?\s+(.*?)(?=\n\d+\.|$)/gs);
-
-  for (const match of sectionMatches) {
-    const sectionTitle = match[2].trim().toUpperCase();
-    const sectionContent = match[3].trim().substring(0, 500);
-
-    if (sectionContent.length > 0) {
-      sections.push(`${sectionTitle}:\n${sectionContent}\n`);
-    }
+  // Extract action items if present
+  const actionMatch = content.match(/(?:Action|Required|Marines? (?:are|will|shall|must))[.:]?\s*(?:\d+\.)?\s*(.*?)(?:\n\n|\d+\.|$)/is);
+  if (actionMatch) {
+    summary += `**REQUIRED ACTION:**\n• ${actionMatch[1].trim().substring(0, 200)}\n\n`;
   }
 
-  if (sections.length > 0) {
-    summary += sections.join('\n');
-  }
+  // Note that this is a basic summary
+  summary += `\n_Note: This is a basic auto-generated summary. For complete details, review the full message._`;
 
   return summary;
 }
@@ -1699,12 +1717,12 @@ function filterMessages() {
 
 function clearSearch() {
   searchInput.value = "";
-  dateRangeSelect.value = "90";
+  dateRangeSelect.value = "1";
 
   // Reset quick filter buttons
   quickFilterButtons.forEach(btn => btn.classList.remove('active'));
   quickFilterButtons.forEach(btn => {
-    if (btn.dataset.days === "90") btn.classList.add('active');
+    if (btn.dataset.days === "1") btn.classList.add('active');
   });
 
   filterMessages();

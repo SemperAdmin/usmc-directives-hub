@@ -46,18 +46,18 @@
     </div>
     <div class="filter-controls">
       <div class="quick-filters">
-        <button class="quick-filter-btn" data-days="1">Today</button>
+        <button class="quick-filter-btn active" data-days="1">Today</button>
         <button class="quick-filter-btn" data-days="7">This Week</button>
         <button class="quick-filter-btn" data-days="30">This Month</button>
-        <button class="quick-filter-btn active" data-days="90">Last 90 Days</button>
+        <button class="quick-filter-btn" data-days="90">Last 90 Days</button>
       </div>
       <select id="dateRange">
-        <option value="1">Last 24 hours</option>
+        <option value="1" selected>Last 24 hours</option>
         <option value="7">Last 7 days</option>
         <option value="14">Last 14 days</option>
         <option value="30">Last 30 days</option>
         <option value="60">Last 60 days</option>
-        <option value="90" selected>Last 90 days</option>
+        <option value="90">Last 90 days</option>
         <option value="0">All messages</option>
       </select>
     </div>
