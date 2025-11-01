@@ -474,10 +474,115 @@ button:active {
 
 .ai-summary-display {
   margin-bottom: 1rem;
-  padding: 1rem;
+  padding: 1.25rem;
   background: linear-gradient(135deg, #e3f2fd 0%, #f5f5f5 100%);
   border-left: 4px solid #1565c0;
   border-radius: 0 6px 6px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Enhanced 5W Summary Styling */
+.summary-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1565c0;
+  text-align: center;
+  padding: 0.75rem;
+  margin: -0.5rem -0.5rem 1rem -0.5rem;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(21, 101, 192, 0.3);
+}
+
+.summary-divider {
+  border: none;
+  border-top: 2px solid #1565c0;
+  margin: 1rem 0;
+  opacity: 0.3;
+}
+
+.five-w-header {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1565c0;
+  margin: 1rem 0 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(21, 101, 192, 0.08);
+  border-left: 3px solid #1565c0;
+  border-radius: 0 4px 4px 0;
+}
+
+.w-item {
+  display: flex;
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.75rem;
+  background: white;
+  border-radius: 4px;
+  border-left: 3px solid #1565c0;
+  align-items: flex-start;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.w-label {
+  font-weight: 700;
+  color: #1565c0;
+  min-width: 70px;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.w-content {
+  color: #333;
+  line-height: 1.5;
+}
+
+/* Individual W item colors */
+.who-item { border-left-color: #1976d2; }
+.who-item .w-label { color: #1976d2; }
+
+.what-item { border-left-color: #388e3c; }
+.what-item .w-label { color: #388e3c; }
+
+.when-item { border-left-color: #f57c00; }
+.when-item .w-label { color: #f57c00; }
+
+.where-item { border-left-color: #7b1fa2; }
+.where-item .w-label { color: #7b1fa2; }
+
+.why-item { border-left-color: #c62828; }
+.why-item .w-label { color: #c62828; }
+
+.key-points-header {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f57c00;
+  margin: 1.25rem 0 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(245, 124, 0, 0.08);
+  border-left: 3px solid #f57c00;
+  border-radius: 0 4px 4px 0;
+}
+
+.section-header {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1565c0;
+  margin: 1rem 0 0.5rem 0;
+  padding: 0.4rem 0.6rem;
+  background: rgba(21, 101, 192, 0.05);
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.bullet-item {
+  margin: 0.4rem 0 0.4rem 1rem;
+  padding-left: 0.5rem;
+  color: #333;
+  line-height: 1.6;
 }
 
 .maradmin-details {
@@ -1226,6 +1331,63 @@ body.dark-theme .ai-summary-title {
 }
 
 body.dark-theme .ai-summary-text {
+  color: #e0e0e0;
+}
+
+/* Dark mode for Enhanced 5W Summary */
+body.dark-theme .summary-title {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(21, 101, 192, 0.4);
+}
+
+body.dark-theme .summary-divider {
+  border-top-color: #1976d2;
+  opacity: 0.4;
+}
+
+body.dark-theme .five-w-header {
+  color: #64b5f6;
+  background: rgba(100, 181, 246, 0.1);
+  border-left-color: #64b5f6;
+}
+
+body.dark-theme .w-item {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+body.dark-theme .w-content {
+  color: #e0e0e0;
+}
+
+body.dark-theme .who-item { border-left-color: #64b5f6; }
+body.dark-theme .who-item .w-label { color: #64b5f6; }
+
+body.dark-theme .what-item { border-left-color: #66bb6a; }
+body.dark-theme .what-item .w-label { color: #66bb6a; }
+
+body.dark-theme .when-item { border-left-color: #ffa726; }
+body.dark-theme .when-item .w-label { color: #ffa726; }
+
+body.dark-theme .where-item { border-left-color: #ba68c8; }
+body.dark-theme .where-item .w-label { color: #ba68c8; }
+
+body.dark-theme .why-item { border-left-color: #ef5350; }
+body.dark-theme .why-item .w-label { color: #ef5350; }
+
+body.dark-theme .key-points-header {
+  color: #ffa726;
+  background: rgba(255, 167, 38, 0.1);
+  border-left-color: #ffa726;
+}
+
+body.dark-theme .section-header {
+  color: #64b5f6;
+  background: rgba(100, 181, 246, 0.08);
+}
+
+body.dark-theme .bullet-item {
   color: #e0e0e0;
 }
 

@@ -1406,8 +1406,8 @@ function generateBasicSummary(content, message) {
   summary += `**5W OVERVIEW:**\n`;
 
   // WHO - Try to extract affected personnel
-  const whoMatch = content.match(/(?:applies to|personnel|marines|sailors|all|ranks)([^.\n]{10,100})/i);
-  const who = whoMatch ? whoMatch[0].trim() : 'See message for specific personnel';
+  const whoMatch = content.match(/(?:applies to|personnel|marines|sailors|all|ranks)[\s:]+([^.\n]{10,100})/i);
+  const who = whoMatch ? whoMatch[1].trim() : 'See message for specific personnel';
   summary += `* **WHO:** ${who}\n`;
 
   // WHAT - Use subject or purpose
@@ -1424,8 +1424,8 @@ function generateBasicSummary(content, message) {
   summary += `* **WHEN:** ${when}\n`;
 
   // WHERE - Extract location/scope
-  const whereMatch = content.match(/(?:location|worldwide|CONUS|OCONUS|all commands|installations)([^.\n]{5,80})/i);
-  const where = whereMatch ? whereMatch[0].trim() : 'All applicable commands';
+  const whereMatch = content.match(/(?:location|worldwide|CONUS|OCONUS|all commands|installations)[\s:]+([^.\n]{5,80})/i);
+  const where = whereMatch ? whereMatch[1].trim() : 'All applicable commands';
   summary += `* **WHERE:** ${where}\n`;
 
   // WHY - Extract purpose
@@ -2214,6 +2214,47 @@ function toggleCompactDetails(index, message) {
   }
 }
 
+// Format AI summary text with enhanced HTML markup for 5W format
+function formatAISummaryHTML(summary) {
+  if (!summary) return '';
+
+  // Escape HTML first to prevent injection
+  let html = escapeHtml(summary);
+
+  // Format the title (💰 TITLE 💰)
+  html = html.replace(/💰\s*(.*?)\s*💰/g, '<div class="summary-title">$1</div>');
+
+  // Replace horizontal rules (---) with styled dividers
+  html = html.replace(/---/g, '<hr class="summary-divider">');
+
+  // Format the 5W OVERVIEW section header
+  html = html.replace(/\*\*5W OVERVIEW:\*\*/g, '<div class="five-w-header">5W OVERVIEW</div>');
+
+  // Format each W item with custom styling
+  html = html.replace(/\*\s+\*\*WHO:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item who-item"><span class="w-label">WHO:</span> <span class="w-content">$1</span></div>');
+  html = html.replace(/\*\s+\*\*WHAT:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item what-item"><span class="w-label">WHAT:</span> <span class="w-content">$1</span></div>');
+  html = html.replace(/\*\s+\*\*WHEN:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item when-item"><span class="w-label">WHEN:</span> <span class="w-content">$1</span></div>');
+  html = html.replace(/\*\s+\*\*WHERE:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item where-item"><span class="w-label">WHERE:</span> <span class="w-content">$1</span></div>');
+  html = html.replace(/\*\s+\*\*WHY:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item why-item"><span class="w-label">WHY:</span> <span class="w-content">$1</span></div>');
+
+  // Format KEY POINTS header
+  html = html.replace(/🎯\s*\*\*KEY POINTS:?\*\*/g, '<div class="key-points-header">🎯 KEY POINTS</div>');
+
+  // Format section headers (e.g., **PROMOTION AUTHORITY:**)
+  html = html.replace(/\*\*([A-Z\s]+):\*\*/g, '<div class="section-header">$1</div>');
+
+  // Format bullet points (• item)
+  html = html.replace(/•\s*(.*?)(?=<br>|$)/g, '<div class="bullet-item">• $1</div>');
+
+  // Format any remaining bold text
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Replace newlines with proper spacing
+  html = html.replace(/<br>\s*<br>/g, '<br>'); // Remove double line breaks
+
+  return html;
+}
+
 // Toggle AI-generated summary (compact view only)
 async function toggleAISummary(index, message) {
   const btn = event.target;
@@ -2270,8 +2311,8 @@ async function toggleAISummary(index, message) {
 
     const textDiv = document.createElement('div');
     textDiv.className = 'ai-summary-text';
-    // Escape HTML then convert newlines to <br>
-    textDiv.innerHTML = escapeHtml(summary).replace(/\n/g, '<br>');
+    // Format summary with enhanced HTML markup
+    textDiv.innerHTML = formatAISummaryHTML(summary.replace(/\n/g, '<br>'));
 
     summaryDiv.appendChild(header);
     summaryDiv.appendChild(textDiv);
