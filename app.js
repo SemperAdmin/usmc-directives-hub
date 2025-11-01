@@ -20,7 +20,7 @@ const RSS_FEEDS = {
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=500",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=500&category=14335",
   // semperadmin now uses Facebook Graph API via /api/facebook/semperadmin endpoint
-  alnav: "https://rss.app/feeds/bXh2lQfxozJQMNec.xml",
+  alnav: null, // RSS feed broken - using direct HTML scraping via fetchAlnavMessages()
   secnav: "https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml",
   jtr: "https://www.travel.dod.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1311&Category=22932&isdashboardselected=0&max=500"
 };
@@ -29,9 +29,18 @@ const RSS_FEEDS = {
 // API keys moved to backend for security - DO NOT add keys here
 const YOUTUBE_MAX_RESULTS = 500; // per page
 
-// ALNAV URLs - Now using RSS feed (deprecated HTML scraping removed)
+// ALNAV URLs - Direct HTML scraping from Navy website (RSS feed broken)
 function getAlnavUrls() {
-  return [RSS_FEEDS.alnav];
+  const currentYear = new Date().getFullYear();
+  const urls = [];
+
+  // Fetch ALNAV messages from current year and previous 2 years
+  for (let i = 0; i < 3; i++) {
+    const year = currentYear - i;
+    urls.push(`https://www.mynavyhr.navy.mil/References/Messages/ALNAV-${year}/`);
+  }
+
+  return urls;
 }
 
 // SECNAV URLs - Now using RSS feed (deprecated HTML scraping removed)
@@ -180,7 +189,8 @@ async function fetchAllFeeds() {
   // Fetch all feed types
   await fetchFeed('maradmin', RSS_FEEDS.maradmin);
   await fetchFeed('mcpub', RSS_FEEDS.mcpub);
-  await fetchFeed('alnav', RSS_FEEDS.alnav); // Fetch from RSS feed
+  // await fetchFeed('alnav', RSS_FEEDS.alnav); // Replaced by fetchAlnavMessages due to broken RSS feed
+  await fetchAlnavMessages(); // Fetch ALNAV using direct HTML scraping
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchSemperAdminPosts(); // Fetch from Facebook API
   await fetchYouTubeVideos(); // Fetch from YouTube Data API
