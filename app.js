@@ -2960,7 +2960,7 @@ feedbackForm.addEventListener('submit', async (e) => {
     const data = await response.json();
 
     if (response.ok && data.success) {
-      showFeedbackStatus(`Thank you! Your feedback has been submitted. ${data.issueUrl ? `<a href="${data.issueUrl}" target="_blank" style="color: inherit; text-decoration: underline;">View issue</a>` : ''}`, 'success');
+      showFeedbackStatus('Thank you! Your feedback has been submitted.', 'success', data.issueUrl);
 
       // Reset form after 2 seconds
       setTimeout(() => {
@@ -2979,11 +2979,28 @@ feedbackForm.addEventListener('submit', async (e) => {
   }
 });
 
-// Show feedback status message
-function showFeedbackStatus(message, type) {
-  feedbackStatus.innerHTML = message;
+// Show feedback status message (XSS-safe implementation)
+function showFeedbackStatus(message, type, issueUrl = null) {
+  // Clear previous content safely
+  feedbackStatus.textContent = '';
   feedbackStatus.classList.remove('hidden', 'success', 'error');
   feedbackStatus.classList.add(type);
+
+  // Add text content safely
+  const textNode = document.createTextNode(message);
+  feedbackStatus.appendChild(textNode);
+
+  // If there's an issue URL, add it as a proper link element
+  if (issueUrl) {
+    feedbackStatus.appendChild(document.createTextNode(' '));
+    const link = document.createElement('a');
+    link.href = issueUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer'; // Security best practice
+    link.style.cssText = 'color: inherit; text-decoration: underline;';
+    link.textContent = 'View issue';
+    feedbackStatus.appendChild(link);
+  }
 }
 
 // Capture user context for feedback
