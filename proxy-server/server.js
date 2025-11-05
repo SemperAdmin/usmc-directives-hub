@@ -17,6 +17,8 @@ const PORT = process.env.PORT || 3000;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub Personal Access Token for creating issues
+const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"; // GitHub repo (owner/repo)
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || "61558093420252"; // Semper Admin Facebook Page
@@ -36,6 +38,12 @@ if (!GEMINI_API_KEY) {
 if (!SEMPER_ADMIN_API_KEY) {
   console.error('❌ CRITICAL: SEMPER_ADMIN_API_KEY environment variable is not set');
   console.error('   Set it in your hosting environment or GitHub Secrets');
+}
+
+if (!GITHUB_TOKEN) {
+  console.error('❌ WARNING: GITHUB_TOKEN environment variable is not set');
+  console.error('   Feedback widget will not be able to create GitHub issues');
+  console.error('   Create a GitHub Personal Access Token with repo scope');
 }
 
 // Warn if running without keys (will cause API calls to fail)
@@ -113,6 +121,61 @@ async function saveSummaries(summaries) {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Debug endpoint to test GitHub API configuration
+app.get('/api/debug/github', async (req, res) => {
+  const results = {
+    tokenConfigured: !!GITHUB_TOKEN,
+    tokenPrefix: GITHUB_TOKEN ? GITHUB_TOKEN.substring(0, 7) + '...' : 'NOT SET',
+    repoConfigured: !!GITHUB_REPO,
+    repo: GITHUB_REPO || 'NOT SET',
+    testPayload: null,
+    apiTest: null
+  };
+
+  // Create a test payload to show what would be sent
+  results.testPayload = {
+    title: '[BUG REPORT] Test feedback',
+    body: '## User Feedback\n\n**Type:** Bug Report\n\n**Description:**\nThis is a test.\n\n---\n\n## Context\n- **Browser:** Test\n\n---\n*This issue was automatically created via the in-app feedback widget.*'
+  };
+
+  // Test GitHub API if token is configured
+  if (GITHUB_TOKEN && GITHUB_REPO) {
+    try {
+      // Test authentication by getting repo info
+      const response = await axios.get(
+        `https://api.github.com/repos/${GITHUB_REPO}`,
+        {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          timeout: 10000
+        }
+      );
+
+      results.apiTest = {
+        success: true,
+        repoExists: true,
+        repoName: response.data.full_name,
+        hasIssues: response.data.has_issues,
+        permissions: response.data.permissions
+      };
+    } catch (error) {
+      results.apiTest = {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message
+      };
+    }
+  } else {
+    results.apiTest = { success: false, error: 'Token or repo not configured' };
+  }
+
+  res.json(results);
 });
 
 // Proxy endpoint for ALNAV
@@ -500,13 +563,143 @@ app.get('/api/proxy', async (req, res) => {
   }
 });
 
+// Feedback endpoint - Create GitHub issues from user feedback
+app.post('/api/feedback', async (req, res) => {
+  // Check if GitHub token is configured
+  if (!GITHUB_TOKEN) {
+    return res.status(503).json({
+      success: false,
+      error: 'Feedback service not configured',
+      message: 'Server administrator must set GITHUB_TOKEN environment variable'
+    });
+  }
+
+  try {
+    const { type, title, description, email, context = {} } = req.body;
+
+    // Validate required fields
+    if (!type || !title || !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: type, title, and description are required'
+      });
+    }
+
+    // Sanitize and truncate inputs
+    const sanitizeString = (str) => {
+      if (!str) return '';
+      // Remove null bytes and control characters except newlines and tabs
+      return String(str).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    };
+
+    const sanitizedTitle = sanitizeString(title).substring(0, 200); // GitHub limit is 256, leave room for prefix
+    const sanitizedDescription = sanitizeString(description).substring(0, 50000); // GitHub body limit is 65536
+    const sanitizedEmail = email ? sanitizeString(email).substring(0, 200) : '';
+
+    // Format type for display
+    const typeDisplay = {
+      bug: 'Bug Report',
+      feature: 'Feature Request',
+      ux: 'UX Suggestion'
+    }[type] || 'Feedback';
+
+    // Format the issue body
+    const issueBody = `## User Feedback
+
+**Type:** ${typeDisplay}
+
+**Description:**
+${sanitizedDescription}
+
+${sanitizedEmail ? `**Contact:** ${sanitizedEmail}\n` : ''}
+---
+
+## Context (Auto-captured)
+- **Browser:** ${sanitizeString(context.browser) || 'Unknown'}
+- **Screen:** ${sanitizeString(context.screenResolution) || 'Unknown'}
+- **Viewport:** ${sanitizeString(context.viewport) || 'Unknown'}
+- **Current Tab:** ${sanitizeString(context.currentTab) || 'Unknown'}
+- **Date Filter:** ${sanitizeString(context.dateFilter) || 'Unknown'}
+- **Theme:** ${sanitizeString(context.theme) || 'Unknown'}
+- **Timestamp:** ${sanitizeString(context.timestamp) || new Date().toISOString()}
+- **URL:** ${sanitizeString(context.url) || 'Unknown'}
+
+---
+*This issue was automatically created via the in-app feedback widget.*`;
+
+    const issueTitle = `[${typeDisplay.toUpperCase()}] ${sanitizedTitle}`;
+
+    console.log('Creating GitHub issue:', {
+      repo: GITHUB_REPO,
+      titleLength: issueTitle.length,
+      bodyLength: issueBody.length
+    });
+
+    // Create GitHub issue (without labels to avoid validation errors if labels don't exist)
+    const response = await axios.post(
+      `https://api.github.com/repos/${GITHUB_REPO}/issues`,
+      {
+        title: issueTitle,
+        body: issueBody
+      },
+      {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
+
+    console.log(`✅ Feedback issue created: ${response.data.html_url}`);
+
+    res.json({
+      success: true,
+      message: 'Feedback submitted successfully',
+      issueUrl: response.data.html_url,
+      issueNumber: response.data.number
+    });
+
+  } catch (error) {
+    console.error('GitHub API error:', error.message);
+
+    // Log detailed error information for debugging
+    if (error.response) {
+      console.error('GitHub API Response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: JSON.stringify(error.response.data, null, 2)
+      });
+
+      // Check if it's a GitHub API error
+      return res.status(error.response.status).json({
+        success: false,
+        error: 'Failed to create GitHub issue',
+        message: error.response.data?.message || error.message,
+        details: error.response.data?.errors || error.response.data
+      });
+    }
+
+    // Other errors (network, timeout, etc.)
+    console.error('Non-API error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit feedback',
+      message: error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`GitHub debug: http://localhost:${PORT}/api/debug/github`);
   console.log(`ALNAV endpoint: http://localhost:${PORT}/api/alnav/2025`);
   console.log(`SECNAV endpoint: http://localhost:${PORT}/api/navy-directives`);
   console.log(`Facebook endpoint: http://localhost:${PORT}/api/facebook/semperadmin`);
   console.log(`AI Summaries endpoint: http://localhost:${PORT}/api/summaries`);
   console.log(`Save summary: POST http://localhost:${PORT}/api/summary`);
   console.log(`Get summary: GET http://localhost:${PORT}/api/summary/:messageKey`);
+  console.log(`Feedback endpoint: POST http://localhost:${PORT}/api/feedback`);
 });
