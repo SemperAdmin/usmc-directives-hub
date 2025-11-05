@@ -530,19 +530,17 @@ app.post('/api/feedback', async (req, res) => {
       });
     }
 
-    // Map feedback type to label
-    const labelMap = {
-      bug: 'bug',
-      feature: 'feature-request',
-      ux: 'ux-suggestion'
-    };
-
-    const label = labelMap[type] || 'user-feedback';
+    // Format type for display
+    const typeDisplay = {
+      bug: 'Bug Report',
+      feature: 'Feature Request',
+      ux: 'UX Suggestion'
+    }[type] || type;
 
     // Format the issue body
     const issueBody = `## User Feedback
 
-**Type:** ${type.charAt(0).toUpperCase() + type.slice(1)}
+**Type:** ${typeDisplay}
 
 **Description:**
 ${description}
@@ -563,13 +561,12 @@ ${email ? `**Contact:** ${email}\n` : ''}
 ---
 *This issue was automatically created via the in-app feedback widget.*`;
 
-    // Create GitHub issue
+    // Create GitHub issue (without labels to avoid validation errors if labels don't exist)
     const response = await axios.post(
       `https://api.github.com/repos/${GITHUB_REPO}/issues`,
       {
-        title: `[USER FEEDBACK] ${title}`,
-        body: issueBody,
-        labels: ['user-feedback', label]
+        title: `[${typeDisplay.toUpperCase()}] ${title}`,
+        body: issueBody
       },
       {
         headers: {
