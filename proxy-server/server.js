@@ -520,7 +520,7 @@ app.post('/api/feedback', async (req, res) => {
   }
 
   try {
-    const { type, title, description, email, context } = req.body;
+    const { type, title, description, email, context = {} } = req.body;
 
     // Validate required fields
     if (!type || !title || !description) {
@@ -530,12 +530,23 @@ app.post('/api/feedback', async (req, res) => {
       });
     }
 
+    // Sanitize and truncate inputs
+    const sanitizeString = (str) => {
+      if (!str) return '';
+      // Remove null bytes and control characters except newlines and tabs
+      return String(str).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    };
+
+    const sanitizedTitle = sanitizeString(title).substring(0, 200); // GitHub limit is 256, leave room for prefix
+    const sanitizedDescription = sanitizeString(description).substring(0, 50000); // GitHub body limit is 65536
+    const sanitizedEmail = email ? sanitizeString(email).substring(0, 200) : '';
+
     // Format type for display
     const typeDisplay = {
       bug: 'Bug Report',
       feature: 'Feature Request',
       ux: 'UX Suggestion'
-    }[type] || type;
+    }[type] || 'Feedback';
 
     // Format the issue body
     const issueBody = `## User Feedback
@@ -543,29 +554,37 @@ app.post('/api/feedback', async (req, res) => {
 **Type:** ${typeDisplay}
 
 **Description:**
-${description}
+${sanitizedDescription}
 
-${email ? `**Contact:** ${email}\n` : ''}
+${sanitizedEmail ? `**Contact:** ${sanitizedEmail}\n` : ''}
 ---
 
 ## Context (Auto-captured)
-- **Browser:** ${context.browser || 'Unknown'}
-- **Screen:** ${context.screenResolution || 'Unknown'}
-- **Viewport:** ${context.viewport || 'Unknown'}
-- **Current Tab:** ${context.currentTab || 'Unknown'}
-- **Date Filter:** ${context.dateFilter || 'Unknown'}
-- **Theme:** ${context.theme || 'Unknown'}
-- **Timestamp:** ${context.timestamp || new Date().toISOString()}
-- **URL:** ${context.url || 'Unknown'}
+- **Browser:** ${sanitizeString(context.browser) || 'Unknown'}
+- **Screen:** ${sanitizeString(context.screenResolution) || 'Unknown'}
+- **Viewport:** ${sanitizeString(context.viewport) || 'Unknown'}
+- **Current Tab:** ${sanitizeString(context.currentTab) || 'Unknown'}
+- **Date Filter:** ${sanitizeString(context.dateFilter) || 'Unknown'}
+- **Theme:** ${sanitizeString(context.theme) || 'Unknown'}
+- **Timestamp:** ${sanitizeString(context.timestamp) || new Date().toISOString()}
+- **URL:** ${sanitizeString(context.url) || 'Unknown'}
 
 ---
 *This issue was automatically created via the in-app feedback widget.*`;
+
+    const issueTitle = `[${typeDisplay.toUpperCase()}] ${sanitizedTitle}`;
+
+    console.log('Creating GitHub issue:', {
+      repo: GITHUB_REPO,
+      titleLength: issueTitle.length,
+      bodyLength: issueBody.length
+    });
 
     // Create GitHub issue (without labels to avoid validation errors if labels don't exist)
     const response = await axios.post(
       `https://api.github.com/repos/${GITHUB_REPO}/issues`,
       {
-        title: `[${typeDisplay.toUpperCase()}] ${title}`,
+        title: issueTitle,
         body: issueBody
       },
       {
@@ -590,17 +609,25 @@ ${email ? `**Contact:** ${email}\n` : ''}
   } catch (error) {
     console.error('GitHub API error:', error.message);
 
-    // Check if it's a GitHub API error
+    // Log detailed error information for debugging
     if (error.response) {
+      console.error('GitHub API Response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: JSON.stringify(error.response.data, null, 2)
+      });
+
+      // Check if it's a GitHub API error
       return res.status(error.response.status).json({
         success: false,
         error: 'Failed to create GitHub issue',
         message: error.response.data?.message || error.message,
-        details: error.response.data
+        details: error.response.data?.errors || error.response.data
       });
     }
 
     // Other errors (network, timeout, etc.)
+    console.error('Non-API error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to submit feedback',
