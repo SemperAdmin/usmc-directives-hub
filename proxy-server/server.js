@@ -17,6 +17,8 @@ const PORT = process.env.PORT || 3000;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub Personal Access Token for creating issues
+const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"; // GitHub repo (owner/repo)
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || "61558093420252"; // Semper Admin Facebook Page
@@ -36,6 +38,12 @@ if (!GEMINI_API_KEY) {
 if (!SEMPER_ADMIN_API_KEY) {
   console.error('❌ CRITICAL: SEMPER_ADMIN_API_KEY environment variable is not set');
   console.error('   Set it in your hosting environment or GitHub Secrets');
+}
+
+if (!GITHUB_TOKEN) {
+  console.error('❌ WARNING: GITHUB_TOKEN environment variable is not set');
+  console.error('   Feedback widget will not be able to create GitHub issues');
+  console.error('   Create a GitHub Personal Access Token with repo scope');
 }
 
 // Warn if running without keys (will cause API calls to fail)
@@ -500,6 +508,110 @@ app.get('/api/proxy', async (req, res) => {
   }
 });
 
+// Feedback endpoint - Create GitHub issues from user feedback
+app.post('/api/feedback', async (req, res) => {
+  // Check if GitHub token is configured
+  if (!GITHUB_TOKEN) {
+    return res.status(503).json({
+      success: false,
+      error: 'Feedback service not configured',
+      message: 'Server administrator must set GITHUB_TOKEN environment variable'
+    });
+  }
+
+  try {
+    const { type, title, description, email, context } = req.body;
+
+    // Validate required fields
+    if (!type || !title || !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: type, title, and description are required'
+      });
+    }
+
+    // Map feedback type to label
+    const labelMap = {
+      bug: 'bug',
+      feature: 'feature-request',
+      ux: 'ux-suggestion'
+    };
+
+    const label = labelMap[type] || 'user-feedback';
+
+    // Format the issue body
+    const issueBody = `## User Feedback
+
+**Type:** ${type.charAt(0).toUpperCase() + type.slice(1)}
+
+**Description:**
+${description}
+
+${email ? `**Contact:** ${email}\n` : ''}
+---
+
+## Context (Auto-captured)
+- **Browser:** ${context.browser || 'Unknown'}
+- **Screen:** ${context.screenResolution || 'Unknown'}
+- **Viewport:** ${context.viewport || 'Unknown'}
+- **Current Tab:** ${context.currentTab || 'Unknown'}
+- **Date Filter:** ${context.dateFilter || 'Unknown'}
+- **Theme:** ${context.theme || 'Unknown'}
+- **Timestamp:** ${context.timestamp || new Date().toISOString()}
+- **URL:** ${context.url || 'Unknown'}
+
+---
+*This issue was automatically created via the in-app feedback widget.*`;
+
+    // Create GitHub issue
+    const response = await axios.post(
+      `https://api.github.com/repos/${GITHUB_REPO}/issues`,
+      {
+        title: `[USER FEEDBACK] ${title}`,
+        body: issueBody,
+        labels: ['user-feedback', label]
+      },
+      {
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
+
+    console.log(`✅ Feedback issue created: ${response.data.html_url}`);
+
+    res.json({
+      success: true,
+      message: 'Feedback submitted successfully',
+      issueUrl: response.data.html_url,
+      issueNumber: response.data.number
+    });
+
+  } catch (error) {
+    console.error('GitHub API error:', error.message);
+
+    // Check if it's a GitHub API error
+    if (error.response) {
+      return res.status(error.response.status).json({
+        success: false,
+        error: 'Failed to create GitHub issue',
+        message: error.response.data?.message || error.message,
+        details: error.response.data
+      });
+    }
+
+    // Other errors (network, timeout, etc.)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit feedback',
+      message: error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
@@ -509,4 +621,5 @@ app.listen(PORT, () => {
   console.log(`AI Summaries endpoint: http://localhost:${PORT}/api/summaries`);
   console.log(`Save summary: POST http://localhost:${PORT}/api/summary`);
   console.log(`Get summary: GET http://localhost:${PORT}/api/summary/:messageKey`);
+  console.log(`Feedback endpoint: POST http://localhost:${PORT}/api/feedback`);
 });

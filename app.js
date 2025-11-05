@@ -2869,3 +2869,137 @@ function showKeyboardShortcuts() {
   `;
   alert(shortcuts);
 }
+
+// ====================================
+// FEEDBACK WIDGET
+// ====================================
+
+// Get feedback widget elements
+const feedbackBtn = document.getElementById('feedbackBtn');
+const feedbackModal = document.getElementById('feedbackModal');
+const closeFeedbackModal = document.getElementById('closeFeedbackModal');
+const cancelFeedback = document.getElementById('cancelFeedback');
+const feedbackForm = document.getElementById('feedbackForm');
+const feedbackStatus = document.getElementById('feedbackStatus');
+
+// Open feedback modal
+feedbackBtn.addEventListener('click', () => {
+  feedbackModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+});
+
+// Close feedback modal
+function closeFeedbackModalFunc() {
+  feedbackModal.classList.add('hidden');
+  document.body.style.overflow = ''; // Restore scrolling
+  feedbackForm.reset();
+  feedbackStatus.classList.add('hidden');
+  feedbackStatus.classList.remove('success', 'error');
+}
+
+closeFeedbackModal.addEventListener('click', closeFeedbackModalFunc);
+cancelFeedback.addEventListener('click', closeFeedbackModalFunc);
+
+// Close modal when clicking outside
+feedbackModal.addEventListener('click', (e) => {
+  if (e.target === feedbackModal) {
+    closeFeedbackModalFunc();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !feedbackModal.classList.contains('hidden')) {
+    closeFeedbackModalFunc();
+  }
+});
+
+// Handle feedback form submission
+feedbackForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const submitButton = feedbackForm.querySelector('button[type="submit"]');
+  const originalButtonText = submitButton.textContent;
+
+  // Get form values
+  const feedbackType = document.getElementById('feedbackType').value;
+  const feedbackTitle = document.getElementById('feedbackTitle').value;
+  const feedbackDescription = document.getElementById('feedbackDescription').value;
+  const feedbackEmail = document.getElementById('feedbackEmail').value;
+
+  // Validate
+  if (!feedbackType || !feedbackTitle.trim() || !feedbackDescription.trim()) {
+    showFeedbackStatus('Please fill in all required fields.', 'error');
+    return;
+  }
+
+  // Capture context
+  const context = captureUserContext();
+
+  // Disable submit button
+  submitButton.disabled = true;
+  submitButton.textContent = 'Submitting...';
+  feedbackStatus.classList.add('hidden');
+
+  try {
+    // Send to backend
+    const response = await fetch(`${CUSTOM_PROXY_URL}/api/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        type: feedbackType,
+        title: feedbackTitle,
+        description: feedbackDescription,
+        email: feedbackEmail,
+        context: context
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      showFeedbackStatus(`Thank you! Your feedback has been submitted. ${data.issueUrl ? `<a href="${data.issueUrl}" target="_blank" style="color: inherit; text-decoration: underline;">View issue</a>` : ''}`, 'success');
+
+      // Reset form after 2 seconds
+      setTimeout(() => {
+        closeFeedbackModalFunc();
+      }, 3000);
+    } else {
+      throw new Error(data.error || 'Failed to submit feedback');
+    }
+  } catch (error) {
+    console.error('Feedback submission error:', error);
+    showFeedbackStatus(`Error submitting feedback: ${error.message}. Please try again or report this issue on GitHub.`, 'error');
+  } finally {
+    // Re-enable submit button
+    submitButton.disabled = false;
+    submitButton.textContent = originalButtonText;
+  }
+});
+
+// Show feedback status message
+function showFeedbackStatus(message, type) {
+  feedbackStatus.innerHTML = message;
+  feedbackStatus.classList.remove('hidden', 'success', 'error');
+  feedbackStatus.classList.add(type);
+}
+
+// Capture user context for feedback
+function captureUserContext() {
+  const currentFilter = document.querySelector('.message-type-btn.active');
+  const currentDateRange = dateRangeSelect.value;
+  const theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+
+  return {
+    browser: navigator.userAgent,
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    currentTab: currentFilter ? currentFilter.dataset.type : 'unknown',
+    dateFilter: currentDateRange,
+    theme: theme,
+    timestamp: new Date().toISOString(),
+    url: window.location.href
+  };
+}
