@@ -160,7 +160,12 @@ app.get('/api/debug/github', async (req, res) => {
         repoExists: true,
         repoName: response.data.full_name,
         hasIssues: response.data.has_issues,
-        permissions: response.data.permissions
+        permissions: {
+          // Only expose relevant permissions for debugging
+          admin: response.data.permissions?.admin || false,
+          push: response.data.permissions?.push || false,
+          pull: response.data.permissions?.pull || false
+        }
       };
     } catch (error) {
       results.apiTest = {
@@ -604,6 +609,8 @@ app.post('/api/feedback', async (req, res) => {
     }[type] || 'Feedback';
 
     // Format the issue body
+    // NOTE: Email is included in the public GitHub issue body. The frontend displays a privacy warning
+    // to users before they submit. This is intentional to allow maintainers to follow up with users.
     const issueBody = `## User Feedback
 
 **Type:** ${typeDisplay}

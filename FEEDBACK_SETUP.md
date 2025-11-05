@@ -20,20 +20,59 @@ The feedback widget allows users to submit bug reports, feature requests, and UX
 
 ### 1. Create a GitHub Personal Access Token (PAT)
 
-1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+**⚠️ Security Recommendation:** Use fine-grained tokens for better security (principle of least privilege).
+
+#### Option A: Fine-Grained Personal Access Token (Recommended) 🔒
+
+Fine-grained tokens allow you to grant only the specific permissions needed for this repository.
+
+1. **Go to:** GitHub Settings → Developer settings → Personal access tokens → **Fine-grained tokens**
+   - Or visit: https://github.com/settings/tokens?type=beta
+
+2. **Click:** "Generate new token"
+
+3. **Configure the token:**
+   - **Token name:** `USMC Directives Hub Feedback`
+   - **Expiration:** 90 days (recommended) or custom
+   - **Resource owner:** Select your account or organization
+   - **Repository access:** Select **"Only select repositories"**
+   - **Selected repositories:** Choose `SemperAdmin/usmc-directives-hub`
+   - **Permissions → Repository permissions:**
+     - **Issues:** Set to **Read and write** ✅
+     - Leave all other permissions as "No access"
+
+4. **Click:** "Generate token"
+
+5. **IMPORTANT:** Copy the token immediately - starts with `github_pat_...`
+
+**Why fine-grained tokens?**
+- ✅ Only grants access to this specific repository
+- ✅ Only allows creating/editing issues (not code access)
+- ✅ Reduces risk if token is compromised
+- ✅ Follows security best practices
+
+---
+
+#### Option B: Classic Personal Access Token (Fallback)
+
+If fine-grained tokens don't work for your setup, use a classic token:
+
+1. **Go to:** GitHub Settings → Developer settings → Personal access tokens → **Tokens (classic)**
    - Or visit: https://github.com/settings/tokens
 
-2. Click "Generate new token (classic)"
+2. **Click:** "Generate new token (classic)"
 
-3. Configure the token:
-   - **Name:** `USMC Directives Hub Feedback`
-   - **Expiration:** Choose your preference (90 days or No expiration)
-   - **Scopes:** Check `repo` (Full control of private repositories)
-     - This grants access to create issues in your repository
+3. **Configure the token:**
+   - **Note:** `USMC Directives Hub Feedback`
+   - **Expiration:** 90 days (recommended) or No expiration
+   - **Scopes:** Check **`repo`** (Full control of private repositories)
+     - ⚠️ Warning: This grants access to ALL your repositories
 
-4. Click "Generate token"
+4. **Click:** "Generate token"
 
-5. **IMPORTANT:** Copy the token immediately - you won't be able to see it again!
+5. **IMPORTANT:** Copy the token immediately - starts with `ghp_...`
+
+**Note:** Classic tokens have broader permissions than necessary. Use fine-grained tokens when possible.
 
 ### 2. Add GitHub Token to Environment Variables
 

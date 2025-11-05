@@ -2159,6 +2159,10 @@ body.dark-theme .feedback-form-group label {
   color: #e0e0e0;
 }
 
+body.dark-theme .feedback-form-group small {
+  color: #999 !important;
+}
+
 body.dark-theme .feedback-form-group input,
 body.dark-theme .feedback-form-group select,
 body.dark-theme .feedback-form-group textarea {

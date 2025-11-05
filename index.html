@@ -85,11 +85,11 @@
 <button id="feedbackBtn" class="feedback-btn" title="Share Feedback">💬 Feedback</button>
 
 <!-- Feedback Modal -->
-<div id="feedbackModal" class="feedback-modal hidden">
+<div id="feedbackModal" class="feedback-modal hidden" role="dialog" aria-modal="true" aria-labelledby="feedbackModalTitle">
   <div class="feedback-modal-content">
     <div class="feedback-modal-header">
-      <h2>Share Your Feedback</h2>
-      <button id="closeFeedbackModal" class="feedback-close-btn">✕</button>
+      <h2 id="feedbackModalTitle">Share Your Feedback</h2>
+      <button id="closeFeedbackModal" class="feedback-close-btn" aria-label="Close feedback modal">✕</button>
     </div>
     <form id="feedbackForm">
       <div class="feedback-form-group">
@@ -113,8 +113,9 @@
       </div>
 
       <div class="feedback-form-group">
-        <label for="feedbackEmail">Email (optional)</label>
-        <input type="email" id="feedbackEmail" placeholder="your@email.mil (for follow-up)">
+        <label for="feedbackEmail">Email (Optional - will be public in GitHub issue)</label>
+        <input type="email" id="feedbackEmail" placeholder="your@email.mil (visible publicly)" aria-describedby="emailPrivacyNote">
+        <small id="emailPrivacyNote" style="display: block; margin-top: 0.25rem; color: #666; font-size: 0.85rem;">⚠️ Your email will be visible in the public GitHub issue</small>
       </div>
 
       <div class="feedback-form-actions">
