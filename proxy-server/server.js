@@ -123,6 +123,61 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Debug endpoint to test GitHub API configuration
+app.get('/api/debug/github', async (req, res) => {
+  const results = {
+    tokenConfigured: !!GITHUB_TOKEN,
+    tokenPrefix: GITHUB_TOKEN ? GITHUB_TOKEN.substring(0, 7) + '...' : 'NOT SET',
+    repoConfigured: !!GITHUB_REPO,
+    repo: GITHUB_REPO || 'NOT SET',
+    testPayload: null,
+    apiTest: null
+  };
+
+  // Create a test payload to show what would be sent
+  results.testPayload = {
+    title: '[BUG REPORT] Test feedback',
+    body: '## User Feedback\n\n**Type:** Bug Report\n\n**Description:**\nThis is a test.\n\n---\n\n## Context\n- **Browser:** Test\n\n---\n*This issue was automatically created via the in-app feedback widget.*'
+  };
+
+  // Test GitHub API if token is configured
+  if (GITHUB_TOKEN && GITHUB_REPO) {
+    try {
+      // Test authentication by getting repo info
+      const response = await axios.get(
+        `https://api.github.com/repos/${GITHUB_REPO}`,
+        {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          timeout: 10000
+        }
+      );
+
+      results.apiTest = {
+        success: true,
+        repoExists: true,
+        repoName: response.data.full_name,
+        hasIssues: response.data.has_issues,
+        permissions: response.data.permissions
+      };
+    } catch (error) {
+      results.apiTest = {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message
+      };
+    }
+  } else {
+    results.apiTest = { success: false, error: 'Token or repo not configured' };
+  }
+
+  res.json(results);
+});
+
 // Proxy endpoint for ALNAV
 app.get('/api/alnav/:year', async (req, res) => {
   const year = req.params.year;
@@ -639,6 +694,7 @@ ${sanitizedEmail ? `**Contact:** ${sanitizedEmail}\n` : ''}
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`GitHub debug: http://localhost:${PORT}/api/debug/github`);
   console.log(`ALNAV endpoint: http://localhost:${PORT}/api/alnav/2025`);
   console.log(`SECNAV endpoint: http://localhost:${PORT}/api/navy-directives`);
   console.log(`Facebook endpoint: http://localhost:${PORT}/api/facebook/semperadmin`);
