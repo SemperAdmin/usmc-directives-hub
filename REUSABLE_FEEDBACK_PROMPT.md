@@ -1,91 +1,250 @@
 # Reusable Prompt: User Feedback Widget with GitHub Issues Integration
 
-Copy and customize this prompt for implementing a feedback collection system in any web application.
+Copy and customize this prompt for implementing a **secure, accessible, privacy-conscious** feedback collection system in any web application.
+
+**✅ Includes:** XSS protection, privacy warnings, ARIA attributes, fine-grained tokens, input sanitization
 
 ---
 
 ## Prompt Template
 
 ```
-I want to implement a user feedback collection system for my [APP NAME] application that automatically creates GitHub issues.
+I want to implement a SECURE user feedback collection system for my [APP NAME] application that automatically creates GitHub issues.
 
-**Requirements:**
+**CRITICAL SECURITY & PRIVACY REQUIREMENTS:**
+
+⚠️ **Security:**
+- XSS protection: NO innerHTML usage - use textContent and createElement()
+- Input sanitization: Remove control characters, truncate to safe lengths
+- Token security: Fine-grained tokens preferred, minimal permissions
+- Link security: Add rel="noopener noreferrer" to external links
+- Debug endpoints: Limit information exposure (only necessary fields)
+
+⚠️ **Privacy:**
+- Email field MUST have explicit warnings that it will be public in GitHub issues
+- Label: "Email (Optional - will be public in GitHub issue)"
+- Placeholder: "your@email.mil (visible publicly)"
+- Warning text below input: "⚠️ Your email will be visible in the public GitHub issue"
+- Backend comment documenting this is intentional
+
+⚠️ **Accessibility:**
+- Modal must have proper ARIA attributes:
+  * role="dialog" and aria-modal="true"
+  * aria-labelledby pointing to modal title
+  * aria-label on close button
+  * aria-describedby on inputs with helper text
+- Keyboard navigation: ESC closes modal, Tab order is logical
+- Screen reader friendly labels and descriptions
+
+---
+
+**IMPLEMENTATION REQUIREMENTS:**
 
 1. **Frontend Feedback Widget**
    - Floating feedback button (bottom-right corner, always visible)
+   - Accessible modal with proper ARIA attributes
    - Modal form with these fields:
-     * Feedback Type dropdown: Bug Report, Feature Request, UX Suggestion
-     * Title (required, max 200 chars)
-     * Description (required, textarea)
-     * Email (optional, for follow-up)
-   - Auto-capture technical context:
+     * Feedback Type dropdown: Bug Report, Feature Request, UX Suggestion (required)
+     * Title (required, max 200 chars, sanitized)
+     * Description (required, textarea, max 50,000 chars, sanitized)
+     * Email (OPTIONAL with privacy warnings - see above)
+
+   - Auto-capture technical context (sanitized):
      * Browser/user agent
      * Screen resolution and viewport size
-     * Current page/route
-     * App theme (if applicable)
-     * Timestamp
-     * Any other relevant app state
-   - Show success/error messages
-   - Close on ESC key or click outside
+     * Current page/route/view
+     * App theme (dark/light if applicable)
+     * Timestamp (ISO format)
+     * App-specific state (optional)
+
+   - **XSS-Safe** success/error messages:
+     * Use textContent and createElement(), NEVER innerHTML
+     * If showing links, create <a> elements programmatically
+     * Escape all user input before display
+
+   - Modal interactions:
+     * Close on ESC key press
+     * Close on click outside modal
+     * Close button with aria-label
+     * Prevent body scroll when open
+
    - Full dark mode support (if app has dark mode)
-   - Mobile responsive
+   - Mobile responsive (test on 320px+ widths)
 
 2. **Backend API Integration**
-   - POST endpoint: `/api/feedback`
-   - Input validation and sanitization:
-     * Remove control characters
-     * Truncate to safe lengths
-     * Handle missing/undefined values
-   - Create GitHub issue via GitHub REST API
-   - Issue format:
-     * Title: `[FEEDBACK TYPE] User's title`
-     * Body: Formatted markdown with description and auto-captured context
-     * No labels required (title prefix is sufficient)
-   - Error handling with detailed logging
-   - Rate limiting (optional but recommended)
 
-3. **Environment Configuration**
-   - Required environment variables:
-     * `GITHUB_TOKEN` - GitHub Personal Access Token with `repo` scope
-     * `GITHUB_REPO` - Format: `owner/repository`
-   - Debug endpoint: `/api/debug/github` to verify configuration
+   **Endpoint:** POST `/api/feedback`
 
-4. **Implementation Details**
-   - Match my existing app's design system and color scheme
-   - Integrate with my existing backend (Node.js/Express, Python/Flask, etc.)
-   - Use my existing tech stack: [LIST YOUR TECH STACK]
-   - File structure:
-     * Frontend: Add to existing HTML/CSS/JS (or React/Vue/etc. components)
-     * Backend: Add endpoint to existing API server
+   **Input Sanitization (CRITICAL):**
+   ```javascript
+   const sanitizeString = (str) => {
+     if (!str) return '';
+     // Remove null bytes and control characters except newlines and tabs
+     return String(str).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+   };
 
-5. **Documentation**
-   - Setup instructions for:
-     * Creating GitHub Personal Access Token
-     * Adding environment variables
-     * Testing the widget
-   - Troubleshooting guide
-   - User instructions
+   const sanitizedTitle = sanitizeString(title).substring(0, 200);
+   const sanitizedDescription = sanitizeString(description).substring(0, 50000);
+   const sanitizedEmail = email ? sanitizeString(email).substring(0, 200) : '';
+   ```
 
-**My App Details:**
-- **Tech Stack:** [e.g., React + Node.js, Vue + Python Flask, vanilla JS + Express, etc.]
-- **Styling:** [e.g., Tailwind CSS, custom CSS, Material-UI, etc.]
+   **GitHub Issue Creation:**
+   - Use GitHub REST API: POST /repos/{owner}/{repo}/issues
+   - Issue title format: `[BUG REPORT]`, `[FEATURE REQUEST]`, or `[UX SUGGESTION]` + user title
+   - Issue body: Markdown formatted with description + auto-captured context
+   - No labels initially (avoid validation errors if labels don't exist)
+   - Include privacy comment in code:
+     ```javascript
+     // NOTE: Email is included in the public GitHub issue body.
+     // The frontend displays a privacy warning to users before they submit.
+     // This is intentional to allow maintainers to follow up with users.
+     ```
+
+   **Error Handling:**
+   - Detailed server-side logging (but don't expose to client)
+   - User-friendly error messages (no stack traces)
+   - Log: request details, GitHub API response, errors with context
+
+   **Rate Limiting:**
+   - 100 requests per 15 minutes per IP (general API)
+   - 10 requests per minute per IP (feedback endpoint - optional stricter limit)
+
+3. **Debug Endpoint (Optional but Recommended)**
+
+   **Endpoint:** GET `/api/debug/github`
+
+   **Returns (with minimal information disclosure):**
+   ```json
+   {
+     "tokenConfigured": true/false,
+     "tokenPrefix": "github_pat_..." or "ghp_..." (first 7 chars only),
+     "repoConfigured": true/false,
+     "repo": "owner/repository",
+     "apiTest": {
+       "success": true/false,
+       "repoExists": true/false,
+       "hasIssues": true/false,
+       "permissions": {
+         "admin": false,
+         "push": true,
+         "pull": true
+       }
+     }
+   }
+   ```
+
+   **Security:** Only expose admin/push/pull permissions, not entire permissions object
+
+4. **Environment Configuration**
+
+   **Required Environment Variables:**
+   - `GITHUB_TOKEN` - Use **fine-grained token** (recommended) or classic PAT
+   - `GITHUB_REPO` - Format: `owner/repository`
+
+   **GitHub Token Setup (Fine-Grained - Recommended):**
+   1. Go to: https://github.com/settings/tokens?type=beta
+   2. Generate new token with:
+      - **Repository access:** Only select repositories → Choose your repo
+      - **Permissions → Repository permissions:**
+        * **Issues:** Read and write ✅
+        * All others: No access
+   3. Token starts with `github_pat_...`
+
+   **GitHub Token Setup (Classic - Fallback):**
+   1. Go to: https://github.com/settings/tokens
+   2. Generate new token (classic) with:
+      - **Scope:** `repo` (full repository access)
+      - ⚠️ Warning: Grants access to ALL your repositories
+   3. Token starts with `ghp_...`
+
+   **Token Security:**
+   - Store ONLY in environment variables (never in code)
+   - Add to .gitignore: `.env`, `.env.local`, etc.
+   - Rotate tokens every 90 days (set expiration)
+   - Use hosting platform's secrets management (Vercel, Netlify, Render, etc.)
+
+5. **Documentation Requirements**
+
+   Create `FEEDBACK_SETUP.md` with:
+   - GitHub token creation (prioritize fine-grained tokens)
+   - Environment variable setup for your hosting platform
+   - Testing instructions
+   - Troubleshooting guide (common errors)
+   - Privacy policy snippet (email is public)
+   - Security considerations
+
+---
+
+**MY APP DETAILS:**
+
+- **App Name:** [Your app name]
+- **Tech Stack:** [e.g., React 18 + TypeScript + Vite + Express backend]
+- **Styling:** [e.g., Tailwind CSS, Styled Components, custom CSS]
 - **GitHub Repo:** [owner/repository]
-- **Backend Already Has:** [CORS, rate limiting, other middleware, etc.]
-- **Color Scheme:** [Primary colors, accent colors]
-- **Dark Mode:** [Yes/No]
+- **Backend Framework:** [Express, Flask, Django, Next.js API routes, etc.]
+- **Backend Already Has:** [CORS, rate limiting, authentication, etc.]
+- **Primary Color:** [Hex code for button styling]
+- **Dark Mode:** [Yes/No - if yes, provide dark theme colors]
 
 **Existing Files to Modify:**
-- Frontend: [e.g., `src/App.tsx`, `public/index.html`, `src/styles.css`]
-- Backend: [e.g., `server.js`, `app.py`, `routes/api.js`]
+- Frontend: [e.g., `src/components/`, `public/index.html`, `src/styles.css`]
+- Backend: [e.g., `server.js`, `routes/api.js`, `app.py`]
 
-Please implement this feedback widget with:
-1. Clean, production-ready code
-2. Proper error handling
-3. Input sanitization for security
-4. Clear code comments
-5. Complete documentation
+**Custom Context to Capture:**
+[Optional: List any app-specific context you want captured, e.g., "current workspace ID", "subscription tier", "selected filters"]
 
-Start by asking any clarifying questions about my specific setup, then implement the solution.
+---
+
+**DELIVERABLES:**
+
+Please implement:
+
+1. ✅ **Secure Frontend Code**
+   - XSS-safe feedback form with ARIA attributes
+   - Privacy warnings on email field
+   - Dark mode compatible
+
+2. ✅ **Secure Backend Code**
+   - Input sanitization
+   - GitHub API integration
+   - Error handling and logging
+   - Debug endpoint
+
+3. ✅ **Styling**
+   - Matches my app's design
+   - Mobile responsive
+   - Dark mode support (if applicable)
+
+4. ✅ **Documentation**
+   - Setup guide (fine-grained tokens)
+   - Testing instructions
+   - Security notes
+
+5. ✅ **Testing**
+   - Verify all inputs are sanitized
+   - Test XSS protection (try injecting <script> tags)
+   - Test ARIA attributes with screen reader
+   - Test mobile responsiveness
+   - Verify privacy warnings are visible
+
+**VALIDATION CHECKLIST:**
+
+Before marking as complete, verify:
+- [ ] No innerHTML usage (use textContent + createElement)
+- [ ] Email field has 3 privacy warnings (label, placeholder, helper text)
+- [ ] Modal has ARIA attributes (role, aria-modal, aria-labelledby)
+- [ ] Input sanitization removes control characters
+- [ ] Title truncated to 200 chars, description to 50,000 chars
+- [ ] Links have rel="noopener noreferrer"
+- [ ] Debug endpoint limits permissions exposure
+- [ ] Documentation recommends fine-grained tokens first
+- [ ] Dark mode styling works (if applicable)
+- [ ] Mobile responsive tested
+- [ ] ESC key closes modal
+- [ ] Click outside closes modal
+- [ ] Error messages don't expose sensitive info
+
+Start by confirming you understand all security and privacy requirements, then implement the solution.
 ```
 
 ---
