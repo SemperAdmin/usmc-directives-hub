@@ -72,7 +72,24 @@ const DOD_FORMS_URLS = [
 //   - Cloudflare Worker: "https://usmc-directives-proxy.your-subdomain.workers.dev"
 //   - Local server: "http://localhost:3000"
 // Leave empty to use fallback CORS proxies (unreliable)
-const CUSTOM_PROXY_URL = "https://usmc-directives-proxy.onrender.com";
+// Prefer local proxy during development; fall back to deployed URL otherwise
+const CUSTOM_PROXY_URL = (() => {
+  const deployed = "https://usmc-directives-proxy.onrender.com";
+  const local = "http://localhost:3000";
+  try {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return local;
+      }
+    }
+  } catch (_) {
+    // Ignore detection errors and use deployed URL
+  }
+  return deployed;
+})();
+
+console.log('[Proxy] Using proxy base URL:', CUSTOM_PROXY_URL);
 
 // Multiple CORS proxies to try as fallbacks (these are unreliable)
 const CORS_PROXIES = [
@@ -2220,31 +2237,55 @@ function formatAISummaryHTML(summary) {
 
   // Escape HTML first to prevent injection
   let html = escapeHtml(summary);
+  // Convert newlines to <br> after escaping
+  html = html.replace(/\n/g, '<br>');
 
-  // Format the title (💰 TITLE 💰)
-  html = html.replace(/💰\s*(.*?)\s*💰/g, '<div class="summary-title">$1</div>');
+  // Format the title (💰 TITLE 💰) using semantic heading
+  html = html.replace(/💰\s*(.*?)\s*💰/g, '<h3 class="summary-title">$1</h3>');
+  // Convert newlines to <br> after escaping
+  html = html.replace(/\n/g, '<br>');
+
+  // Format the title (💰 TITLE 💰) using semantic heading
+  html = html.replace(/💰\s*(.*?)\s*💰/g, '<h3 class="summary-title">$1</h3>');
 
   // Replace horizontal rules (---) with styled dividers
   html = html.replace(/---/g, '<hr class="summary-divider">');
 
   // Format the 5W OVERVIEW section header
-  html = html.replace(/\*\*5W OVERVIEW:\*\*/g, '<div class="five-w-header">5W OVERVIEW</div>');
+  html = html.replace(/\*\*5W OVERVIEW:\*\*/g, '<h4 class="five-w-header">5W OVERVIEW</h4>');
 
-  // Format each W item with custom styling
-  html = html.replace(/\*\s+\*\*WHO:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item who-item"><span class="w-label">WHO:</span> <span class="w-content">$1</span></div>');
-  html = html.replace(/\*\s+\*\*WHAT:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item what-item"><span class="w-label">WHAT:</span> <span class="w-content">$1</span></div>');
-  html = html.replace(/\*\s+\*\*WHEN:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item when-item"><span class="w-label">WHEN:</span> <span class="w-content">$1</span></div>');
-  html = html.replace(/\*\s+\*\*WHERE:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item where-item"><span class="w-label">WHERE:</span> <span class="w-content">$1</span></div>');
-  html = html.replace(/\*\s+\*\*WHY:\*\*\s*(.*?)(?=<br>|$)/g, '<div class="w-item why-item"><span class="w-label">WHY:</span> <span class="w-content">$1</span></div>');
+  // Format each W item with custom styling using paragraphs
+  html = html.replace(/\*\s+\*\*WHO:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item who-item"><strong class="w-label">WHO:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHAT:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item what-item"><strong class="w-label">WHAT:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHEN:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item when-item"><strong class="w-label">WHEN:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHERE:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item where-item"><strong class="w-label">WHERE:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHY:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item why-item"><strong class="w-label">WHY:</strong> <span class="w-content">$1</span></p>');
 
   // Format KEY POINTS header
-  html = html.replace(/🎯\s*\*\*KEY POINTS:?\*\*/g, '<div class="key-points-header">🎯 KEY POINTS</div>');
+  html = html.replace(/🎯\s*\*\*KEY POINTS:?\*\*/g, '<h4 class="key-points-header">🎯 KEY POINTS</h4>');
 
   // Format section headers (e.g., **PROMOTION AUTHORITY:**)
-  html = html.replace(/\*\*([A-Z\s]+):\*\*/g, '<div class="section-header">$1</div>');
+  html = html.replace(/\*\*([A-Z\s]+):\*\*/g, '<h5 class="section-header">$1</h5>');
 
   // Format bullet points (• item)
-  html = html.replace(/•\s*(.*?)(?=<br>|$)/g, '<div class="bullet-item">• $1</div>');
+  html = html.replace(/•\s*(.*?)(?=<br>|$)/g, '<p class="bullet-item">• $1</p>');
+  html = html.replace(/\*\*5W OVERVIEW:\*\*/g, '<h4 class="five-w-header">5W OVERVIEW</h4>');
+
+  // Format each W item with custom styling using paragraphs
+  html = html.replace(/\*\s+\*\*WHO:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item who-item"><strong class="w-label">WHO:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHAT:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item what-item"><strong class="w-label">WHAT:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHEN:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item when-item"><strong class="w-label">WHEN:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHERE:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item where-item"><strong class="w-label">WHERE:</strong> <span class="w-content">$1</span></p>');
+  html = html.replace(/\*\s+\*\*WHY:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item why-item"><strong class="w-label">WHY:</strong> <span class="w-content">$1</span></p>');
+
+  // Format KEY POINTS header
+  html = html.replace(/🎯\s*\*\*KEY POINTS:?\*\*/g, '<h4 class="key-points-header">🎯 KEY POINTS</h4>');
+
+  // Format section headers (e.g., **PROMOTION AUTHORITY:**)
+  html = html.replace(/\*\*([A-Z\s]+):\*\*/g, '<h5 class="section-header">$1</h5>');
+
+  // Format bullet points (• item)
+  html = html.replace(/•\s*(.*?)(?=<br>|$)/g, '<p class="bullet-item">• $1</p>');
 
   // Format any remaining bold text
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -2309,10 +2350,10 @@ async function toggleAISummary(index, message) {
     const cacheIndicator = isCached ? '<span class="cache-indicator" title="Loaded from cache">⚡ Cached</span>' : '<span class="cache-indicator new" title="Newly generated">✨ New</span>';
     header.innerHTML = `<span class="ai-summary-title">🤖 AI-Generated Summary</span>${cacheIndicator}`;
 
-    const textDiv = document.createElement('div');
-    textDiv.className = 'ai-summary-text';
-    // Format summary with enhanced HTML markup
-    textDiv.innerHTML = formatAISummaryHTML(summary.replace(/\n/g, '<br>'));
+  const textDiv = document.createElement('div');
+  textDiv.className = 'ai-summary-text';
+  // Format summary with enhanced HTML markup
+  textDiv.innerHTML = formatAISummaryHTML(summary);
 
     summaryDiv.appendChild(header);
     summaryDiv.appendChild(textDiv);
@@ -2731,26 +2772,49 @@ function updateLastUpdate() {
   lastUpdateSpan.textContent = new Date().toLocaleString();
 }
 
-// Initialize sticky header scroll behavior
+// Initialize shrink-on-scroll behavior: header stays visible and compacts when scrolled
 function initStickyHeader() {
   const header = document.querySelector('header');
-  let lastScrollTop = 0;
+  if (!header) return;
+
+  // Create a spacer to preserve layout when header is fixed
+  let headerSpacer = document.getElementById('headerSpacer');
+  if (!headerSpacer) {
+    headerSpacer = document.createElement('div');
+    headerSpacer.id = 'headerSpacer';
+    header.parentNode.insertBefore(headerSpacer, header.nextSibling);
+  }
+
+  const setSpacerHeight = () => {
+    const rect = header.getBoundingClientRect();
+    headerSpacer.style.height = `${rect.height}px`;
+  };
+
+  const applyShrink = () => {
+    const isScrolled = window.scrollY > 0;
+    header.classList.toggle('scrolled', isScrolled);
+    // After style changes, keep spacer height in sync
+    setSpacerHeight();
+  };
+
+  // Initial state
+  setSpacerHeight();
+  applyShrink();
+
   let ticking = false;
-
   window.addEventListener('scroll', () => {
-    lastScrollTop = window.scrollY;
-
     if (!ticking) {
       window.requestAnimationFrame(() => {
-        if (lastScrollTop > 100) {
-          header.classList.add('scrolled');
-        } else {
-          header.classList.remove('scrolled');
-        }
+        applyShrink();
         ticking = false;
       });
       ticking = true;
     }
+  }, { passive: true });
+
+  // Keep spacer responsive
+  window.addEventListener('resize', () => {
+    setSpacerHeight();
   });
 }
 

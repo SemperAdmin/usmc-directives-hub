@@ -1,0 +1,24 @@
+# Global ignores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+logs/
+
+# Environment and secrets
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Node dependencies
+node_modules/
+proxy-server/node_modules/
+
+# Proxy server env and logs
+proxy-server/.env
+proxy-server/logs/

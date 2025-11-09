@@ -20,10 +20,29 @@ header {
   justify-content: center;
   /* END MODIFICATION */
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  position: sticky;
+ 
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  transition: padding 0.3s ease, box-shadow 0.3s ease;
+  /* Smooth transitions for shrink-on-scroll */
+  transition: padding 0.2s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.2s ease;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform, opacity, box-shadow;
+}
+
+/* Header visibility states */
+header.header--visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+header.header--hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* --- NEW BRANDING STYLES --- */
@@ -44,11 +63,13 @@ header {
   justify-content: center;
   gap: 0.75rem;
   padding: 0.25rem 0.5rem;
+  transition: padding 0.2s ease;
 }
 
 .header-logo {
   height: 45px;
   width: auto;
+  transition: height 0.2s ease;
 }
 
 .header-text {
@@ -67,6 +88,7 @@ header {
 
 
 header.scrolled {
+  /* Avoid animating layout-changing properties */
   padding: 0.75rem 1rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
@@ -98,6 +120,7 @@ header h1 {
   margin: 0; /* Removed bottom margin */
   font-size: 2rem;
   font-weight: bold;
+  transition: font-size 0.2s ease;
 }
 
 header .subtitle {
@@ -1813,6 +1836,8 @@ body.dark-theme .footer-note {
     position: static;
     border-bottom: 2px solid #000;
   }
+  /* Hide fixed spacer during print */
+  #headerSpacer { display: none !important; }
   
   /* UPDATED PRINT HEADER */
   .branding {
