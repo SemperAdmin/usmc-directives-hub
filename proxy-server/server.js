@@ -4,6 +4,7 @@ const axios = require('axios');
 const https = require('https');
 const fs = require('fs').promises;
 const path = require('path');
+const { buildSummaryPrompt } = require('./prompts');
 
 // Rate limiting to prevent abuse
 const rateLimit = require('express-rate-limit');
@@ -403,76 +404,7 @@ app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
     if (!content) {
       return res.status(400).json({ success: false, error: 'Content is required' });
     }
-
-    const prompt = `You are a military document summarizer. You MUST analyze the ${messageType?.toUpperCase() || 'MILITARY'} message and provide ONLY a structured summary in the EXACT format specified below.
-
-CRITICAL: Do NOT include any raw message text, headers, or unformatted content. ONLY output the formatted summary as shown.
-
-REQUIRED OUTPUT FORMAT - FOLLOW EXACTLY:
-
-💰 [WRITE CONCISE TITLE IN ALL CAPS - NO MESSAGE HEADERS] 💰
----
-**5W OVERVIEW:**
-* **WHO:** [Specific personnel affected - ranks, units, MOSs, or "All Marines"]
-* **WHAT:** [The main action, policy change, or requirement in ONE clear sentence]
-* **WHEN:** [Effective date in "DD MMM YYYY" format OR deadline OR "Immediate" OR "N/A"]
-* **WHERE:** [Geographic scope - specific bases, CONUS, OCONUS, worldwide, or "N/A"]
-* **WHY:** [Purpose or justification in ONE sentence - avoid vague statements]
-
----
-🎯 **KEY POINTS:**
-
-**[SECTION NAME IN ALL CAPS]:**
-• [Actionable bullet point]
-• [Actionable bullet point]
-
-**[ANOTHER SECTION IN ALL CAPS]:**
-• [Actionable bullet point]
-• [Actionable bullet point]
-
-EXAMPLE OF CORRECT OUTPUT:
-
-💰 OFFICER PROMOTIONS FOR NOVEMBER 2025 💰
----
-**5W OVERVIEW:**
-* **WHO:** Selected officers listed in this message
-* **WHAT:** Promotion to next higher rank effective 1 November 2025
-* **WHEN:** 01 NOV 2025
-* **WHERE:** All commands worldwide
-* **WHY:** Recognition of demonstrated performance and time in grade
-
----
-🎯 **KEY POINTS:**
-
-**PROMOTION AUTHORITY:**
-• Authorized by Secretary of the Navy under Title 10 USC 624
-• Commanding officers may effect promotions immediately upon message receipt
-• Commissions will be mailed within 4-6 weeks (not required for promotion)
-
-**OFFICER ACTIONS:**
-• Verify name appears on promotion list
-• Coordinate with S-1/Admin for rank update in MCTFS
-• Update all official documents with new rank
-
-**WHAT NOT TO DO:**
-- DO NOT copy/paste message headers (SUBJ/, REF/, GENTEXT, etc.)
-- DO NOT include raw authority references or legal citations
-- DO NOT leave any W field blank or use just "/"
-- DO NOT exceed 350 words total
-- DO NOT include message formatting artifacts
-
-MANDATORY RULES:
-1. ALL FIVE Ws MUST have meaningful answers - "N/A" only if truly not applicable
-2. Each W answer must be ONE line maximum
-3. Start with the title line using 💰 emoji
-4. Use bullet points (•) for all lists under KEY POINTS
-5. Section headers must be ALL CAPS followed by colon
-6. Maximum 350 words total - be concise and actionable
-7. Focus on WHO is affected, WHAT they must do, and WHEN it's due
-
-Now analyze this message and output ONLY the formatted summary:
-
-${content}`;
+    const prompt = buildSummaryPrompt(messageType, content);
 
     const response = await axios.post(
       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,

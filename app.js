@@ -544,7 +544,7 @@ async function fetchAlnavMessages() {
         allMessages.push(...messages);
         console.log(`Loaded ${messages.length} ALNAVs from ${url}`);
       } catch (error) {
-        console.warn(`Skip ${url}:`, error.message);
+        // console.warn(`Skip ${url}:`, error.message);
       }
     }
 
@@ -587,7 +587,7 @@ async function fetchAlnavPage(url) {
           console.log('Custom proxy succeeded for ALNAV');
         }
       } catch (err) {
-        console.log('Custom proxy failed for ALNAV, trying direct fetch...', err.message);
+        // console.log('Custom proxy failed for ALNAV, trying direct fetch...', err.message);
       }
     }
 
@@ -622,7 +622,7 @@ async function fetchAlnavPage(url) {
 
     return parseAlnavLinks(doc, url);
   } catch (error) {
-    console.error(`Error fetching ALNAV page ${url}:`, error);
+    // console.error(`Error fetching ALNAV page ${url}:`, error);
     return [];
   }
 }
@@ -2179,10 +2179,6 @@ function renderCompactView(arr) {
     detailsRow.style.display = "none";
     detailsRow.innerHTML = `
       <div class="compact-details-content">
-        <div class="compact-summary">
-          <strong>Summary:</strong> ${item.summary}
-        </div>
-        ${item.category ? `<div class="compact-category"><strong>Category:</strong> ${item.category}</div>` : ''}
         <div class="compact-actions">
           <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="compact-link-btn">View Full Message →</a>
         </div>
@@ -2235,63 +2231,101 @@ function toggleCompactDetails(index, message) {
 function formatAISummaryHTML(summary) {
   if (!summary) return '';
 
-  // Escape HTML first to prevent injection
-  let html = escapeHtml(summary);
-  // Convert newlines to <br> after escaping
-  html = html.replace(/\n/g, '<br>');
+  const text = String(summary);
+  const lines = text.split(/\r?\n/);
+  const esc = (s) => escapeHtml(String(s || ''));
 
-  // Format the title (💰 TITLE 💰) using semantic heading
-  html = html.replace(/💰\s*(.*?)\s*💰/g, '<h3 class="summary-title">$1</h3>');
-  // Convert newlines to <br> after escaping
-  html = html.replace(/\n/g, '<br>');
+  // Title
+  const titleMatch = text.match(/💰\s*(.*?)\s*💰/);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+  let html = '';
+  if (title) html += `<h3 class="summary-title">${esc(title)}</h3>`;
+  if (text.includes('---')) html += '<hr class="summary-divider">';
 
-  // Format the title (💰 TITLE 💰) using semantic heading
-  html = html.replace(/💰\s*(.*?)\s*💰/g, '<h3 class="summary-title">$1</h3>');
+  // 5W table extraction
+  let fiveW = { Who: '', What: '', When: '', Where: '', Why: '' };
+  const hasTabTable = /5\sW'?s?\s*\t\s*Details/i.test(text) || /(Who\?|What\?|When\?|Where\?|Why\?)\s*\t/i.test(text);
+  if (hasTabTable) {
+    lines.forEach(l => {
+      const m = l.match(/^(Who\?|What\?|When\?|Where\?|Why\?)\s*\t\s*(.*)$/i);
+      if (m) {
+        const key = m[1].replace('?','');
+        const norm = key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+        fiveW[norm] = m[2].trim();
+      }
+    });
+  } else {
+    const whoM = text.match(/\*\s+\*\*WHO:\*\*\s*(.*)/i);
+    const whatM = text.match(/\*\s+\*\*WHAT:\*\*\s*(.*)/i);
+    const whenM = text.match(/\*\s+\*\*WHEN:\*\*\s*(.*)/i);
+    const whereM = text.match(/\*\s+\*\*WHERE:\*\*\s*(.*)/i);
+    const whyM = text.match(/\*\s+\*\*WHY:\*\*\s*(.*)/i);
+    fiveW.Who = whoM ? whoM[1].trim() : fiveW.Who;
+    fiveW.What = whatM ? whatM[1].trim() : fiveW.What;
+    fiveW.When = whenM ? whenM[1].trim() : fiveW.When;
+    fiveW.Where = whereM ? whereM[1].trim() : fiveW.Where;
+    fiveW.Why = whyM ? whyM[1].trim() : fiveW.Why;
+  }
 
-  // Replace horizontal rules (---) with styled dividers
-  html = html.replace(/---/g, '<hr class="summary-divider">');
+  // Render 5W table
+  html += '<h4 class="five-w-header">5 W\'s</h4>';
+  html += '<table class="fivew-table"><thead><tr><th>5 W\'s</th><th>Details</th></tr></thead><tbody>';
+  html += `<tr><td>Who?</td><td>${esc(fiveW.Who)}</td></tr>`;
+  html += `<tr><td>What?</td><td>${esc(fiveW.What)}</td></tr>`;
+  html += `<tr><td>When?</td><td>${esc(fiveW.When)}</td></tr>`;
+  html += `<tr><td>Where?</td><td>${esc(fiveW.Where)}</td></tr>`;
+  html += `<tr><td>Why?</td><td>${esc(fiveW.Why)}</td></tr>`;
+  html += '</tbody></table>';
 
-  // Format the 5W OVERVIEW section header
-  html = html.replace(/\*\*5W OVERVIEW:\*\*/g, '<h4 class="five-w-header">5W OVERVIEW</h4>');
+  // Key Points sections
+  const keyHeader = text.match(/🎯\s*(?:\*\*\s*)?KEY POINTS[^\n]*/i);
+  if (keyHeader) {
+    html += '<h4 class="key-points-header">🎯 Key Points</h4>';
 
-  // Format each W item with custom styling using paragraphs
-  html = html.replace(/\*\s+\*\*WHO:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item who-item"><strong class="w-label">WHO:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHAT:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item what-item"><strong class="w-label">WHAT:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHEN:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item when-item"><strong class="w-label">WHEN:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHERE:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item where-item"><strong class="w-label">WHERE:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHY:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item why-item"><strong class="w-label">WHY:</strong> <span class="w-content">$1</span></p>');
+    let currentSection = '';
+    let items = [];
+    const flush = () => {
+      if (!currentSection) return;
+      html += `<h5 class="section-subheader">${esc(currentSection)}</h5>`;
+      if (items.length) {
+        html += '<ul class="key-points-list">';
+        items.forEach(x => html += `<li>${esc(x)}</li>`);
+        html += '</ul>';
+      }
+      currentSection = '';
+      items = [];
+    };
 
-  // Format KEY POINTS header
-  html = html.replace(/🎯\s*\*\*KEY POINTS:?\*\*/g, '<h4 class="key-points-header">🎯 KEY POINTS</h4>');
+    const startIdx = lines.findIndex(l => l.includes(keyHeader[0]));
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const l = lines[i].trim();
+      if (!l) continue;
+      const bullet = l.match(/^•\s*(.+)$/);
+      const sect = l.match(/^(?:\*\*)?([A-Z][A-Z\s/&-]+?)(?:\*\*)?:\s*$/);
+      const sect2 = !sect && l.match(/^([A-Z][A-Z\s/&-]+)$/);
 
-  // Format section headers (e.g., **PROMOTION AUTHORITY:**)
-  html = html.replace(/\*\*([A-Z\s]+):\*\*/g, '<h5 class="section-header">$1</h5>');
+      if (sect || sect2) {
+        flush();
+        currentSection = (sect ? sect[1] : sect2[1]).trim();
+        continue;
+      }
+      if (bullet) { items.push(bullet[1]); continue; }
+      if (currentSection) {
+        if (items.length) {
+          items[items.length - 1] += ' ' + l;
+        } else {
+          items.push(l);
+        }
+      }
+    }
+    flush();
+  }
 
-  // Format bullet points (• item)
-  html = html.replace(/•\s*(.*?)(?=<br>|$)/g, '<p class="bullet-item">• $1</p>');
-  html = html.replace(/\*\*5W OVERVIEW:\*\*/g, '<h4 class="five-w-header">5W OVERVIEW</h4>');
-
-  // Format each W item with custom styling using paragraphs
-  html = html.replace(/\*\s+\*\*WHO:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item who-item"><strong class="w-label">WHO:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHAT:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item what-item"><strong class="w-label">WHAT:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHEN:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item when-item"><strong class="w-label">WHEN:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHERE:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item where-item"><strong class="w-label">WHERE:</strong> <span class="w-content">$1</span></p>');
-  html = html.replace(/\*\s+\*\*WHY:\*\*\s*(.*?)(?=<br>|$)/g, '<p class="w-item why-item"><strong class="w-label">WHY:</strong> <span class="w-content">$1</span></p>');
-
-  // Format KEY POINTS header
-  html = html.replace(/🎯\s*\*\*KEY POINTS:?\*\*/g, '<h4 class="key-points-header">🎯 KEY POINTS</h4>');
-
-  // Format section headers (e.g., **PROMOTION AUTHORITY:**)
-  html = html.replace(/\*\*([A-Z\s]+):\*\*/g, '<h5 class="section-header">$1</h5>');
-
-  // Format bullet points (• item)
-  html = html.replace(/•\s*(.*?)(?=<br>|$)/g, '<p class="bullet-item">• $1</p>');
-
-  // Format any remaining bold text
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-  // Replace newlines with proper spacing
-  html = html.replace(/<br>\s*<br>/g, '<br>'); // Remove double line breaks
+  // Optional note line
+  const note = text.match(/_Note:.*$/m);
+  if (note) {
+    html += `<p class="summary-note">${esc(note[0].replace(/^_+|_+$/g,''))}</p>`;
+  }
 
   return html;
 }
@@ -2794,7 +2828,10 @@ function initStickyHeader() {
     const isScrolled = window.scrollY > 0;
     header.classList.toggle('scrolled', isScrolled);
     // After style changes, keep spacer height in sync
+    // Measure immediately, next frame, and after transitions complete
     setSpacerHeight();
+    window.requestAnimationFrame(setSpacerHeight);
+    setTimeout(setSpacerHeight, 250);
   };
 
   // Initial state
@@ -2816,6 +2853,15 @@ function initStickyHeader() {
   window.addEventListener('resize', () => {
     setSpacerHeight();
   });
+
+  // Observe header size changes (e.g., due to child transitions)
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => setSpacerHeight());
+    ro.observe(header);
+  } else {
+    // Fallback: listen for transitionend bubbling from child elements
+    header.addEventListener('transitionend', setSpacerHeight, { passive: true });
+  }
 }
 
 // Initialize keyboard shortcuts

@@ -12,7 +12,8 @@ body {
 header {
   background: linear-gradient(135deg, #cc0000 0%, #990000 100%);
   color: #fff;
-  padding: 1.5rem 1rem;
+  /* Increase bottom padding slightly to avoid overlap with following content */
+  padding: 1.5rem 1rem 2rem 1rem;
   /* MODIFIED FOR BRANDING */
   display: flex;
   flex-direction: column;
@@ -89,7 +90,7 @@ header.header--hidden {
 
 header.scrolled {
   /* Avoid animating layout-changing properties */
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1rem 1rem 1rem; /* Slightly more bottom padding when compact */
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
@@ -536,6 +537,48 @@ button:active {
   background: rgba(21, 101, 192, 0.08);
   border-left: 3px solid #1565c0;
   border-radius: 0 4px 4px 0;
+}
+
+/* 5W table */
+.fivew-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 1rem;
+}
+.fivew-table thead th {
+  background: rgba(21, 101, 192, 0.08);
+  color: #1565c0;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+.fivew-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+.fivew-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Key points sections */
+.section-subheader {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1565c0;
+  margin: 0.75rem 0 0.25rem 0;
+}
+.key-points-list {
+  margin: 0.25rem 0 0.75rem 1rem;
+}
+.key-points-list li {
+  margin: 0.25rem 0;
+  line-height: 1.6;
 }
 
 .w-item {
@@ -1373,6 +1416,23 @@ body.dark-theme .five-w-header {
   color: #64b5f6;
   background: rgba(100, 181, 246, 0.1);
   border-left-color: #64b5f6;
+}
+
+/* Dark mode for table and sections */
+body.dark-theme .fivew-table {
+  background: rgba(255,255,255,0.04);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+body.dark-theme .fivew-table thead th {
+  background: rgba(100, 181, 246, 0.1);
+  color: #64b5f6;
+  border-bottom-color: rgba(255,255,255,0.15);
+}
+body.dark-theme .fivew-table td {
+  border-bottom-color: rgba(255,255,255,0.08);
+}
+body.dark-theme .section-subheader {
+  color: #64b5f6;
 }
 
 body.dark-theme .w-item {
