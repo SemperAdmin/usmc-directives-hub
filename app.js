@@ -7,6 +7,7 @@ const APPLICATION_CONFIG = {
     semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink', prependIdToTitle: false, hideIdColumn: true },
     dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
     dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: false, hideIdColumn: true },
+    fachecklists: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
     youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
     alnav: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
     secnav: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
@@ -121,16 +122,18 @@ let allAlnavs = []; // Store all ALNAVs
 let allAlmars = []; // Store all ALMARs
 let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
+let allFaChecklists = []; // Store all FA Checklists
 let allYouTubePosts = []; // Store all YouTube posts
 let allSecnavs = []; // Store all SECNAV directives
 let allJtrs = []; // Store all JTR (Joint Travel Regulations) updates
 let allDodFmr = []; // Store all DoD FMR changes
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'fachecklists', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
 document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
+  loadFaChecklists(); // Load FA Checklists from static data file
   restoreFilterPreferences();
   fetchAllFeeds();
   initTheme();
@@ -141,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
 refreshBtn.addEventListener("click", () => {
   refreshBtn.disabled = true;
   refreshBtn.textContent = "🔄 Refreshing...";
+  loadFaChecklists(); // Reload FA Checklists from static data file
   fetchAllFeeds().then(() => {
     refreshBtn.disabled = false;
     refreshBtn.textContent = "🔄 Refresh";
@@ -1103,6 +1107,83 @@ function createDodFmrMessage(id, title, href) {
   };
 }
 
+// Load FA Checklists from static data file
+function loadFaChecklists() {
+  console.log('Loading FA Checklists from static data file...');
+
+  try {
+    // Check if FA_CHECKLISTS data is available (loaded from lib/fa-checklists.js)
+    if (typeof window.FA_CHECKLISTS === 'undefined' || !Array.isArray(window.FA_CHECKLISTS)) {
+      console.warn('FA_CHECKLISTS data not found or invalid');
+      allFaChecklists = [];
+      return;
+    }
+
+    const checklists = window.FA_CHECKLISTS;
+    console.log(`Found ${checklists.length} FA Checklists in static data`);
+
+    // Transform FA Checklists data into message format
+    allFaChecklists = checklists.map(checklist => {
+      // Use effective date as pubDate, or default to current date
+      let pubDateObj = new Date();
+      if (checklist.effectiveDate) {
+        try {
+          // Try to parse the effective date (format: "01 Jan 2024")
+          const parsedDate = new Date(checklist.effectiveDate);
+          if (!isNaN(parsedDate.getTime())) {
+            pubDateObj = parsedDate;
+          }
+        } catch (e) {
+          console.warn(`Could not parse date: ${checklist.effectiveDate}`);
+        }
+      }
+
+      // Create a formatted subject line
+      const subject = `${checklist.faNumber}: ${checklist.functionalArea} - ${checklist.category}`;
+
+      // Create description with checklist details
+      const description = `
+        <strong>FA Number:</strong> ${checklist.faNumber}<br>
+        <strong>Functional Area:</strong> ${checklist.functionalArea}<br>
+        <strong>Category:</strong> ${checklist.category}<br>
+        <strong>Sponsor:</strong> ${checklist.sponsor}<br>
+        <strong>Effective Date:</strong> ${checklist.effectiveDate}
+      `;
+
+      return {
+        id: checklist.faNumber,
+        subject: subject,
+        link: window.FA_CHECKLISTS_META?.sourceUrl || 'https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/',
+        pubDate: pubDateObj.toISOString(),
+        pubDateObj: pubDateObj,
+        type: 'fachecklists',
+        description: description,
+        searchText: `${checklist.faNumber} ${checklist.functionalArea} ${checklist.category} ${checklist.sponsor}`.toLowerCase(),
+        // Include original checklist data for reference
+        faChecklist: checklist
+      };
+    });
+
+    // Sort by FA Number
+    allFaChecklists.sort((a, b) => {
+      const aNum = a.faChecklist.faNumber || '';
+      const bNum = b.faChecklist.faNumber || '';
+      return aNum.localeCompare(bNum);
+    });
+
+    console.log(`Loaded ${allFaChecklists.length} FA Checklists`);
+
+    // Log metadata if available
+    if (window.FA_CHECKLISTS_META) {
+      console.log('[FA Checklists] Source:', window.FA_CHECKLISTS_META.sourceUrl);
+      console.log('[FA Checklists] Generated:', window.FA_CHECKLISTS_META.generatedAt);
+    }
+  } catch (error) {
+    console.error('Error loading FA Checklists:', error);
+    allFaChecklists = [];
+  }
+}
+
 // Fetch full message details from the message page
 async function fetchMessageDetails(message) {
   if (message.detailsFetched) return message;
@@ -1695,6 +1776,8 @@ function filterMessages() {
     allMessages = [...allSemperAdminPosts];
   } else if (currentMessageType === 'dodforms') {
     allMessages = [...allDodForms];
+  } else if (currentMessageType === 'fachecklists') {
+    allMessages = [...allFaChecklists];
   } else if (currentMessageType === 'youtube') {
     allMessages = [...allYouTubePosts];
   } else if (currentMessageType === 'jtr') {
@@ -1703,7 +1786,7 @@ function filterMessages() {
     allMessages = [...allDodFmr];
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from "All Messages"
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allFaChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -1899,6 +1982,10 @@ function updateTabCounters() {
         count = getFilteredCount(allDodForms);
         baseText = 'DoD Forms';
         break;
+      case 'fachecklists':
+        count = getFilteredCount(allFaChecklists);
+        baseText = 'FA Checklists';
+        break;
       case 'youtube':
         count = getFilteredCount(allYouTubePosts);
         baseText = 'YouTube';
@@ -1917,7 +2004,7 @@ function updateTabCounters() {
         break;
       case 'all':
         // Exclude ALNAV and SECNAV from All Messages count
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allFaChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
         baseText = 'All Messages';
         break;
     }
@@ -1942,6 +2029,8 @@ function renderSummaryStats() {
     totalCount = allSemperAdminPosts.length;
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
+  } else if (currentMessageType === 'fachecklists') {
+    totalCount = allFaChecklists.length;
   } else if (currentMessageType === 'youtube') {
     totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'secnav') {
@@ -1952,7 +2041,7 @@ function renderSummaryStats() {
     totalCount = allDodFmr.length;
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from total count
-    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allFaChecklists.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
   }
 
   // Get date range
@@ -1968,6 +2057,7 @@ function renderSummaryStats() {
     const almarCount = currentMessages.filter(m => m.type === 'almar').length;
     const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
+    const faChecklistsCount = currentMessages.filter(m => m.type === 'fachecklists').length;
     const youtubeCount = currentMessages.filter(m => m.type === 'youtube').length;
     const jtrCount = currentMessages.filter(m => m.type === 'jtr').length;
     const dodfmrCount = currentMessages.filter(m => m.type === 'dodfmr').length;
@@ -1991,6 +2081,10 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">DoD Forms:</span>
         <span class="stat-value">${dodFormsCount}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">FA Checklists:</span>
+        <span class="stat-value">${faChecklistsCount}</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">YouTube:</span>
