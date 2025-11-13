@@ -1,0 +1,21 @@
+{
+  "name": "usmc-directives-hub",
+  "version": "1.0.0",
+  "description": "USMC Directives Hub - Search and track Marine Corps Messages, Publications, and Forms",
+  "type": "module",
+  "scripts": {
+    "prebuild": "node scripts/fetch-fa-checklists.mjs",
+    "build": "echo 'Static site - no build needed'",
+    "fetch-fa": "node scripts/fetch-fa-checklists.mjs"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SemperAdmin/usmc-directives-hub.git"
+  },
+  "author": "Semper Admin",
+  "license": "MIT"
+}
