@@ -19,7 +19,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const SECNAV_URL = 'https://www.secnav.navy.mil/doni/SECNAV%20Manuals1/Forms/AllItems.aspx?View=%7B71bc9fed-cda6-4e2a-b781-43a972cc6a98%7D&SortField=Effective_x0020_Date&SortDir=Desc';
+const SECNAV_BASE_URL = new URL(SECNAV_URL).origin; // Extract base URL for building full links
 const OUTPUT_FILE = join(__dirname, '../lib/secnav-data.js');
+
+// Browser headers for fetch requests (mimics real browser)
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Connection': 'keep-alive',
+  'Upgrade-Insecure-Requests': '1'
+};
 
 /**
  * Try multiple fetch methods with fallbacks
@@ -31,16 +42,7 @@ async function tryMultipleFetchMethods(url) {
     // Method 1: Direct fetch with comprehensive headers
     async () => {
       console.log('[SECNAV] Method 1: Direct fetch');
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1'
-        }
-      });
+      const response = await fetch(url, { headers: BROWSER_HEADERS });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.text();
     },
@@ -145,8 +147,8 @@ async function fetchSecnavDirectives() {
 
         if (!title) return; // Skip rows without title
 
-        // Build full URL if relative
-        const fullLink = link.startsWith('http') ? link : `https://www.secnav.navy.mil${link}`;
+        // Build full URL if relative (derive base URL from SECNAV_URL constant)
+        const fullLink = link.startsWith('http') ? link : `${SECNAV_BASE_URL}${link}`;
 
         // Extract SECNAV ID from title or filename
         const idMatch = title.match(/SECNAV[\s\-_]*[\d.]+[A-Z]*/i) ||
@@ -164,16 +166,14 @@ async function fetchSecnavDirectives() {
           }
         });
 
-        // Parse date or use current date
-        let pubDateObj = new Date();
+        // Parse date. Fallback to epoch date if invalid to avoid incorrect sorting.
+        let pubDateObj = null;
         if (effectiveDate) {
-          try {
-            const parsedDate = new Date(effectiveDate);
-            if (!isNaN(parsedDate.getTime())) {
-              pubDateObj = parsedDate;
-            }
-          } catch (e) {
-            // Keep current date
+          const parsedDate = new Date(effectiveDate);
+          if (!isNaN(parsedDate.getTime())) {
+            pubDateObj = parsedDate;
+          } else {
+            console.warn(`[SECNAV] Invalid effective date found: "${effectiveDate}" for title: "${title}"`);
           }
         }
 
@@ -188,9 +188,9 @@ async function fetchSecnavDirectives() {
           title,
           subject,
           link: fullLink,
-          pubDate: pubDateObj.toISOString(),
+          pubDate: (pubDateObj || new Date(0)).toISOString(), // Use epoch date as fallback
           description,
-          effectiveDate: effectiveDate || pubDateObj.toLocaleDateString()
+          effectiveDate: effectiveDate || null
         });
       } catch (rowError) {
         // Skip problematic rows
