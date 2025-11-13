@@ -1,7 +1,7 @@
-# GitHub Actions Workflow for Updating FA Checklists Data
-# Runs daily and attempts to fetch latest data from IGMC website
+# GitHub Actions Workflow for Updating Static Data
+# Runs daily and attempts to fetch latest data from IGMC, SECNAV, and ALNAV sources
 
-name: Update FA Checklists Data
+name: Update Static Data
 
 on:
   # Run daily at 6 AM UTC (1 AM EST / 10 PM PST)
@@ -17,6 +17,8 @@ on:
       - main
     paths:
       - 'scripts/fetch-fa-checklists.mjs'
+      - 'scripts/fetch-secnav.mjs'
+      - 'scripts/fetch-alnav.mjs'
       - '.github/workflows/update-fa-checklists.yml'
 
 jobs:
@@ -41,29 +43,35 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Fetch FA Checklists data
+      - name: Fetch static data
         id: fetch
         run: |
-          echo "🔄 Fetching FA Checklists data..."
-          npm run fetch-fa
+          echo "🔄 Fetching static data..."
+          npm run fetch-all
 
-          # Check if file was updated
-          if git diff --quiet lib/fa-checklists.js; then
+          # Check if any files were updated
+          if git diff --quiet lib/fa-checklists.js lib/secnav-data.js lib/alnav-data.js; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "✓ No changes detected"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "✓ Data file updated"
+            echo "✓ Data files updated"
           fi
 
-      - name: Get record count
+      - name: Get record counts
         if: steps.fetch.outputs.changed == 'true'
         id: count
         run: |
-          # Extract record count from generated file
-          COUNT=$(grep "totalRecords:" lib/fa-checklists.js | grep -oP '\d+' || echo "0")
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
-          echo "📊 Total records: $COUNT"
+          # Extract record counts from generated files
+          FA_COUNT=$(grep "totalRecords:" lib/fa-checklists.js | grep -oP '\d+' || echo "0")
+          SECNAV_COUNT=$(grep "totalRecords:" lib/secnav-data.js | grep -oP '\d+' || echo "0")
+          ALNAV_COUNT=$(grep "totalRecords:" lib/alnav-data.js | grep -oP '\d+' || echo "0")
+          echo "fa_count=$FA_COUNT" >> $GITHUB_OUTPUT
+          echo "secnav_count=$SECNAV_COUNT" >> $GITHUB_OUTPUT
+          echo "alnav_count=$ALNAV_COUNT" >> $GITHUB_OUTPUT
+          echo "📊 FA Checklists: $FA_COUNT"
+          echo "📊 SECNAV Directives: $SECNAV_COUNT"
+          echo "📊 ALNAV Messages: $ALNAV_COUNT"
 
       - name: Commit and push changes
         if: steps.fetch.outputs.changed == 'true'
@@ -71,12 +79,14 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add lib/fa-checklists.js
+          git add lib/fa-checklists.js lib/secnav-data.js lib/alnav-data.js
 
-          git commit -m "chore: Update FA Checklists data
+          git commit -m "chore: Update static data
 
-          - Auto-updated from IGMC website
-          - Total records: ${{ steps.count.outputs.count }}
+          - Auto-updated from multiple sources
+          - FA Checklists (IGMC): ${{ steps.count.outputs.fa_count }} records
+          - SECNAV Directives: ${{ steps.count.outputs.secnav_count }} records
+          - ALNAV Messages: ${{ steps.count.outputs.alnav_count }} records
           - Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
           [skip ci]"
@@ -86,31 +96,40 @@ jobs:
       - name: Create summary
         if: always()
         run: |
-          echo "## FA Checklists Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Static Data Update Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.fetch.outputs.changed }}" == "true" ]; then
             echo "✅ **Data Updated Successfully**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Total Records:** ${{ steps.count.outputs.count }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Source:** https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/" >> $GITHUB_STEP_SUMMARY
+            echo "### Record Counts" >> $GITHUB_STEP_SUMMARY
+            echo "- **FA Checklists (IGMC):** ${{ steps.count.outputs.fa_count }} records" >> $GITHUB_STEP_SUMMARY
+            echo "- **SECNAV Directives:** ${{ steps.count.outputs.secnav_count }} records" >> $GITHUB_STEP_SUMMARY
+            echo "- **ALNAV Messages:** ${{ steps.count.outputs.alnav_count }} records" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Data Sources" >> $GITHUB_STEP_SUMMARY
+            echo "- **IGMC:** https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/" >> $GITHUB_STEP_SUMMARY
+            echo "- **SECNAV:** https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml" >> $GITHUB_STEP_SUMMARY
+            echo "- **ALNAV:** https://www.mynavyhr.navy.mil/References/Messages/" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo "- **Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ **No Changes Detected**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The FA Checklists data is already up to date." >> $GITHUB_STEP_SUMMARY
+            echo "All static data is already up to date." >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Notify on failure
         if: failure()
         run: |
-          echo "## ❌ FA Checklists Update Failed" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ Static Data Update Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The automated update encountered an error." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Possible causes:**" >> $GITHUB_STEP_SUMMARY
-          echo "- IGMC website is down or blocking requests" >> $GITHUB_STEP_SUMMARY
-          echo "- All CORS proxy methods failed" >> $GITHUB_STEP_SUMMARY
+          echo "- Source websites (IGMC, SECNAV, or Navy) are down or blocking requests" >> $GITHUB_STEP_SUMMARY
+          echo "- All fetch methods failed (direct, proxies, etc.)" >> $GITHUB_STEP_SUMMARY
           echo "- Network connectivity issues" >> $GITHUB_STEP_SUMMARY
+          echo "- HTML/RSS structure changes in source websites" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Action required:** Check workflow logs for details" >> $GITHUB_STEP_SUMMARY
