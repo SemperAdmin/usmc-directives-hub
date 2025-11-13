@@ -103,12 +103,21 @@ async function parseAlnavPage(url) {
     const cheerio = await import('cheerio');
 
     const html = await tryMultipleFetchMethods(url);
+
+    // Debug: Log HTML length and preview
+    console.log(`[ALNAV] Fetched HTML length: ${html.length} characters`);
+    console.log(`[ALNAV] HTML preview (first 300 chars): ${html.substring(0, 300)}`);
+
     const $ = cheerio.load(html);
+
+    // Debug: Check for ALNAV links
+    const alnavLinks = $('a[href*="ALNAV"]');
+    console.log(`[ALNAV] Found ${alnavLinks.length} links containing "ALNAV"`);
 
     const messages = [];
 
     // Find all message links (adjust selector based on actual HTML structure)
-    $('a[href*="ALNAV"]').each((index, element) => {
+    alnavLinks.each((index, element) => {
       const $link = $(element);
       const text = $link.text().trim();
       const href = $link.attr('href');
@@ -148,10 +157,17 @@ async function parseAlnavPage(url) {
     });
 
     console.log(`[ALNAV] Found ${messages.length} messages from ${url}`);
+
+    if (messages.length === 0 && alnavLinks.length > 0) {
+      console.warn(`[ALNAV] ⚠️  Found ${alnavLinks.length} ALNAV links but extracted 0 messages`);
+      console.warn('[ALNAV] Links may not match expected format (ALNAV ###/##)');
+    }
+
     return messages;
 
   } catch (error) {
     console.warn(`[ALNAV] Failed to fetch ${url}:`, error.message);
+    console.warn(`[ALNAV] Stack trace:`, error.stack);
     return [];
   }
 }

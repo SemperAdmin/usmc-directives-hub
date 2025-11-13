@@ -93,9 +93,24 @@ async function fetchSecnavDirectives() {
     // Fetch HTML
     const html = await tryMultipleFetchMethods(SECNAV_URL);
 
+    // Debug: Log HTML length and preview
+    console.log(`[SECNAV] Fetched HTML length: ${html.length} characters`);
+    console.log(`[SECNAV] HTML preview (first 500 chars): ${html.substring(0, 500)}`);
+
+    // Check if page contains indicators of dynamic content
+    if (html.includes('javascript:') || html.includes('__VIEWSTATE') || html.length < 5000) {
+      console.warn('[SECNAV] Page appears to use JavaScript rendering or is very short');
+      console.warn('[SECNAV] SharePoint may require browser rendering to load data');
+    }
+
     // Parse HTML with Cheerio
     const $ = cheerio.load(html);
     const directives = [];
+
+    // Debug: Check for common SharePoint elements
+    console.log(`[SECNAV] Found tables: ${$('table').length}`);
+    console.log(`[SECNAV] Found links: ${$('a').length}`);
+    console.log(`[SECNAV] Found PDFs: ${$('a[href*=".pdf"]').length}`);
 
     // SharePoint typically uses specific classes or table structures
     // Try multiple selectors to find the data table
@@ -108,19 +123,27 @@ async function fetchSecnavDirectives() {
     ];
 
     let rows = null;
+    let usedSelector = null;
     for (const selector of possibleSelectors) {
       const foundRows = $(selector);
       if (foundRows.length > 0) {
         console.log(`[SECNAV] Found ${foundRows.length} rows using selector: ${selector}`);
         rows = foundRows;
+        usedSelector = selector;
         break;
+      } else {
+        console.log(`[SECNAV] Selector "${selector}" found 0 rows`);
       }
     }
 
     if (!rows || rows.length === 0) {
-      console.warn('[SECNAV] No table rows found in HTML');
+      console.error('[SECNAV] ❌ No table rows found with any selector');
+      console.error('[SECNAV] This SharePoint page may require browser rendering');
+      console.error('[SECNAV] Consider using Puppeteer/Playwright for JavaScript-rendered pages');
       return [];
     }
+
+    console.log(`[SECNAV] Processing ${rows.length} rows with selector: ${usedSelector}`);
 
     // Process each row
     rows.each((index, element) => {
@@ -198,7 +221,15 @@ async function fetchSecnavDirectives() {
       }
     });
 
-    console.log(`[SECNAV] Successfully parsed ${directives.length} directives`);
+    console.log(`[SECNAV] Successfully parsed ${directives.length} directives from ${rows.length} rows`);
+
+    if (directives.length === 0) {
+      console.warn('[SECNAV] ⚠️  No directives extracted - all rows were skipped');
+      console.warn('[SECNAV] This usually means:');
+      console.warn('[SECNAV]  - Links not found in expected format');
+      console.warn('[SECNAV]  - Page structure different than expected');
+      console.warn('[SECNAV]  - Content loaded dynamically via JavaScript');
+    }
 
     // Sort by publication date (newest first)
     directives.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
