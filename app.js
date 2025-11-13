@@ -7,7 +7,7 @@ const APPLICATION_CONFIG = {
     semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink', prependIdToTitle: false, hideIdColumn: true },
     dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
     dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: false, hideIdColumn: true },
-    fachecklists: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
+    igmc: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
     youtube: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
     alnav: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
     secnav: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
@@ -127,7 +127,7 @@ let allYouTubePosts = []; // Store all YouTube posts
 let allSecnavs = []; // Store all SECNAV directives
 let allJtrs = []; // Store all JTR (Joint Travel Regulations) updates
 let allDodFmr = []; // Store all DoD FMR changes
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'fachecklists', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'igmc', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -1156,7 +1156,7 @@ function loadFaChecklists() {
         link: window.FA_CHECKLISTS_META?.sourceUrl || 'https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/',
         pubDate: pubDateObj.toISOString(),
         pubDateObj: pubDateObj,
-        type: 'fachecklists',
+        type: 'igmc',
         description: description,
         searchText: `${checklist.faNumber} ${checklist.functionalArea} ${checklist.category} ${checklist.sponsor}`.toLowerCase(),
         // Include original checklist data for reference
@@ -1164,11 +1164,9 @@ function loadFaChecklists() {
       };
     });
 
-    // Sort by FA Number
+    // Sort by effective date descending (newest first)
     allFaChecklists.sort((a, b) => {
-      const aNum = a.faChecklist.faNumber || '';
-      const bNum = b.faChecklist.faNumber || '';
-      return aNum.localeCompare(bNum);
+      return b.pubDateObj - a.pubDateObj;
     });
 
     console.log(`Loaded ${allFaChecklists.length} FA Checklists`);
@@ -1776,7 +1774,7 @@ function filterMessages() {
     allMessages = [...allSemperAdminPosts];
   } else if (currentMessageType === 'dodforms') {
     allMessages = [...allDodForms];
-  } else if (currentMessageType === 'fachecklists') {
+  } else if (currentMessageType === 'igmc') {
     allMessages = [...allFaChecklists];
   } else if (currentMessageType === 'youtube') {
     allMessages = [...allYouTubePosts];
@@ -1982,9 +1980,9 @@ function updateTabCounters() {
         count = getFilteredCount(allDodForms);
         baseText = 'DoD Forms';
         break;
-      case 'fachecklists':
+      case 'igmc':
         count = getFilteredCount(allFaChecklists);
-        baseText = 'FA Checklists';
+        baseText = 'IGMC';
         break;
       case 'youtube':
         count = getFilteredCount(allYouTubePosts);
@@ -2029,7 +2027,7 @@ function renderSummaryStats() {
     totalCount = allSemperAdminPosts.length;
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
-  } else if (currentMessageType === 'fachecklists') {
+  } else if (currentMessageType === 'igmc') {
     totalCount = allFaChecklists.length;
   } else if (currentMessageType === 'youtube') {
     totalCount = allYouTubePosts.length;
@@ -2057,7 +2055,7 @@ function renderSummaryStats() {
     const almarCount = currentMessages.filter(m => m.type === 'almar').length;
     const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
-    const faChecklistsCount = currentMessages.filter(m => m.type === 'fachecklists').length;
+    const igmcCount = currentMessages.filter(m => m.type === 'igmc').length;
     const youtubeCount = currentMessages.filter(m => m.type === 'youtube').length;
     const jtrCount = currentMessages.filter(m => m.type === 'jtr').length;
     const dodfmrCount = currentMessages.filter(m => m.type === 'dodfmr').length;
@@ -2083,8 +2081,8 @@ function renderSummaryStats() {
         <span class="stat-value">${dodFormsCount}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">FA Checklists:</span>
-        <span class="stat-value">${faChecklistsCount}</span>
+        <span class="stat-label">IGMC:</span>
+        <span class="stat-value">${igmcCount}</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">YouTube:</span>
