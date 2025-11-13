@@ -1,0 +1,116 @@
+# GitHub Actions Workflow for Updating FA Checklists Data
+# Runs daily and attempts to fetch latest data from IGMC website
+
+name: Update FA Checklists Data
+
+on:
+  # Run daily at 6 AM UTC (1 AM EST / 10 PM PST)
+  schedule:
+    - cron: '0 6 * * *'
+
+  # Allow manual trigger from Actions tab
+  workflow_dispatch:
+
+  # Run on push to main (for testing)
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/fetch-fa-checklists.mjs'
+      - '.github/workflows/update-fa-checklists.yml'
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required for committing changes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper git operations
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Fetch FA Checklists data
+        id: fetch
+        run: |
+          echo "🔄 Fetching FA Checklists data..."
+          npm run fetch-fa
+
+          # Check if file was updated
+          if git diff --quiet lib/fa-checklists.js; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "✓ No changes detected"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✓ Data file updated"
+          fi
+
+      - name: Get record count
+        if: steps.fetch.outputs.changed == 'true'
+        id: count
+        run: |
+          # Extract record count from generated file
+          COUNT=$(grep "totalRecords:" lib/fa-checklists.js | grep -oP '\d+' || echo "0")
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "📊 Total records: $COUNT"
+
+      - name: Commit and push changes
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add lib/fa-checklists.js
+
+          git commit -m "chore: Update FA Checklists data
+
+          - Auto-updated from IGMC website
+          - Total records: ${{ steps.count.outputs.count }}
+          - Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          [skip ci]"
+
+          git push
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## FA Checklists Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.fetch.outputs.changed }}" == "true" ]; then
+            echo "✅ **Data Updated Successfully**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Records:** ${{ steps.count.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Source:** https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/" >> $GITHUB_STEP_SUMMARY
+            echo "- **Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No Changes Detected**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The FA Checklists data is already up to date." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "## ❌ FA Checklists Update Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The automated update encountered an error." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Possible causes:**" >> $GITHUB_STEP_SUMMARY
+          echo "- IGMC website is down or blocking requests" >> $GITHUB_STEP_SUMMARY
+          echo "- All CORS proxy methods failed" >> $GITHUB_STEP_SUMMARY
+          echo "- Network connectivity issues" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action required:** Check workflow logs for details" >> $GITHUB_STEP_SUMMARY

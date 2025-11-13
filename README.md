@@ -12,6 +12,7 @@ Inspired by the [navadmin-scanner](https://github.com/mpyne-navy/navadmin-scanne
 - **Date Filtering**: Filter messages by date range (7, 14, 30, 60, 90 days, or all)
 - **Offline Cache**: Works offline with cached data
 - **JSON Export**: Export filtered results to JSON format
+- **FA Checklists**: IGMC Functional Area Checklists with automated daily updates
 
 ### Enhanced Parsing
 - Extracts MARADMIN ID and numeric ID
@@ -91,7 +92,37 @@ Each proxy has a 15-second timeout before trying the next one.
 - Modern responsive UI
 - No server required
 
-## Data Source
+## FA Checklists (IGMC)
+
+The application includes Inspector General of the Marine Corps (IGMC) Functional Area Checklists with **automated daily updates**.
+
+### Features
+- **Automated Updates**: GitHub Actions workflow fetches latest data daily at 6 AM UTC
+- **Multiple Fetch Methods**: 5 fallback methods ensure reliable data retrieval
+- **Static Export**: Data is pre-generated for fast loading and offline access
+- **Full Search Support**: Search by FA Number, Functional Area, Category, or Sponsor
+
+### Data Source
+- **URL**: https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/
+- **Update Frequency**: Daily (automated via GitHub Actions)
+- **Manual Update**: Run `npm run fetch-fa` to update immediately
+
+### Structure
+Each checklist includes:
+- **FA Number**: Unique identifier (e.g., "6500", "3000")
+- **Functional Area**: Category and full name
+- **Category**: CoRE or Non-CoRE classification
+- **Sponsor**: Responsible USMC organization
+- **Effective Date**: When the checklist became active
+
+### Implementation Details
+See [scripts/README.md](scripts/README.md) for complete documentation on:
+- Fetch methods and fallbacks
+- GitHub Actions workflow
+- Troubleshooting
+- Manual data updates
+
+## Data Sources
 
 MARADMINs are fetched from the official Marines.mil RSS feed:
 ```

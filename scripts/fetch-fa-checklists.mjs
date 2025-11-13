@@ -21,6 +21,88 @@ const SOURCE_URL = 'https://www.igmc.marines.mil/Divisions/Inspections-Division/
 const OUTPUT_FILE = join(__dirname, '../lib/fa-checklists.js');
 
 /**
+ * Try multiple fetch methods with fallbacks
+ */
+async function tryMultipleFetchMethods(url) {
+  console.log('[FA Checklists] Trying multiple fetch methods...');
+
+  const methods = [
+    // Method 1: Direct fetch with comprehensive headers
+    async () => {
+      console.log('[FA Checklists] Method 1: Direct fetch with browser headers');
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Cache-Control': 'max-age=0'
+        }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    },
+
+    // Method 2: AllOrigins CORS proxy
+    async () => {
+      console.log('[FA Checklists] Method 2: AllOrigins CORS proxy');
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const json = await response.json();
+      return json.contents;
+    },
+
+    // Method 3: CORS.io proxy
+    async () => {
+      console.log('[FA Checklists] Method 3: CORS.io proxy');
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    },
+
+    // Method 4: CodeTabs proxy
+    async () => {
+      console.log('[FA Checklists] Method 4: CodeTabs proxy');
+      const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    },
+
+    // Method 5: ThingProxy
+    async () => {
+      console.log('[FA Checklists] Method 5: ThingProxy');
+      const proxyUrl = `https://thingproxy.freeboard.io/fetch/${url}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    }
+  ];
+
+  // Try each method until one succeeds
+  for (let i = 0; i < methods.length; i++) {
+    try {
+      const html = await methods[i]();
+      console.log(`[FA Checklists] ✓ Success with method ${i + 1}`);
+      return html;
+    } catch (error) {
+      console.log(`[FA Checklists] ✗ Method ${i + 1} failed:`, error.message);
+      if (i === methods.length - 1) {
+        throw new Error('All fetch methods failed');
+      }
+    }
+  }
+}
+
+/**
  * Fetch and parse FA Checklists from IGMC website
  */
 async function fetchFAChecklists() {
@@ -31,18 +113,8 @@ async function fetchFAChecklists() {
     // Dynamic import of cheerio (ESM)
     const cheerio = await import('cheerio');
 
-    // Fetch the HTML page
-    const response = await fetch(SOURCE_URL, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const html = await response.text();
+    // Try multiple fetch methods
+    const html = await tryMultipleFetchMethods(SOURCE_URL);
     const $ = cheerio.load(html);
 
     // Find the table with class JCSDashboard
