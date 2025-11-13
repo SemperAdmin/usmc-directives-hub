@@ -21,8 +21,8 @@ const RSS_FEEDS = {
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=500",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=500&category=14335",
   // semperadmin now uses Facebook Graph API via /api/facebook/semperadmin endpoint
-  alnav: null, // RSS feed broken - using direct HTML scraping via fetchAlnavMessages()
-  secnav: "https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml",
+  alnav: null, // Using static data file loaded from lib/alnav-data.js
+  secnav: null, // Using static data file loaded from lib/secnav-data.js
   jtr: "https://www.travel.dod.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1311&Category=22932&isdashboardselected=0&max=500"
 };
 
@@ -44,9 +44,10 @@ function getAlnavUrls() {
   return urls;
 }
 
-// SECNAV URLs - Now using RSS feed (deprecated HTML scraping removed)
+// SECNAV URLs - Now using static data file (loaded from lib/secnav-data.js)
+// This function is deprecated but kept for compatibility
 function getSecnavUrls() {
-  return [RSS_FEEDS.secnav];
+  return [];
 }
 
 // DoD FMR URLs - Department of Defense Financial Management Regulation

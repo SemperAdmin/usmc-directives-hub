@@ -109,7 +109,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Data Sources" >> $GITHUB_STEP_SUMMARY
             echo "- **IGMC:** https://www.igmc.marines.mil/Divisions/Inspections-Division/Checklists/" >> $GITHUB_STEP_SUMMARY
-            echo "- **SECNAV:** https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml" >> $GITHUB_STEP_SUMMARY
+            echo "- **SECNAV:** https://www.secnav.navy.mil/doni/SECNAV%20Manuals1/" >> $GITHUB_STEP_SUMMARY
             echo "- **ALNAV:** https://www.mynavyhr.navy.mil/References/Messages/" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "- **Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY

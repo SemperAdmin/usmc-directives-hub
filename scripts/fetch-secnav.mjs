@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 
 /**
- * Fetch SECNAV Directives from RSS Feed
+ * Fetch SECNAV Directives from Navy Website
  *
- * This script fetches SECNAV directives from an RSS feed
+ * This script fetches SECNAV directives from the Navy DONI SharePoint site
  * and generates a static JavaScript data file for use in the application.
  *
- * Source: https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml
+ * Source: https://www.secnav.navy.mil/doni/SECNAV%20Manuals1/Forms/AllItems.aspx
  * Target: lib/secnav-data.js
  */
 
 import { writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import * as cheerio from 'cheerio';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const RSS_URL = 'https://rss.app/feeds/gtjRe8dzN4BUYIrV.xml';
+const SECNAV_URL = 'https://www.secnav.navy.mil/doni/SECNAV%20Manuals1/Forms/AllItems.aspx?View=%7B71bc9fed-cda6-4e2a-b781-43a972cc6a98%7D&SortField=Effective_x0020_Date&SortDir=Desc';
 const OUTPUT_FILE = join(__dirname, '../lib/secnav-data.js');
 
 /**
@@ -27,10 +28,19 @@ async function tryMultipleFetchMethods(url) {
   console.log('[SECNAV] Trying multiple fetch methods...');
 
   const methods = [
-    // Method 1: Direct fetch
+    // Method 1: Direct fetch with comprehensive headers
     async () => {
       console.log('[SECNAV] Method 1: Direct fetch');
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        }
+      });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.text();
     },
@@ -45,10 +55,10 @@ async function tryMultipleFetchMethods(url) {
       return json.contents;
     },
 
-    // Method 3: CORS.io proxy
+    // Method 3: ThingProxy
     async () => {
-      console.log('[SECNAV] Method 3: CORS.io proxy');
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      console.log('[SECNAV] Method 3: ThingProxy');
+      const proxyUrl = `https://thingproxy.freeboard.io/fetch/${url}`;
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.text();
@@ -58,9 +68,9 @@ async function tryMultipleFetchMethods(url) {
   // Try each method until one succeeds
   for (let i = 0; i < methods.length; i++) {
     try {
-      const xml = await methods[i]();
+      const html = await methods[i]();
       console.log(`[SECNAV] ✓ Success with method ${i + 1}`);
-      return xml;
+      return html;
     } catch (error) {
       console.log(`[SECNAV] ✗ Method ${i + 1} failed:`, error.message);
       if (i === methods.length - 1) {
@@ -71,60 +81,122 @@ async function tryMultipleFetchMethods(url) {
 }
 
 /**
- * Parse RSS feed and extract SECNAV directives
+ * Parse SharePoint page and extract SECNAV directives
  */
 async function fetchSecnavDirectives() {
-  console.log('[SECNAV] Fetching data from RSS feed...');
-  console.log('[SECNAV] URL:', RSS_URL);
+  console.log('[SECNAV] Fetching data from Navy website...');
+  console.log('[SECNAV] URL:', SECNAV_URL);
 
   try {
-    // Fetch RSS XML
-    const xml = await tryMultipleFetchMethods(RSS_URL);
+    // Fetch HTML
+    const html = await tryMultipleFetchMethods(SECNAV_URL);
 
-    // Parse XML using DOMParser (available in Node.js via JSDOM or similar)
-    // For simplicity, we'll use regex parsing for RSS (not ideal but works)
+    // Parse HTML with Cheerio
+    const $ = cheerio.load(html);
     const directives = [];
 
-    // Match all <item> elements
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    const items = [...xml.matchAll(itemRegex)];
+    // SharePoint typically uses specific classes or table structures
+    // Try multiple selectors to find the data table
+    const possibleSelectors = [
+      'table.ms-listviewtable tr',  // Standard SharePoint list view
+      'table[summary*="SECNAV"] tr', // Table with SECNAV in summary
+      '.ms-listviewgrid tr',         // Grid view
+      'table tr',                    // Fallback: any table row
+      '[role="row"]'                 // ARIA role for rows
+    ];
 
-    console.log(`[SECNAV] Found ${items.length} items in RSS feed`);
+    let rows = null;
+    for (const selector of possibleSelectors) {
+      const foundRows = $(selector);
+      if (foundRows.length > 0) {
+        console.log(`[SECNAV] Found ${foundRows.length} rows using selector: ${selector}`);
+        rows = foundRows;
+        break;
+      }
+    }
 
-    for (const match of items) {
-      const itemContent = match[1];
+    if (!rows || rows.length === 0) {
+      console.warn('[SECNAV] No table rows found in HTML');
+      return [];
+    }
 
-      // Extract fields
-      const title = itemContent.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ||
-                   itemContent.match(/<title>(.*?)<\/title>/)?.[1] || '';
+    // Process each row
+    rows.each((index, element) => {
+      try {
+        const $row = $(element);
 
-      const link = itemContent.match(/<link>(.*?)<\/link>/)?.[1] || '';
+        // Skip header rows
+        if ($row.find('th').length > 0) return;
 
-      const pubDate = itemContent.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ||
-                     itemContent.match(/<dc:date>(.*?)<\/dc:date>/)?.[1] ||
-                     new Date().toISOString();
+        // Try to extract data from cells
+        const cells = $row.find('td');
+        if (cells.length === 0) return;
 
-      const description = itemContent.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1] ||
-                         itemContent.match(/<description>(.*?)<\/description>/)?.[1] || '';
+        // Try to find link (SECNAV directive link)
+        const link = $row.find('a[href*=".pdf"]').first().attr('href') ||
+                    $row.find('a[href*="SECNAV"]').first().attr('href') ||
+                    $row.find('a').first().attr('href');
 
-      if (title && link) {
-        // Extract SECNAV ID from title (e.g., "SECNAV 5000.1")
-        const directiveMatch = title.match(/SECNAV\s+[\d.]+[A-Z]*/i);
-        const id = directiveMatch ? directiveMatch[0] : title.substring(0, 50);
+        if (!link) return; // Skip rows without links
 
-        // Clean up subject (remove SECNAV ID from beginning)
-        const subject = title.replace(/SECNAV\s+[\d.]+[A-Z]*\s*[-:]?\s*/i, "").trim() || title;
+        // Extract title/name from link text or nearby text
+        const title = $row.find('a').first().text().trim() ||
+                     cells.first().text().trim();
+
+        if (!title) return; // Skip rows without title
+
+        // Build full URL if relative
+        const fullLink = link.startsWith('http') ? link : `https://www.secnav.navy.mil${link}`;
+
+        // Extract SECNAV ID from title or filename
+        const idMatch = title.match(/SECNAV[\s\-_]*[\d.]+[A-Z]*/i) ||
+                       link.match(/SECNAV[\s\-_]*[\d.]+[A-Z]*/i);
+        const id = idMatch ? idMatch[0].replace(/[\s\-_]+/g, ' ').toUpperCase() : title.substring(0, 50);
+
+        // Try to find effective date (look for date patterns in cells)
+        let effectiveDate = null;
+        cells.each((i, cell) => {
+          const cellText = $(cell).text().trim();
+          // Match dates like "01/15/2024", "2024-01-15", "15 Jan 2024"
+          const dateMatch = cellText.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/);
+          if (dateMatch && !effectiveDate) {
+            effectiveDate = dateMatch[0];
+          }
+        });
+
+        // Parse date or use current date
+        let pubDateObj = new Date();
+        if (effectiveDate) {
+          try {
+            const parsedDate = new Date(effectiveDate);
+            if (!isNaN(parsedDate.getTime())) {
+              pubDateObj = parsedDate;
+            }
+          } catch (e) {
+            // Keep current date
+          }
+        }
+
+        // Create subject line
+        const subject = title.replace(/SECNAV[\s\-_]*[\d.]+[A-Z]*\s*[-:]?\s*/i, '').trim() || title;
+
+        // Extract description from additional cells
+        const description = cells.slice(1).map(el => $(el).text().trim()).filter(t => t).join(' - ').substring(0, 500);
 
         directives.push({
           id,
           title,
           subject,
-          link,
-          pubDate,
-          description: description.substring(0, 500) // Limit description length
+          link: fullLink,
+          pubDate: pubDateObj.toISOString(),
+          description,
+          effectiveDate: effectiveDate || pubDateObj.toLocaleDateString()
         });
+      } catch (rowError) {
+        // Skip problematic rows
+        console.warn(`[SECNAV] Error processing row ${index}:`, rowError.message);
       }
-    }
+    });
 
     console.log(`[SECNAV] Successfully parsed ${directives.length} directives`);
 
@@ -149,8 +221,8 @@ async function generateDataFile(directives) {
   const fileContent = `/**
  * SECNAV Directives Data
  *
- * Auto-generated from SECNAV RSS Feed
- * Source: ${RSS_URL}
+ * Auto-generated from Navy DONI SharePoint Site
+ * Source: ${SECNAV_URL}
  * Generated: ${timestamp}
  * Total Records: ${directives.length}
  *
@@ -163,7 +235,7 @@ const SECNAV_DIRECTIVES = ${JSON.stringify(directives, null, 2)};
 
 // Metadata
 const SECNAV_META = {
-  sourceUrl: '${RSS_URL}',
+  sourceUrl: '${SECNAV_URL}',
   generatedAt: '${timestamp}',
   totalRecords: ${directives.length},
   lastUpdate: '${timestamp}'
