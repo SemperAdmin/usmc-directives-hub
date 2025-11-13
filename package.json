@@ -4,9 +4,12 @@
   "description": "USMC Directives Hub - Search and track Marine Corps Messages, Publications, and Forms",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/fetch-fa-checklists.mjs",
+    "prebuild": "node scripts/fetch-fa-checklists.mjs && node scripts/fetch-secnav.mjs && node scripts/fetch-alnav.mjs",
     "build": "echo 'Static site - no build needed'",
-    "fetch-fa": "node scripts/fetch-fa-checklists.mjs"
+    "fetch-fa": "node scripts/fetch-fa-checklists.mjs",
+    "fetch-secnav": "node scripts/fetch-secnav.mjs",
+    "fetch-alnav": "node scripts/fetch-alnav.mjs",
+    "fetch-all": "npm run fetch-fa && npm run fetch-secnav && npm run fetch-alnav"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.12"

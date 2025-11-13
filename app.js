@@ -134,6 +134,8 @@ let summaryCache = {}; // Cache for AI-generated summaries
 document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
   loadIgmcChecklists(); // Load IGMC Checklists from static data file
+  loadSecnavDirectives(); // Load SECNAV Directives from static data file
+  loadAlnavMessages(); // Load ALNAV Messages from static data file
   restoreFilterPreferences();
   fetchAllFeeds();
   initTheme();
@@ -145,6 +147,8 @@ refreshBtn.addEventListener("click", () => {
   refreshBtn.disabled = true;
   refreshBtn.textContent = "🔄 Refreshing...";
   loadIgmcChecklists(); // Reload IGMC Checklists from static data file
+  loadSecnavDirectives(); // Reload SECNAV Directives from static data file
+  loadAlnavMessages(); // Reload ALNAV Messages from static data file
   fetchAllFeeds().then(() => {
     refreshBtn.disabled = false;
     refreshBtn.textContent = "🔄 Refresh";
@@ -1182,6 +1186,126 @@ function loadIgmcChecklists() {
   }
 }
 
+// Load SECNAV Directives from static data file
+function loadSecnavDirectives() {
+  console.log('Loading SECNAV Directives from static data file...');
+
+  try {
+    // Check if SECNAV_DIRECTIVES data is available (loaded from lib/secnav-data.js)
+    if (typeof window.SECNAV_DIRECTIVES === 'undefined' || !Array.isArray(window.SECNAV_DIRECTIVES)) {
+      console.warn('SECNAV_DIRECTIVES data not found or invalid');
+      allSecnavs = [];
+      return;
+    }
+
+    const directives = window.SECNAV_DIRECTIVES;
+    console.log(`Found ${directives.length} SECNAV Directives in static data`);
+
+    // Transform SECNAV data into message format
+    allSecnavs = directives.map(directive => {
+      // Parse publication date
+      let pubDateObj = new Date();
+      if (directive.pubDate) {
+        try {
+          pubDateObj = new Date(directive.pubDate);
+          if (isNaN(pubDateObj.getTime())) {
+            pubDateObj = new Date();
+          }
+        } catch (e) {
+          console.warn(`Could not parse date: ${directive.pubDate}`);
+        }
+      }
+
+      return {
+        id: directive.id,
+        subject: directive.subject || directive.title,
+        link: directive.link,
+        pubDate: pubDateObj.toISOString(),
+        pubDateObj: pubDateObj,
+        type: 'secnav',
+        description: directive.description || '',
+        searchText: `${directive.id} ${directive.title} ${directive.subject || ''} ${directive.description || ''}`.toLowerCase()
+      };
+    });
+
+    // Sort by publication date descending (newest first)
+    allSecnavs.sort((a, b) => {
+      return b.pubDateObj - a.pubDateObj;
+    });
+
+    console.log(`Loaded ${allSecnavs.length} SECNAV Directives`);
+
+    // Log metadata if available
+    if (window.SECNAV_META) {
+      console.log('[SECNAV] Source:', window.SECNAV_META.sourceUrl);
+      console.log('[SECNAV] Generated:', window.SECNAV_META.generatedAt);
+    }
+  } catch (error) {
+    console.error('Error loading SECNAV Directives:', error);
+    allSecnavs = [];
+  }
+}
+
+// Load ALNAV Messages from static data file
+function loadAlnavMessages() {
+  console.log('Loading ALNAV Messages from static data file...');
+
+  try {
+    // Check if ALNAV_MESSAGES data is available (loaded from lib/alnav-data.js)
+    if (typeof window.ALNAV_MESSAGES === 'undefined' || !Array.isArray(window.ALNAV_MESSAGES)) {
+      console.warn('ALNAV_MESSAGES data not found or invalid');
+      allAlnavs = [];
+      return;
+    }
+
+    const messages = window.ALNAV_MESSAGES;
+    console.log(`Found ${messages.length} ALNAV Messages in static data`);
+
+    // Transform ALNAV data into message format
+    allAlnavs = messages.map(message => {
+      // Parse publication date
+      let pubDateObj = new Date();
+      if (message.pubDate) {
+        try {
+          pubDateObj = new Date(message.pubDate);
+          if (isNaN(pubDateObj.getTime())) {
+            pubDateObj = new Date();
+          }
+        } catch (e) {
+          console.warn(`Could not parse date: ${message.pubDate}`);
+        }
+      }
+
+      return {
+        id: message.id,
+        subject: message.subject || message.title,
+        link: message.link,
+        pubDate: pubDateObj.toISOString(),
+        pubDateObj: pubDateObj,
+        type: 'alnav',
+        description: message.description || '',
+        searchText: `${message.id} ${message.title} ${message.subject || ''} ${message.description || ''}`.toLowerCase()
+      };
+    });
+
+    // Sort by publication date descending (newest first)
+    allAlnavs.sort((a, b) => {
+      return b.pubDateObj - a.pubDateObj;
+    });
+
+    console.log(`Loaded ${allAlnavs.length} ALNAV Messages`);
+
+    // Log metadata if available
+    if (window.ALNAV_META) {
+      console.log('[ALNAV] Source:', window.ALNAV_META.sourceUrl);
+      console.log('[ALNAV] Generated:', window.ALNAV_META.generatedAt);
+    }
+  } catch (error) {
+    console.error('Error loading ALNAV Messages:', error);
+    allAlnavs = [];
+  }
+}
+
 // Fetch full message details from the message page
 async function fetchMessageDetails(message) {
   if (message.detailsFetched) return message;
@@ -1756,12 +1880,6 @@ function filterMessages() {
   const searchTerm = searchInput.value.toLowerCase().trim();
   const dateRange = parseInt(dateRangeSelect.value);
 
-  // Show humorous error message for ALNAV/SECNAV
-  if (currentMessageType === 'alnav' || currentMessageType === 'secnav') {
-    showAlnavSecnavErrorMessage();
-    return;
-  }
-
   // Get messages based on current type
   let allMessages = [];
   if (currentMessageType === 'maradmin') {
@@ -1782,6 +1900,10 @@ function filterMessages() {
     allMessages = [...allJtrs];
   } else if (currentMessageType === 'dodfmr') {
     allMessages = [...allDodFmr];
+  } else if (currentMessageType === 'secnav') {
+    allMessages = [...allSecnavs];
+  } else if (currentMessageType === 'alnav') {
+    allMessages = [...allAlnavs];
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from "All Messages"
     allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
