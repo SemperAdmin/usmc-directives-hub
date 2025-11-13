@@ -147,8 +147,8 @@ async function fetchSecnavDirectives() {
 
         if (!title) return; // Skip rows without title
 
-        // Build full URL if relative (derive base URL from SECNAV_URL constant)
-        const fullLink = link.startsWith('http') ? link : `${SECNAV_BASE_URL}${link}`;
+        // Build full URL using URL constructor (handles absolute, relative, and protocol-relative URLs)
+        const fullLink = new URL(link, SECNAV_BASE_URL).href;
 
         // Extract SECNAV ID from title or filename
         const idMatch = title.match(/SECNAV[\s\-_]*[\d.]+[A-Z]*/i) ||
