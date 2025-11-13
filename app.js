@@ -122,7 +122,7 @@ let allAlnavs = []; // Store all ALNAVs
 let allAlmars = []; // Store all ALMARs
 let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
-let allFaChecklists = []; // Store all FA Checklists
+let allIgmcChecklists = []; // Store all IGMC Checklists
 let allYouTubePosts = []; // Store all YouTube posts
 let allSecnavs = []; // Store all SECNAV directives
 let allJtrs = []; // Store all JTR (Joint Travel Regulations) updates
@@ -133,7 +133,7 @@ let summaryCache = {}; // Cache for AI-generated summaries
 // Init
 document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
-  loadFaChecklists(); // Load FA Checklists from static data file
+  loadIgmcChecklists(); // Load IGMC Checklists from static data file
   restoreFilterPreferences();
   fetchAllFeeds();
   initTheme();
@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
 refreshBtn.addEventListener("click", () => {
   refreshBtn.disabled = true;
   refreshBtn.textContent = "🔄 Refreshing...";
-  loadFaChecklists(); // Reload FA Checklists from static data file
+  loadIgmcChecklists(); // Reload IGMC Checklists from static data file
   fetchAllFeeds().then(() => {
     refreshBtn.disabled = false;
     refreshBtn.textContent = "🔄 Refresh";
@@ -1107,23 +1107,23 @@ function createDodFmrMessage(id, title, href) {
   };
 }
 
-// Load FA Checklists from static data file
-function loadFaChecklists() {
-  console.log('Loading FA Checklists from static data file...');
+// Load IGMC Checklists from static data file
+function loadIgmcChecklists() {
+  console.log('Loading IGMC Checklists from static data file...');
 
   try {
     // Check if FA_CHECKLISTS data is available (loaded from lib/fa-checklists.js)
     if (typeof window.FA_CHECKLISTS === 'undefined' || !Array.isArray(window.FA_CHECKLISTS)) {
       console.warn('FA_CHECKLISTS data not found or invalid');
-      allFaChecklists = [];
+      allIgmcChecklists = [];
       return;
     }
 
     const checklists = window.FA_CHECKLISTS;
-    console.log(`Found ${checklists.length} FA Checklists in static data`);
+    console.log(`Found ${checklists.length} IGMC Checklists in static data`);
 
-    // Transform FA Checklists data into message format
-    allFaChecklists = checklists.map(checklist => {
+    // Transform IGMC Checklists data into message format
+    allIgmcChecklists = checklists.map(checklist => {
       // Use effective date as pubDate, or default to current date
       let pubDateObj = new Date();
       if (checklist.effectiveDate) {
@@ -1160,25 +1160,25 @@ function loadFaChecklists() {
         description: description,
         searchText: `${checklist.faNumber} ${checklist.functionalArea} ${checklist.category} ${checklist.sponsor}`.toLowerCase(),
         // Include original checklist data for reference
-        faChecklist: checklist
+        igmcChecklist: checklist
       };
     });
 
     // Sort by effective date descending (newest first)
-    allFaChecklists.sort((a, b) => {
+    allIgmcChecklists.sort((a, b) => {
       return b.pubDateObj - a.pubDateObj;
     });
 
-    console.log(`Loaded ${allFaChecklists.length} FA Checklists`);
+    console.log(`Loaded ${allIgmcChecklists.length} IGMC Checklists`);
 
     // Log metadata if available
     if (window.FA_CHECKLISTS_META) {
-      console.log('[FA Checklists] Source:', window.FA_CHECKLISTS_META.sourceUrl);
-      console.log('[FA Checklists] Generated:', window.FA_CHECKLISTS_META.generatedAt);
+      console.log('[IGMC] Source:', window.FA_CHECKLISTS_META.sourceUrl);
+      console.log('[IGMC] Generated:', window.FA_CHECKLISTS_META.generatedAt);
     }
   } catch (error) {
-    console.error('Error loading FA Checklists:', error);
-    allFaChecklists = [];
+    console.error('Error loading IGMC Checklists:', error);
+    allIgmcChecklists = [];
   }
 }
 
@@ -1775,7 +1775,7 @@ function filterMessages() {
   } else if (currentMessageType === 'dodforms') {
     allMessages = [...allDodForms];
   } else if (currentMessageType === 'igmc') {
-    allMessages = [...allFaChecklists];
+    allMessages = [...allIgmcChecklists];
   } else if (currentMessageType === 'youtube') {
     allMessages = [...allYouTubePosts];
   } else if (currentMessageType === 'jtr') {
@@ -1784,7 +1784,7 @@ function filterMessages() {
     allMessages = [...allDodFmr];
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from "All Messages"
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allFaChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -1981,7 +1981,7 @@ function updateTabCounters() {
         baseText = 'DoD Forms';
         break;
       case 'igmc':
-        count = getFilteredCount(allFaChecklists);
+        count = getFilteredCount(allIgmcChecklists);
         baseText = 'IGMC';
         break;
       case 'youtube':
@@ -2002,7 +2002,7 @@ function updateTabCounters() {
         break;
       case 'all':
         // Exclude ALNAV and SECNAV from All Messages count
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allFaChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
         baseText = 'All Messages';
         break;
     }
@@ -2028,7 +2028,7 @@ function renderSummaryStats() {
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
   } else if (currentMessageType === 'igmc') {
-    totalCount = allFaChecklists.length;
+    totalCount = allIgmcChecklists.length;
   } else if (currentMessageType === 'youtube') {
     totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'secnav') {
@@ -2039,7 +2039,7 @@ function renderSummaryStats() {
     totalCount = allDodFmr.length;
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from total count
-    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allFaChecklists.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allIgmcChecklists.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
   }
 
   // Get date range
