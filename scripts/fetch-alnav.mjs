@@ -116,7 +116,8 @@ async function parseAlnavPage(url) {
         const id = `ALNAV ${alnavNumber}/${year}`;
 
         // Try to extract subject from text after ID
-        const subject = text.replace(/ALNAV\s*\d+\/\d+/i, '').replace(/[-:]/g, '').trim() ||
+        // Only remove the ALNAV ID and leading separator (not all hyphens/colons)
+        const subject = text.replace(/ALNAV\s*\d+\/\d+\s*[-:]?\s*/i, '').trim() ||
                        `ALNAV ${alnavNumber}/${year}`;
 
         // Build full URL
