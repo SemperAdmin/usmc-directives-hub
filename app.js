@@ -723,10 +723,10 @@ function parseAlnavLinks(doc, sourceUrl) {
 
       // Extract ALNAV number from title or filename
       // Examples: "ALNAV 001/25", "ALNAV 001-25", "001-25.pdf"
-      const alnavMatch = title.match(/ALNAV[_\s-]*(\d{3})[\/\-](\d{2,4})/i) ||
-                         href.match(/ALNAV[_\s-]*(\d{3})[\/\-](\d{2,4})/i) ||
-                         title.match(/(\d{3})[\/\-](\d{2,4})/) ||
-                         href.match(/(\d{3})[\/\-](\d{2,4})/);
+      const alnavMatch = title.match(/ALNAV[_\s-]*(\d{3})[/-](\d{2,4})/i) ||
+                         href.match(/ALNAV[_\s-]*(\d{3})[/-](\d{2,4})/i) ||
+                         title.match(/(\d{3})[/-](\d{2,4})/) ||
+                         href.match(/(\d{3})[/-](\d{2,4})/);
 
       if (!alnavMatch) {
         console.log('No ALNAV pattern match:', { title, href });
@@ -1356,7 +1356,9 @@ async function fetchMessageDetails(message) {
             try {
               const json = JSON.parse(html);
               html = json.contents || html;
-            } catch(e) {}
+            } catch(e) {
+              // Ignore JSON parse errors, keep original html
+            }
           }
           break;
         }
@@ -1374,7 +1376,7 @@ async function fetchMessageDetails(message) {
 
     if (message.type === 'maradmin') {
       // Extract MARADMIN number from content
-      const maradminMatch = bodyText.match(/MARADMIN\s+(?:NUMBER\s+)?(\d+[-\/]\d+)/i);
+      const maradminMatch = bodyText.match(/MARADMIN\s+(?:NUMBER\s+)?(\d+[/-]\d+)/i);
 
       if (maradminMatch) {
         message.maradminNumber = maradminMatch[1];
@@ -1739,15 +1741,15 @@ function parseRSS(xmlText, type){
 
     if (type === 'maradmin') {
       // Extract MARADMIN ID from multiple sources
-      let idMatch = title.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
+      let idMatch = title.match(/MARADMIN\s+(\d+[/-]\d+)/i);
       if (!idMatch && description) {
-        idMatch = description.match(/MARADMIN\s+(\d+[-\/]\d+)/i);
+        idMatch = description.match(/MARADMIN\s+(\d+[/-]\d+)/i);
       }
 
       if (idMatch) {
         id = idMatch[0];
         numericId = idMatch[1];
-        subject = title.replace(/MARADMIN\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+        subject = title.replace(/MARADMIN\s+\d+[/-]?\d*\s*[-:]?\s*/i, "").trim();
       } else {
         const linkMatch = link.match(/\/Article\/(\d+)\//);
         id = linkMatch ? `Article ${linkMatch[1]}` : `Message ${index + 1}`;
@@ -1769,11 +1771,11 @@ function parseRSS(xmlText, type){
       }
     } else if (type === 'alnav') {
       // Extract ALNAV ID from title (e.g., "ALNAV 001/25")
-      const alnavMatch = title.match(/ALNAV\s+(\d+[-\/]\d+)/i);
+      const alnavMatch = title.match(/ALNAV\s+(\d+[/-]\d+)/i);
       if (alnavMatch) {
         id = alnavMatch[0];
         numericId = alnavMatch[1];
-        subject = title.replace(/ALNAV\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+        subject = title.replace(/ALNAV\s+\d+[/-]?\d*\s*[-:]?\s*/i, "").trim();
       } else {
         id = `ALNAV ${index + 1}`;
         numericId = String(index + 1);
@@ -1783,16 +1785,16 @@ function parseRSS(xmlText, type){
       // Extract ALMAR ID from description field first, then fall back to title
       let almarMatch = null;
       if (description) {
-        almarMatch = description.match(/ALMAR\s+(\d+[-\/]\d+)/i);
+        almarMatch = description.match(/ALMAR\s+(\d+[/-]\d+)/i);
       }
       if (!almarMatch) {
-        almarMatch = title.match(/ALMAR\s+(\d+[-\/]\d+)/i);
+        almarMatch = title.match(/ALMAR\s+(\d+[/-]\d+)/i);
       }
 
       if (almarMatch) {
         id = almarMatch[0];
         numericId = almarMatch[1];
-        subject = title.replace(/ALMAR\s+\d+[-\/]?\d*\s*[-:]?\s*/i, "").trim();
+        subject = title.replace(/ALMAR\s+\d+[/-]?\d*\s*[-:]?\s*/i, "").trim();
       } else {
         id = `ALMAR ${index + 1}`;
         numericId = String(index + 1);
@@ -3287,18 +3289,80 @@ function initKeyboardShortcuts() {
 
 // Show keyboard shortcuts modal
 function showKeyboardShortcuts() {
-  const shortcuts = `
-    KEYBOARD SHORTCUTS
+  // Create modal if it doesn't exist
+  let modal = document.getElementById('helpModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'helpModal';
+    modal.className = 'feedback-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'helpModalTitle');
 
-    r         - Refresh messages
-    t         - Toggle dark/light theme
-    f or /    - Focus search box
-    Ctrl+P    - Print current view
-    1-8       - Switch between tabs
-    Esc       - Clear search focus
-    ?         - Show this help
-  `;
-  alert(shortcuts);
+    modal.innerHTML = `
+      <div class="feedback-modal-content">
+        <div class="feedback-modal-header">
+          <h2 id="helpModalTitle">⌨️ Keyboard Shortcuts</h2>
+          <button id="closeHelpModal" class="feedback-close-btn" aria-label="Close help modal">✕</button>
+        </div>
+        <div class="help-shortcuts">
+          <div class="help-shortcut">
+            <kbd>r</kbd>
+            <span>Refresh messages</span>
+          </div>
+          <div class="help-shortcut">
+            <kbd>t</kbd>
+            <span>Toggle dark/light theme</span>
+          </div>
+          <div class="help-shortcut">
+            <kbd>f</kbd> or <kbd>/</kbd>
+            <span>Focus search box</span>
+          </div>
+          <div class="help-shortcut">
+            <kbd>Ctrl</kbd> + <kbd>P</kbd>
+            <span>Print current view</span>
+          </div>
+          <div class="help-shortcut">
+            <kbd>1</kbd>-<kbd>8</kbd>
+            <span>Switch between tabs</span>
+          </div>
+          <div class="help-shortcut">
+            <kbd>Esc</kbd>
+            <span>Clear search focus</span>
+          </div>
+          <div class="help-shortcut">
+            <kbd>?</kbd>
+            <span>Show this help</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close button handler
+    document.getElementById('closeHelpModal').addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    // Close on outside click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+
+    // Close on Escape key
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        modal.classList.add('hidden');
+      }
+    });
+  }
+
+  // Show modal
+  modal.classList.remove('hidden');
+  document.getElementById('closeHelpModal').focus();
 }
 
 // ====================================

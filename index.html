@@ -30,6 +30,11 @@
   frame-ancestors 'none';
   upgrade-insecure-requests;
 ">
+<!-- Additional Security Headers -->
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=()">
 <title>USMC Directives Hub by Semper Admin</title>
 <meta name="description" content="Search and track Marine Corps Messages, Publications, and Forms including MARADMINs, ALMARs, MCPUBs, and more.">
 <meta name="theme-color" content="#1a1a1a">
