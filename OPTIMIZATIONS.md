@@ -101,11 +101,17 @@ Added comprehensive CSP meta tag to restrict resource loading and execution.
 
 **Security Policies:**
 - `default-src 'self'` - Only load resources from same origin by default
-- `script-src 'self' 'unsafe-inline'` - Allow scripts from same origin and inline
+- `script-src 'self'` - Only allow scripts from same origin (no inline scripts for security)
+- `style-src 'self'` - Only allow styles from same origin (no inline styles for security)
 - `connect-src` - Whitelist approved domains (Marines.mil, Navy.mil, proxies)
 - `object-src 'none'` - Block plugins (Flash, Java, etc.)
 - `frame-ancestors 'none'` - Prevent clickjacking
 - `upgrade-insecure-requests` - Auto-upgrade HTTP to HTTPS
+
+**Security Notes:**
+- All inline scripts moved to external app.js file for maximum XSS protection
+- All inline styles moved to style.css
+- No `'unsafe-inline'` directives used - full CSP protection
 
 **Whitelisted Domains:**
 ```
@@ -114,7 +120,7 @@ Added comprehensive CSP meta tag to restrict resource loading and execution.
 - www.secnav.navy.mil
 - www.igmc.marines.mil
 - www.esd.whs.mil
-- comptroller.war.gov
+- comptroller.defense.gov
 - www.travel.dod.mil
 - usmc-directives-proxy.onrender.com
 - localhost:3000 (development)
