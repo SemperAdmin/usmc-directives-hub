@@ -363,6 +363,9 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
   }
 
   console.log('Fetching Semper Admin posts from Facebook...');
+  console.log(`Facebook API URL: https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`);
+  console.log(`Page ID: ${FACEBOOK_PAGE_ID}`);
+  console.log(`API Version: ${FACEBOOK_API_VERSION}`);
 
   try {
     const allPosts = [];
@@ -420,18 +423,29 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Facebook API error:', error.message);
-    console.error('Facebook API error details:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      url: error.config?.url
-    });
+    console.error('====== Facebook API Error ======');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Response status:', error.response?.status);
+    console.error('Response statusText:', error.response?.statusText);
+    console.error('Response headers:', JSON.stringify(error.response?.headers || {}, null, 2));
+    console.error('Response data:', JSON.stringify(error.response?.data || {}, null, 2));
+    console.error('Request URL:', error.config?.url);
+    console.error('Request method:', error.config?.method);
+    console.error('================================');
+
+    // Return detailed error to client
+    const fbError = error.response?.data?.error || {};
     res.status(error.response?.status || 500).json({
       success: false,
       error: 'Failed to fetch Semper Admin posts',
-      message: error.message,
-      details: error.response?.data || null
+      message: fbError.message || error.message,
+      facebookError: {
+        type: fbError.type,
+        code: fbError.code,
+        fbtrace_id: fbError.fbtrace_id,
+        message: fbError.message
+      }
     });
   }
 });

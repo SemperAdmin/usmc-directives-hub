@@ -937,11 +937,21 @@ async function fetchSemperAdminPosts() {
         status: response.status,
         statusText: response.statusText,
         errorText: errorText,
-        details: errorDetails?.details || 'No additional details'
+        details: errorDetails
       });
+
+      // Extract Facebook-specific error if available
+      const fbError = errorDetails?.facebookError;
+      let errorMessage = `Facebook API returned status ${response.status}.`;
+      if (fbError?.message) {
+        errorMessage = `Facebook error: ${fbError.message} (Code: ${fbError.code || 'unknown'})`;
+      } else if (errorDetails?.message) {
+        errorMessage = errorDetails.message;
+      }
+
       showError(
         'Unable to fetch Semper Admin posts from Facebook.',
-        `Facebook API returned status ${response.status}. Check console for details.`,
+        errorMessage,
         'error'
       );
       return;
