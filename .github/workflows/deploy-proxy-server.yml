@@ -1,5 +1,6 @@
 # GitHub Actions Workflow for Deploying Proxy Server
 # This workflow uses GitHub Repository Secrets for API keys
+# COST OPTIMIZATION: Added concurrency control and updated to latest actions
 
 name: Deploy Proxy Server
 
@@ -12,18 +13,24 @@ on:
       - 'proxy-server/**'
   workflow_dispatch: # Allow manual trigger
 
+# Prevent multiple deployments from running simultaneously
+concurrency:
+  group: deploy-proxy-server
+  cancel-in-progress: true  # Cancel old deployments if new push comes in
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # Fail fast if deployment hangs
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Updated from v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4  # Updated from v3
         with:
-          node-version: '18'
+          node-version: '20'  # Updated from 18 to current LTS
           cache: 'npm'
           cache-dependency-path: proxy-server/package-lock.json
 
