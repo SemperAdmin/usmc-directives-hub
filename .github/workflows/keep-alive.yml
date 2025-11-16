@@ -20,17 +20,21 @@ jobs:
         run: |
           echo "🏓 Pinging proxy server to keep it alive..."
 
-          # Ping the health endpoint
+          # Ping the health endpoint with increased timeout
+          # Catch curl errors (e.g., timeout exit code 28) to prevent workflow failure
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            --max-time 30 \
-            https://usmc-directives-proxy.onrender.com/health)
+            --max-time 60 \
+            https://usmc-directives-proxy.onrender.com/health) || RESPONSE="timeout"
 
           if [ "$RESPONSE" = "200" ]; then
             echo "✅ Server is alive (HTTP $RESPONSE)"
+          elif [ "$RESPONSE" = "timeout" ]; then
+            echo "⚠️  Request timed out after 60 seconds (server may be cold-starting)"
           else
             echo "⚠️  Server returned HTTP $RESPONSE"
-            # Don't fail the workflow, just log the issue
           fi
+
+          # Don't fail the workflow - this is just a keep-alive ping
 
       - name: Create summary
         if: always()
