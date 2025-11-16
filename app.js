@@ -1969,8 +1969,8 @@ function filterMessages() {
     const searchWords = searchTerm.split(/\s+/).filter(word => word.length > 2);
 
     if (searchWords.length === 1) {
-      // Single word search - use simple includes on searchText (fast)
-      filtered = filtered.filter(m => m.searchText.includes(searchTerm));
+      // Single word search - use the valid word, not the full search term
+      filtered = filtered.filter(m => m.searchText.includes(searchWords[0]));
     } else if (searchWords.length > 1) {
       // Multi-word search - use pre-computed searchTokens for performance
       // All search words must match (AND logic)

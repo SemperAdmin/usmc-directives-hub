@@ -88,7 +88,8 @@ self.addEventListener('fetch', (event) => {
 
     // Use network-first strategy for all API and proxy requests
     // This ensures offline functionality works with any proxy
-    if (apiHosts.some(host => url.hostname.includes(host))) {
+    // Use strict hostname matching to prevent malicious domain abuse
+    if (apiHosts.some(host => url.hostname === host || url.hostname.endsWith('.' + host))) {
       event.respondWith(networkFirst(request));
     }
     return;
