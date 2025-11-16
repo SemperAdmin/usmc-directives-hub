@@ -106,6 +106,7 @@ If you need to add a new static data source:
 
 The fetch scripts require:
 - `cheerio` - HTML parsing
-- `xml2js` - XML/RSS parsing (for potential RSS sources)
 
 Install with: `npm install`
+
+Note: RSS parsing (for sources like MARADMIN) is done using the browser's built-in DOMParser, not a separate library.

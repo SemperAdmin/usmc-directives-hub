@@ -22,7 +22,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub Personal Access Token f
 const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"; // GitHub repo (owner/repo)
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || "280042265193211"; // Semper Admin Facebook Page
+const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID; // Semper Admin Facebook Page (required - no fallback)
 const FACEBOOK_API_VERSION = "v18.0"; // Facebook Graph API version
 
 // Validate required environment variables
@@ -41,6 +41,12 @@ if (!SEMPER_ADMIN_API_KEY) {
   console.error('   Set it in your hosting environment or GitHub Secrets');
 }
 
+if (!FACEBOOK_PAGE_ID) {
+  console.error('❌ CRITICAL: FACEBOOK_PAGE_ID environment variable is not set');
+  console.error('   Set it to your Facebook Page ID (e.g., 280042265193211)');
+  console.error('   Find it at: https://www.facebook.com/your-page > About > Page ID');
+}
+
 if (!GITHUB_TOKEN) {
   console.error('❌ WARNING: GITHUB_TOKEN environment variable is not set');
   console.error('   Feedback widget will not be able to create GitHub issues');
@@ -48,8 +54,8 @@ if (!GITHUB_TOKEN) {
 }
 
 // Warn if running without keys (will cause API calls to fail)
-if (!YOUTUBE_API_KEY || !GEMINI_API_KEY || !SEMPER_ADMIN_API_KEY) {
-  console.warn('⚠️  Server starting WITHOUT API keys - API endpoints will fail');
+if (!YOUTUBE_API_KEY || !GEMINI_API_KEY || !SEMPER_ADMIN_API_KEY || !FACEBOOK_PAGE_ID) {
+  console.warn('⚠️  Server starting WITHOUT required environment variables - API endpoints will fail');
   console.warn('   This is OK for development, but REQUIRED for production');
 }
 
