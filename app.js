@@ -301,6 +301,12 @@ async function fetchAllFeeds() {
 async function fetchFeed(type, url) {
   console.log(`Fetching ${type.toUpperCase()}s...`);
 
+  // Skip if URL is null (using static data file instead)
+  if (!url) {
+    console.log(`⏭️  Skipping ${type.toUpperCase()} RSS fetch - using static data file`);
+    return;
+  }
+
   // Try custom proxy server first if configured (most reliable)
   if (CUSTOM_PROXY_URL) {
     try {
