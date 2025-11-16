@@ -4,8 +4,10 @@
   "description": "USMC Directives Hub - Search and track Marine Corps Messages, Publications, and Forms",
   "type": "module",
   "scripts": {
+    "dev": "vite",
     "prebuild": "node scripts/fetch-fa-checklists.mjs && node scripts/fetch-secnav.mjs && node scripts/fetch-alnav.mjs",
-    "build": "echo 'Static site - no build needed'",
+    "build": "vite build",
+    "preview": "vite preview",
     "fetch-fa": "node scripts/fetch-fa-checklists.mjs",
     "fetch-secnav": "node scripts/fetch-secnav.mjs",
     "fetch-alnav": "node scripts/fetch-alnav.mjs",
@@ -14,7 +16,9 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.12"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/SemperAdmin/usmc-directives-hub.git"

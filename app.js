@@ -101,6 +101,68 @@ const CORS_PROXIES = [
   "https://api.codetabs.com/v1/proxy?quest="
 ];
 
+// Proxy preference caching to reduce load times
+const PROXY_CACHE_KEY = 'preferred_cors_proxy';
+const PROXY_CACHE_TIMESTAMP_KEY = 'proxy_cache_timestamp';
+const PROXY_CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Save successful proxy to cache
+ * @param {string} proxyUrl - The proxy URL that worked
+ */
+function savePreferredProxy(proxyUrl) {
+  try {
+    localStorage.setItem(PROXY_CACHE_KEY, proxyUrl);
+    localStorage.setItem(PROXY_CACHE_TIMESTAMP_KEY, Date.now().toString());
+    console.log(`[Proxy Cache] Saved preferred proxy: ${proxyUrl}`);
+  } catch (e) {
+    console.warn('[Proxy Cache] Failed to save proxy preference:', e);
+  }
+}
+
+/**
+ * Get preferred proxy from cache if still valid
+ * @returns {string|null} The cached proxy URL or null if expired/not found
+ */
+function getPreferredProxy() {
+  try {
+    const proxy = localStorage.getItem(PROXY_CACHE_KEY);
+    const timestamp = localStorage.getItem(PROXY_CACHE_TIMESTAMP_KEY);
+
+    if (!proxy || !timestamp) return null;
+
+    const age = Date.now() - parseInt(timestamp);
+    if (age > PROXY_CACHE_MAX_AGE) {
+      // Cache expired
+      localStorage.removeItem(PROXY_CACHE_KEY);
+      localStorage.removeItem(PROXY_CACHE_TIMESTAMP_KEY);
+      console.log('[Proxy Cache] Cache expired, will try all proxies');
+      return null;
+    }
+
+    console.log(`[Proxy Cache] Using cached proxy (age: ${Math.round(age / 1000 / 60)} minutes)`);
+    return proxy;
+  } catch (e) {
+    console.warn('[Proxy Cache] Failed to get proxy preference:', e);
+    return null;
+  }
+}
+
+/**
+ * Get ordered list of proxies with preferred one first
+ * @returns {Array<string>} Ordered array of proxy URLs
+ */
+function getOrderedProxies() {
+  const preferred = getPreferredProxy();
+  if (!preferred) return CORS_PROXIES;
+
+  // Put preferred proxy first, followed by others
+  return [
+    preferred,
+    ...CORS_PROXIES.filter(p => p !== preferred)
+  ];
+}
+
 const refreshBtn = document.getElementById("refreshBtn");
 const themeToggle = document.getElementById("themeToggle");
 const statusDiv = document.getElementById("status");
@@ -286,18 +348,22 @@ async function fetchFeed(type, url) {
     console.log(`Direct fetch for ${type} failed, trying fallback proxies...`, err);
   }
 
-  // Try each fallback CORS proxy
-  for (let i = 0; i < CORS_PROXIES.length; i++) {
+  // Try each fallback CORS proxy (with preferred proxy first)
+  const orderedProxies = getOrderedProxies();
+  for (let i = 0; i < orderedProxies.length; i++) {
     try {
-      statusDiv.textContent = `Fetching ${type.toUpperCase()}s... (attempt ${i + 1}/${CORS_PROXIES.length})`;
-      const text = await tryProxyFetch(CORS_PROXIES[i], url);
+      const proxyUrl = orderedProxies[i];
+      statusDiv.textContent = `Fetching ${type.toUpperCase()}s... (attempt ${i + 1}/${orderedProxies.length})`;
+      const text = await tryProxyFetch(proxyUrl, url);
       if (text) {
+        // Save successful proxy for future use
+        savePreferredProxy(proxyUrl);
         processRSSData(text, type);
         return;
       }
     } catch(err) {
       console.log(`Proxy ${i + 1} failed for ${type}:`, err.message);
-      if (i === CORS_PROXIES.length - 1) {
+      if (i === orderedProxies.length - 1) {
         // Last proxy failed
         const messages = type === 'maradmin' ? allMaradmins : allMcpubs;
         if (messages.length === 0) {
@@ -2807,6 +2873,7 @@ function debounce(func, wait) {
 
 function cacheData() {
   try {
+    const now = new Date().toISOString();
     localStorage.setItem("maradmin_cache", JSON.stringify(allMaradmins));
     localStorage.setItem("mcpub_cache", JSON.stringify(allMcpubs));
     localStorage.setItem("alnav_cache", JSON.stringify(allAlnavs));
@@ -2818,7 +2885,10 @@ function cacheData() {
     localStorage.setItem("jtr_cache", JSON.stringify(allJtrs));
     localStorage.setItem("dodfmr_cache", JSON.stringify(allDodFmr));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
-    localStorage.setItem("cache_timestamp", new Date().toISOString());
+    localStorage.setItem("cache_timestamp", now);
+    // Separate timestamp for summary cache (has different TTL)
+    localStorage.setItem("summary_cache_timestamp", now);
+    console.log('[Cache] Data cached successfully at', now);
   } catch(e) {
     console.error("Failed to cache data:", e);
   }
@@ -2826,13 +2896,54 @@ function cacheData() {
 
 function loadCachedData() {
   try {
+    // Cache TTL Configuration (1 hour for RSS feeds, 24 hours for summaries)
+    const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+    const SUMMARY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for AI summaries
+
+    const ts = localStorage.getItem("cache_timestamp");
+
+    // Check if cache has expired
+    if (ts) {
+      const cacheAge = Date.now() - new Date(ts).getTime();
+      if (cacheAge > CACHE_TTL) {
+        console.log(`[Cache] Cache expired (age: ${Math.round(cacheAge / 1000 / 60)} minutes), clearing...`);
+        // Clear expired cache except summaries (they're expensive to regenerate)
+        localStorage.removeItem("maradmin_cache");
+        localStorage.removeItem("mcpub_cache");
+        localStorage.removeItem("alnav_cache");
+        localStorage.removeItem("almar_cache");
+        localStorage.removeItem("semperadmin_cache");
+        localStorage.removeItem("dodforms_cache");
+        localStorage.removeItem("youtube_cache");
+        localStorage.removeItem("secnav_cache");
+        localStorage.removeItem("jtr_cache");
+        localStorage.removeItem("dodfmr_cache");
+        localStorage.removeItem("cache_timestamp");
+
+        // Clear summary cache if it's too old
+        const summaryCacheTimestamp = localStorage.getItem("summary_cache_timestamp");
+        if (summaryCacheTimestamp) {
+          const summaryCacheAge = Date.now() - new Date(summaryCacheTimestamp).getTime();
+          if (summaryCacheAge > SUMMARY_CACHE_TTL) {
+            console.log('[Cache] Summary cache expired, clearing...');
+            localStorage.removeItem("summary_cache");
+            localStorage.removeItem("summary_cache_timestamp");
+          }
+        }
+
+        lastUpdateSpan.textContent = "Cache expired - fetching fresh data...";
+        return; // Skip loading expired cache
+      } else {
+        console.log(`[Cache] Using cached data (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+      }
+    }
+
     const maradminCache = localStorage.getItem("maradmin_cache");
     const mcpubCache = localStorage.getItem("mcpub_cache");
     const alnavCache = localStorage.getItem("alnav_cache");
     const almarCache = localStorage.getItem("almar_cache");
     const semperAdminCache = localStorage.getItem("semperadmin_cache");
     const summaryCacheData = localStorage.getItem("summary_cache");
-    const ts = localStorage.getItem("cache_timestamp");
 
     if (maradminCache) {
       allMaradmins = JSON.parse(maradminCache);
