@@ -4,6 +4,7 @@ const axios = require('axios');
 const https = require('https');
 const fs = require('fs').promises;
 const path = require('path');
+const cheerio = require('cheerio');
 const { buildSummaryPrompt } = require('./prompts');
 
 // Rate limiting to prevent abuse
@@ -17,13 +18,11 @@ const PORT = process.env.PORT || 3000;
 // NO HARDCODED KEYS - Security requirement
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub Personal Access Token for creating issues
 const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"; // GitHub repo (owner/repo)
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID; // Semper Admin Facebook Page (required - no fallback)
-const FACEBOOK_API_VERSION = "v18.0"; // Facebook Graph API version
+const FACEBOOK_PAGE_USERNAME = process.env.FACEBOOK_PAGE_USERNAME || "SemperAdminUSMC"; // Facebook page username for web scraping
 
 // Validate required environment variables
 if (!YOUTUBE_API_KEY) {
@@ -36,17 +35,6 @@ if (!GEMINI_API_KEY) {
   console.error('   Set it in your hosting environment or GitHub Secrets');
 }
 
-if (!SEMPER_ADMIN_API_KEY) {
-  console.error('❌ CRITICAL: SEMPER_ADMIN_API_KEY environment variable is not set');
-  console.error('   Set it in your hosting environment or GitHub Secrets');
-}
-
-if (!FACEBOOK_PAGE_ID) {
-  console.error('❌ CRITICAL: FACEBOOK_PAGE_ID environment variable is not set');
-  console.error('   Set it to your Facebook Page ID (e.g., 280042265193211)');
-  console.error('   Find it at: https://www.facebook.com/your-page > About > Page ID');
-}
-
 if (!GITHUB_TOKEN) {
   console.error('❌ WARNING: GITHUB_TOKEN environment variable is not set');
   console.error('   Feedback widget will not be able to create GitHub issues');
@@ -54,10 +42,13 @@ if (!GITHUB_TOKEN) {
 }
 
 // Warn if running without keys (will cause API calls to fail)
-if (!YOUTUBE_API_KEY || !GEMINI_API_KEY || !SEMPER_ADMIN_API_KEY || !FACEBOOK_PAGE_ID) {
-  console.warn('⚠️  Server starting WITHOUT required environment variables - API endpoints will fail');
+if (!YOUTUBE_API_KEY || !GEMINI_API_KEY) {
+  console.warn('⚠️  Server starting WITHOUT required environment variables - some API endpoints may fail');
   console.warn('   This is OK for development, but REQUIRED for production');
 }
+
+// Info message for Facebook scraping
+console.log(`ℹ️  Facebook scraping configured for page: ${FACEBOOK_PAGE_USERNAME}`);
 
 // Enable CORS for your GitHub Pages site
 app.use(cors({
@@ -351,96 +342,159 @@ app.get('/api/youtube/videos', async (req, res) => {
   }
 });
 
-// Proxy endpoint for Facebook API - Semper Admin posts
+// Proxy endpoint for Facebook - Semper Admin posts (Web Scraping)
 app.get('/api/facebook/semperadmin', async (req, res) => {
-  // Check if API key is configured
-  if (!SEMPER_ADMIN_API_KEY) {
-    return res.status(503).json({
-      success: false,
-      error: 'Facebook API key not configured',
-      message: 'Server administrator must set SEMPER_ADMIN_API_KEY environment variable'
-    });
-  }
+  console.log('Fetching Semper Admin posts from Facebook via web scraping...');
 
-  console.log('Fetching Semper Admin posts from Facebook...');
-  console.log(`Facebook API URL: https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`);
-  console.log(`Page ID: ${FACEBOOK_PAGE_ID}`);
-  console.log(`API Version: ${FACEBOOK_API_VERSION}`);
+  // Facebook page username/ID - set via environment variable or use default
+  const FACEBOOK_PAGE_USERNAME = process.env.FACEBOOK_PAGE_USERNAME || 'SemperAdminUSMC';
+  const pageUrl = `https://m.facebook.com/${FACEBOOK_PAGE_USERNAME}`;
+
+  console.log(`Scraping Facebook page: ${pageUrl}`);
 
   try {
-    const allPosts = [];
-    let pageCount = 0;
-    const maxPages = 10; // Safety limit to prevent infinite loops (10 pages * 25 posts = ~250 posts)
-    const postsPerPage = 25; // Facebook's typical page size
-
-    // Construct initial URL with parameters
-    const initialParams = new URLSearchParams({
-      fields: 'id,message,story,created_time,permalink_url,full_picture',
-      limit: postsPerPage.toString()
+    // Fetch the mobile Facebook page (simpler HTML structure)
+    const response = await axios.get(pageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive'
+      },
+      timeout: 30000
     });
-    let nextUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts?${initialParams.toString()}`;
 
-    // Pagination loop - fetch all pages of posts
-    while (nextUrl && pageCount < maxPages) {
-      pageCount++;
-      console.log(`Fetching Facebook posts - page ${pageCount}...`);
+    // Parse HTML with cheerio
+    const $ = cheerio.load(response.data);
+    const posts = [];
 
-      const response = await axios.get(nextUrl, {
-        headers: {
-          'Authorization': `Bearer ${SEMPER_ADMIN_API_KEY}`
-        },
-        timeout: 30000
-      });
+    // Facebook mobile uses article tags or specific div structures for posts
+    // This selector targets common post containers on mobile Facebook
+    $('article, div[data-ft]').each((index, element) => {
+      try {
+        const $post = $(element);
 
-      // Add posts from this page to our collection
-      const posts = response.data.data || [];
-      allPosts.push(...posts);
-      console.log(`  Retrieved ${posts.length} posts (total so far: ${allPosts.length})`);
+        // Extract post text (message)
+        let message = '';
+        const textElements = $post.find('div[data-gt], p, span').filter((i, el) => {
+          const text = $(el).text().trim();
+          return text.length > 20; // Only consider substantial text
+        });
+        if (textElements.length > 0) {
+          message = $(textElements[0]).text().trim();
+        }
 
-      // Check if there's a next page
-      nextUrl = response.data.paging?.next || null;
+        // Extract post link
+        let permalink_url = '';
+        const postLink = $post.find('a[href*="/story.php"], a[href*="/posts/"], a[href*="/permalink/"]').first();
+        if (postLink.length > 0) {
+          const href = postLink.attr('href');
+          if (href) {
+            permalink_url = href.startsWith('http')
+              ? href
+              : `https://m.facebook.com${href}`;
+            // Clean up Facebook's tracking parameters
+            permalink_url = permalink_url.split('?')[0];
+          }
+        }
 
-      // Break if no more posts on this page
-      if (posts.length === 0) {
-        console.log('  No more posts found, stopping pagination');
-        break;
+        // Extract timestamp
+        let created_time = new Date().toISOString();
+        const timeElement = $post.find('abbr[data-utime], abbr').first();
+        if (timeElement.length > 0) {
+          const unixTime = timeElement.attr('data-utime');
+          if (unixTime) {
+            created_time = new Date(parseInt(unixTime) * 1000).toISOString();
+          }
+        }
+
+        // Extract image if present
+        let full_picture = '';
+        const img = $post.find('img[src*="scontent"]').first();
+        if (img.length > 0) {
+          full_picture = img.attr('src') || '';
+        }
+
+        // Generate post ID from permalink or index
+        let id = `post_${index}`;
+        if (permalink_url) {
+          const idMatch = permalink_url.match(/story\.php\?story_fbid=(\d+)|posts\/(\d+)|permalink\/(\d+)/);
+          if (idMatch) {
+            id = idMatch[1] || idMatch[2] || idMatch[3];
+          }
+        }
+
+        // Only add if we have meaningful content
+        if (message || permalink_url) {
+          posts.push({
+            id,
+            message: message || '',
+            story: '',
+            created_time,
+            permalink_url: permalink_url || `https://m.facebook.com/${FACEBOOK_PAGE_USERNAME}`,
+            full_picture
+          });
+        }
+      } catch (parseError) {
+        console.warn(`Error parsing post ${index}:`, parseError.message);
       }
+    });
+
+    // If no posts found with article/data-ft, try alternative selectors
+    if (posts.length === 0) {
+      console.log('No posts found with primary selectors, trying alternatives...');
+
+      $('div[data-sigil="feed-ufi-trigger"], div.story_body_container').each((index, element) => {
+        try {
+          const $post = $(element);
+          const message = $post.text().trim();
+
+          if (message.length > 20) {
+            posts.push({
+              id: `post_${index}`,
+              message: message.substring(0, 500),
+              story: '',
+              created_time: new Date().toISOString(),
+              permalink_url: `https://m.facebook.com/${FACEBOOK_PAGE_USERNAME}`,
+              full_picture: ''
+            });
+          }
+        } catch (parseError) {
+          console.warn(`Error parsing alternative post ${index}:`, parseError.message);
+        }
+      });
     }
 
-    if (pageCount >= maxPages && nextUrl) {
-      console.log(`Reached maximum page limit (${maxPages}). There may be more posts available.`);
-    }
+    console.log(`Successfully scraped ${posts.length} posts from Facebook`);
 
-    console.log(`Total Facebook posts retrieved: ${allPosts.length}`);
+    if (posts.length === 0) {
+      console.warn('Warning: No posts were scraped. Facebook may have changed their HTML structure or the page may require authentication.');
+    }
 
     res.json({
       success: true,
-      posts: allPosts,
+      posts: posts,
       metadata: {
-        totalPosts: allPosts.length,
-        pagesRetrieved: pageCount,
-        hasMore: !!nextUrl
+        totalPosts: posts.length,
+        scrapedFrom: pageUrl,
+        method: 'web-scraping'
       }
     });
+
   } catch (error) {
-    console.error('====== Facebook API Error ======');
+    console.error('====== Facebook Scraping Error ======');
     console.error('Error message:', error.message);
     console.error('Error code:', error.code);
     console.error('Response status:', error.response?.status);
     console.error('Response statusText:', error.response?.statusText);
-    console.error('Response headers:', JSON.stringify(error.response?.headers || {}, null, 2));
-    console.error('Response data:', JSON.stringify(error.response?.data || {}, null, 2));
-    console.error('Request URL:', error.config?.url);
-    console.error('Request method:', error.config?.method);
-    console.error('================================');
+    console.error('=====================================');
 
-    // Return detailed error to client
-    const fbError = error.response?.data?.error;
     res.status(error.response?.status || 500).json({
       success: false,
-      error: 'Failed to fetch Semper Admin posts',
+      error: 'Failed to scrape Semper Admin posts',
       message: error.message,
-      facebookError: fbError || null
+      details: 'Facebook page structure may have changed or is inaccessible'
     });
   }
 });
