@@ -1873,12 +1873,14 @@ function parseRSS(xmlText, type){
 function switchMessageType(type) {
   currentMessageType = type;
 
-  // Update button states
+  // Update button states and ARIA attributes for accessibility
   messageTypeButtons.forEach(btn => {
     if (btn.dataset.type === type) {
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
     } else {
       btn.classList.remove('active');
+      btn.setAttribute('aria-selected', 'false');
     }
   });
 
@@ -1999,10 +2001,16 @@ function clearSearch() {
   searchInput.value = "";
   dateRangeSelect.value = "1";
 
-  // Reset quick filter buttons
-  quickFilterButtons.forEach(btn => btn.classList.remove('active'));
+  // Reset quick filter buttons and ARIA attributes
   quickFilterButtons.forEach(btn => {
-    if (btn.dataset.days === "1") btn.classList.add('active');
+    const isToday = btn.dataset.days === "1";
+    if (isToday) {
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+    } else {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
+    }
   });
 
   filterMessages();
@@ -2015,7 +2023,9 @@ function restoreFilterPreferences() {
   if (savedMessageType && savedMessageType !== 'maradmin') {
     currentMessageType = savedMessageType;
     messageTypeButtons.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.type === savedMessageType);
+      const isActive = btn.dataset.type === savedMessageType;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
   }
 
@@ -2023,9 +2033,11 @@ function restoreFilterPreferences() {
   const savedDateRange = localStorage.getItem('filter_date_range');
   if (savedDateRange) {
     dateRangeSelect.value = savedDateRange;
-    // Update quick filter buttons
+    // Update quick filter buttons and ARIA attributes
     quickFilterButtons.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.days === savedDateRange);
+      const isPressed = btn.dataset.days === savedDateRange;
+      btn.classList.toggle('active', isPressed);
+      btn.setAttribute('aria-pressed', isPressed ? 'true' : 'false');
     });
   }
 }
@@ -2034,9 +2046,13 @@ function restoreFilterPreferences() {
 function handleQuickFilter(button) {
   const days = button.dataset.days;
 
-  // Update button states
-  quickFilterButtons.forEach(btn => btn.classList.remove('active'));
+  // Update button states and ARIA attributes for accessibility
+  quickFilterButtons.forEach(btn => {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-pressed', 'false');
+  });
   button.classList.add('active');
+  button.setAttribute('aria-pressed', 'true');
 
   // Update dropdown
   dateRangeSelect.value = days;
@@ -2050,12 +2066,14 @@ function handleQuickFilter(button) {
 
 // Handle date range dropdown change
 function handleDateRangeChange() {
-  // Clear quick filter active states if using custom dropdown
+  // Update quick filter button states and ARIA attributes for accessibility
   quickFilterButtons.forEach(btn => {
     if (btn.dataset.days === dateRangeSelect.value) {
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
     } else {
       btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
     }
   });
 
@@ -2189,8 +2207,8 @@ function updateTabCounters() {
         break;
     }
 
-    // Update button text with counter badge
-    btn.innerHTML = `${baseText} <span class="tab-counter">${count}</span>`;
+    // Update button text with counter badge and ARIA label for accessibility
+    btn.innerHTML = `${baseText} <span class="tab-counter" aria-label="${count} messages">${count}</span>`;
   });
 }
 
