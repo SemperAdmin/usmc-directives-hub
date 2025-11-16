@@ -359,23 +359,57 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
   console.log('Fetching Semper Admin posts from Facebook...');
 
   try {
-    const response = await axios.get(
-      `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`,
-      {
+    const allPosts = [];
+    let nextUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`;
+    let pageCount = 0;
+    const maxPages = 10; // Safety limit to prevent infinite loops (10 pages * 25 posts = ~250 posts)
+    const postsPerPage = 25; // Facebook's typical page size
+
+    // Pagination loop - fetch all pages of posts
+    while (nextUrl && pageCount < maxPages) {
+      pageCount++;
+      console.log(`Fetching Facebook posts - page ${pageCount}...`);
+
+      const response = await axios.get(nextUrl, {
         headers: {
           'Authorization': `Bearer ${SEMPER_ADMIN_API_KEY}`
         },
-        params: {
+        params: pageCount === 1 ? {
           fields: 'id,message,story,created_time,permalink_url,full_picture',
-          limit: 100
-        },
+          limit: postsPerPage
+        } : undefined, // Subsequent requests use the full nextUrl with params
         timeout: 30000
+      });
+
+      // Add posts from this page to our collection
+      const posts = response.data.data || [];
+      allPosts.push(...posts);
+      console.log(`  Retrieved ${posts.length} posts (total so far: ${allPosts.length})`);
+
+      // Check if there's a next page
+      nextUrl = response.data.paging?.next || null;
+
+      // Break if no more posts on this page
+      if (posts.length === 0) {
+        console.log('  No more posts found, stopping pagination');
+        break;
       }
-    );
+    }
+
+    if (pageCount >= maxPages && nextUrl) {
+      console.log(`Reached maximum page limit (${maxPages}). There may be more posts available.`);
+    }
+
+    console.log(`Total Facebook posts retrieved: ${allPosts.length}`);
 
     res.json({
       success: true,
-      posts: response.data.data || []
+      posts: allPosts,
+      metadata: {
+        totalPosts: allPosts.length,
+        pagesRetrieved: pageCount,
+        hasMore: !!nextUrl
+      }
     });
   } catch (error) {
     console.error('Facebook API error:', error.message);
