@@ -53,7 +53,7 @@ function getSecnavUrls() {
 // DoD FMR URLs - Department of Defense Financial Management Regulation
 function getDodFmrUrls() {
   // DoD FMR change pages
-  return ['https://comptroller.war.gov/FMR/change/'];
+  return ['https://comptroller.defense.gov/FMR/change/'];
 }
 
 // DoD Forms URLs

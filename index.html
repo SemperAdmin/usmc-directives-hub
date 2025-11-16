@@ -6,7 +6,7 @@
 <!-- Content Security Policy for enhanced security -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' https://unpkg.com/web-vitals@3.5.0/ 'unsafe-inline';
+  script-src 'self' https://unpkg.com/web-vitals@3.5.0/;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: https:;
   connect-src 'self'
@@ -38,9 +38,9 @@
 <title>USMC Directives Hub by Semper Admin</title>
 <meta name="description" content="Search and track Marine Corps Messages, Publications, and Forms including MARADMINs, ALMARs, MCPUBs, and more.">
 <meta name="theme-color" content="#1a1a1a">
-<link rel="icon" type="image/png" href="image.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="image.png">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="style.css?v=23">
 <link rel="stylesheet" href="ai-improvements.css?v=2">
 </head>
@@ -176,7 +176,8 @@
 <script src="lib/alnav-data.js"></script>
 
 <!-- Web Vitals Library - Official Google library for Core Web Vitals -->
-<!-- Note: Integrity check removed due to unpkg CDN cache variations -->
+<!-- TODO: Download and host locally for better security (avoid CDN dependency) -->
+<!-- To host locally: Download from unpkg.com to lib/web-vitals.iife.js -->
 <!-- Version is pinned to 3.5.0 and served over HTTPS for security -->
 <script src="https://unpkg.com/web-vitals@3.5.0/dist/web-vitals.iife.js"
         crossorigin="anonymous"></script>
@@ -184,61 +185,6 @@
 <script src="app.js?v=23"></script>
 
 <!-- Service Worker Registration for PWA -->
-<script>
-// Register service worker for offline support and improved performance
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then((registration) => {
-        console.log('[PWA] Service Worker registered successfully:', registration.scope);
-
-        // Check for updates every 60 minutes
-        setInterval(() => {
-          registration.update();
-        }, 60 * 60 * 1000);
-
-        // Handle service worker updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          console.log('[PWA] New service worker found, installing...');
-
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('[PWA] New service worker installed, update available');
-              // Optionally notify user about update
-              // You could show a toast: "New version available! Refresh to update."
-            }
-          });
-        });
-      })
-      .catch((error) => {
-        console.log('[PWA] Service Worker registration failed:', error);
-      });
-  });
-
-  // Handle service worker messages
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    console.log('[PWA] Message from service worker:', event.data);
-  });
-} else {
-  console.log('[PWA] Service Workers not supported in this browser');
-}
-
-// Handle install prompt for PWA
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-  console.log('[PWA] Install prompt available');
-  e.preventDefault();
-  deferredPrompt = e;
-
-  // Optionally show install button
-  // showInstallButton();
-});
-
-window.addEventListener('appinstalled', () => {
-  console.log('[PWA] App installed successfully');
-  deferredPrompt = null;
-});
-</script>
+<script src="pwa-init.js"></script>
 </body>
 </html>

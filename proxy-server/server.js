@@ -360,10 +360,16 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
 
   try {
     const allPosts = [];
-    let nextUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`;
     let pageCount = 0;
     const maxPages = 10; // Safety limit to prevent infinite loops (10 pages * 25 posts = ~250 posts)
     const postsPerPage = 25; // Facebook's typical page size
+
+    // Construct initial URL with parameters
+    const initialParams = new URLSearchParams({
+      fields: 'id,message,story,created_time,permalink_url,full_picture',
+      limit: postsPerPage.toString()
+    });
+    let nextUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts?${initialParams.toString()}`;
 
     // Pagination loop - fetch all pages of posts
     while (nextUrl && pageCount < maxPages) {
@@ -374,10 +380,6 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
         headers: {
           'Authorization': `Bearer ${SEMPER_ADMIN_API_KEY}`
         },
-        params: pageCount === 1 ? {
-          fields: 'id,message,story,created_time,permalink_url,full_picture',
-          limit: postsPerPage
-        } : undefined, // Subsequent requests use the full nextUrl with params
         timeout: 30000
       });
 
