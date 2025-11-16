@@ -69,12 +69,26 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip cross-origin requests
+  // Intercept cross-origin requests for offline functionality
   if (url.origin !== self.location.origin) {
-    // For API requests, use network-first strategy
-    if (url.hostname.includes('onrender.com') ||
-        url.hostname.includes('marines.mil') ||
-        url.hostname.includes('navy.mil')) {
+    // List of all API and proxy hosts that should be cached for offline use
+    const apiHosts = [
+      'onrender.com',         // Custom proxy server
+      'marines.mil',          // Marines.mil data
+      'navy.mil',             // Navy data
+      'igmc.marines.mil',     // IGMC checklists
+      'esd.whs.mil',          // DoD forms
+      'defense.gov',          // DoD FMR
+      'travel.dod.mil',       // JTR
+      'corsproxy.io',         // CORS proxy fallback
+      'api.allorigins.win',   // CORS proxy fallback
+      'cors-anywhere.herokuapp.com',  // CORS proxy fallback
+      'api.codetabs.com'      // CORS proxy fallback
+    ];
+
+    // Use network-first strategy for all API and proxy requests
+    // This ensures offline functionality works with any proxy
+    if (apiHosts.some(host => url.hostname.includes(host))) {
       event.respondWith(networkFirst(request));
     }
     return;
