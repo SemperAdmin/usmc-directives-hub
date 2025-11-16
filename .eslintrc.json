@@ -37,6 +37,7 @@
     "allDodFmr": "writable",
     "currentMessages": "writable",
     "summaryCache": "writable",
-    "currentMessageType": "writable"
+    "currentMessageType": "writable",
+    "webVitals": "readonly"
   }
 }
