@@ -40,8 +40,11 @@
 <link rel="stylesheet" href="ai-improvements.css?v=2">
 </head>
 <body>
+<!-- Skip Navigation Link for Keyboard Accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <header>
-  <a href="https://linktr.ee/semperadmin" target="_blank" class="branding-link">
+  <a href="https://linktr.ee/semperadmin" target="_blank" class="branding-link" aria-label="Visit Semper Admin on Linktree (opens in new tab)">
     <div class="branding">
       <img src="IMG_2324.jpeg" alt="Semper Admin Logo" class="header-logo">
       <div class="header-text">
@@ -52,38 +55,41 @@
   </a>
   <p class="subtitle">Search and track Marine Corps Messages, Publications, and Forms</p>
   <div class="controls">
-    <button id="refreshBtn">🔄 Refresh</button>
-    <button id="themeToggle">🌙 Dark Mode</button>
+    <button id="refreshBtn" aria-label="Refresh data from server">🔄 Refresh</button>
+    <button id="themeToggle" aria-label="Toggle dark mode">🌙 Dark Mode</button>
   </div>
 </header>
-<main>
-  <div class="message-type-tabs">
-    <button class="message-type-btn" data-type="almar">ALMARs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="alnav">ALNAVs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="dodfmr">DoD FMR <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="dodforms">DoD Forms <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="igmc">IGMC <span class="tab-counter">0</span></button>
-    <button class="message-type-btn active" data-type="maradmin">MARADMINs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="jtr">JTR <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="mcpub">MCPUBs <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="secnav">SECNAV <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="semperadmin">Semper Admin <span class="tab-counter">0</span></button>
-    <button class="message-type-btn" data-type="youtube">YouTube <span class="tab-counter">0</span></button>
-    <button class="message-type-btn all-messages-btn" data-type="all">All Messages <span class="tab-counter">0</span></button>
+<main id="main-content">
+  <div class="message-type-tabs" role="tablist" aria-label="Message type selection">
+    <button class="message-type-btn" data-type="almar" role="tab" aria-selected="false" aria-controls="results">ALMARs <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="alnav" role="tab" aria-selected="false" aria-controls="results">ALNAVs <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="dodfmr" role="tab" aria-selected="false" aria-controls="results">DoD FMR <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="dodforms" role="tab" aria-selected="false" aria-controls="results">DoD Forms <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="igmc" role="tab" aria-selected="false" aria-controls="results">IGMC <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn active" data-type="maradmin" role="tab" aria-selected="true" aria-controls="results">MARADMINs <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="jtr" role="tab" aria-selected="false" aria-controls="results">JTR <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="mcpub" role="tab" aria-selected="false" aria-controls="results">MCPUBs <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="secnav" role="tab" aria-selected="false" aria-controls="results">SECNAV <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="semperadmin" role="tab" aria-selected="false" aria-controls="results">Semper Admin <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn" data-type="youtube" role="tab" aria-selected="false" aria-controls="results">YouTube <span class="tab-counter" aria-label="0 messages">0</span></button>
+    <button class="message-type-btn all-messages-btn" data-type="all" role="tab" aria-selected="false" aria-controls="results">All Messages <span class="tab-counter" aria-label="0 messages">0</span></button>
   </div>
   <div class="filters-section">
     <div class="search-container">
-      <input type="text" id="searchInput" placeholder="Search by ID, subject, or keywords..." />
-      <button id="clearSearch" class="clear-btn" title="Clear search">✕</button>
+      <label for="searchInput" class="sr-only">Search messages</label>
+      <input type="text" id="searchInput" placeholder="Search by ID, subject, or keywords..." aria-describedby="searchHelp" />
+      <button id="clearSearch" class="clear-btn" aria-label="Clear search">✕</button>
+      <span id="searchHelp" class="sr-only">Enter keywords to filter messages</span>
     </div>
     <div class="filter-controls">
-      <div class="quick-filters">
-        <button class="quick-filter-btn active" data-days="1">Today</button>
-        <button class="quick-filter-btn" data-days="7">This Week</button>
-        <button class="quick-filter-btn" data-days="30">This Month</button>
-        <button class="quick-filter-btn" data-days="90">Last 90 Days</button>
+      <div class="quick-filters" role="group" aria-label="Quick date filters">
+        <button class="quick-filter-btn active" data-days="1" aria-pressed="true">Today</button>
+        <button class="quick-filter-btn" data-days="7" aria-pressed="false">This Week</button>
+        <button class="quick-filter-btn" data-days="30" aria-pressed="false">This Month</button>
+        <button class="quick-filter-btn" data-days="90" aria-pressed="false">Last 90 Days</button>
       </div>
-      <select id="dateRange">
+      <label for="dateRange" class="sr-only">Date range filter</label>
+      <select id="dateRange" aria-label="Select date range">
         <option value="1" selected>Last 24 hours</option>
         <option value="7">Last 7 days</option>
         <option value="14">Last 14 days</option>
@@ -94,21 +100,21 @@
       </select>
     </div>
   </div>
-  <div id="status" class="status">Loading cached data...</div>
-  <div id="error" class="error hidden"></div>
+  <div id="status" class="status" role="status" aria-live="polite">Loading cached data...</div>
+  <div id="error" class="error hidden" role="alert" aria-live="assertive"></div>
   <div id="summaryStats" class="summary-stats hidden"></div>
-  <div id="results" class="results"></div>
+  <div id="results" class="results" role="region" aria-label="Message results" tabindex="-1"></div>
 </main>
 <footer>
   <p class="semper-admin-branding">
-    A <a href="https://linktr.ee/semperadmin" target="_blank">Semper Admin</a> Project
+    A <a href="https://linktr.ee/semperadmin" target="_blank" aria-label="Semper Admin (opens in new tab)">Semper Admin</a> Project
   </p>
-  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank">Marines.mil Messages</a> & <a href="https://www.esd.whs.mil/Directives/forms/" target="_blank">DoD Forms</a> | Last updated: <span id="lastUpdate">Never</span></p>
+  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank" aria-label="Marines.mil Messages (opens in new tab)">Marines.mil Messages</a> & <a href="https://www.esd.whs.mil/Directives/forms/" target="_blank" aria-label="DoD Forms (opens in new tab)">DoD Forms</a> | Last updated: <span id="lastUpdate">Never</span></p>
   <p class="footer-links">
-    <a href="https://www.facebook.com/profile.php?id=61558093420252" target="_blank">Facebook</a> •
-    <a href="https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx" target="_blank">SECNAV</a> •
-    <a href="https://www.travel.dod.mil/" target="_blank">JTR</a> •
-    <a href="https://comptroller.war.gov/FMR/change/" target="_blank">DoD FMR</a>
+    <a href="https://www.facebook.com/profile.php?id=61558093420252" target="_blank" aria-label="Semper Admin on Facebook (opens in new tab)">Facebook</a> •
+    <a href="https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx" target="_blank" aria-label="SECNAV Directives (opens in new tab)">SECNAV</a> •
+    <a href="https://www.travel.dod.mil/" target="_blank" aria-label="Joint Travel Regulations (opens in new tab)">JTR</a> •
+    <a href="https://comptroller.war.gov/FMR/change/" target="_blank" aria-label="DoD Financial Management Regulation (opens in new tab)">DoD FMR</a>
   </p>
   <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>

@@ -1,17 +1,19 @@
 # GitHub Actions Workflow for Updating Static Data
-# Runs daily and attempts to fetch latest data from IGMC, SECNAV, and ALNAV sources
+# Runs every 2 days to fetch latest data from IGMC, SECNAV, and ALNAV sources
+# COST OPTIMIZATION: Reduced from daily to every 2 days (50% savings)
 
 name: Update Static Data
 
 on:
-  # Run daily at 6 AM UTC (1 AM EST / 10 PM PST)
+  # Run every 2 days at 6 AM UTC (1 AM EST / 10 PM PST)
+  # Most military directives don't change daily, so every 2 days is sufficient
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 */2 * *'
 
-  # Allow manual trigger from Actions tab
+  # Allow manual trigger from Actions tab for immediate updates when needed
   workflow_dispatch:
 
-  # Run on push to main (for testing)
+  # Run on push to main (for testing/debugging only)
   push:
     branches:
       - main
@@ -20,6 +22,11 @@ on:
       - 'scripts/fetch-secnav.mjs'
       - 'scripts/fetch-alnav.mjs'
       - '.github/workflows/update-fa-checklists.yml'
+
+# Prevent multiple update jobs from running simultaneously
+concurrency:
+  group: update-static-data
+  cancel-in-progress: false  # Let current job finish, queue new ones
 
 jobs:
   update-data:
