@@ -63,6 +63,23 @@ This application includes several high-priority optimizations for improved perfo
 - Bundle size: ~50KB (down from 150KB)
 - No cold starts on API server
 
+### Code Quality & PWA Features
+
+Additional optimizations for improved code quality and user experience:
+
+1. **ESLint + Prettier** - Code linting and formatting standards
+2. **Web Vitals Tracking** - Monitor Core Web Vitals (LCP, FID, CLS, FCP, TTFB)
+3. **Enhanced Search** - Multi-word search with tokenization
+4. **Progressive Web App** - Installable, works offline, service worker caching
+
+**See [MEDIUM-PRIORITY-OPTIMIZATIONS.md](MEDIUM-PRIORITY-OPTIMIZATIONS.md) for detailed documentation.**
+
+**PWA Benefits:**
+- Install to home screen (mobile & desktop)
+- Full offline functionality
+- 2-3x faster repeat loads (service worker caching)
+- Native app-like experience
+
 ## Usage
 
 ### Basic Usage

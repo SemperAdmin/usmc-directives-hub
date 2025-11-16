@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+coverage/
+*.min.js
+lib/
+proxy-server/node_modules/
+.github/
+vite.config.js
