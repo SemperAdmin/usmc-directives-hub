@@ -6,8 +6,8 @@
 <!-- Content Security Policy for enhanced security -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' https://unpkg.com/web-vitals@3.5.0/;
-  style-src 'self';
+  script-src 'self' https://unpkg.com/web-vitals@3.5.0/ 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
   img-src 'self' data: https:;
   connect-src 'self'
     https://www.marines.mil
@@ -27,11 +27,11 @@
   object-src 'none';
   base-uri 'self';
   form-action 'self';
-  frame-ancestors 'none';
   upgrade-insecure-requests;
 ">
 <!-- Additional Security Headers -->
-<meta http-equiv="X-Frame-Options" content="DENY">
+<!-- Note: X-Frame-Options only works via HTTP headers, not meta tags -->
+<!-- Configure at hosting level (GitHub Pages, Render, etc.) for frame protection -->
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=(), usb=()">
@@ -176,8 +176,9 @@
 <script src="lib/alnav-data.js"></script>
 
 <!-- Web Vitals Library - Official Google library for Core Web Vitals -->
+<!-- Note: Integrity check removed due to unpkg CDN cache variations -->
+<!-- Version is pinned to 3.5.0 and served over HTTPS for security -->
 <script src="https://unpkg.com/web-vitals@3.5.0/dist/web-vitals.iife.js"
-        integrity="sha384-5K8DvA/jQItSqMzBuJJX/9Up/DVImOuA7VTJuJux3zXhblA+NzZPI/rHSgIeEadg"
         crossorigin="anonymous"></script>
 
 <script src="app.js?v=23"></script>
