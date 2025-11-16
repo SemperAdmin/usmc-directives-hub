@@ -197,8 +197,10 @@ let summaryCache = {}; // Cache for AI-generated summaries
 document.addEventListener("DOMContentLoaded", () => {
   loadCachedData();
   loadIgmcChecklists(); // Load IGMC Checklists from static data file
-  loadSecnavDirectives(); // Load SECNAV Directives from static data file
-  loadAlnavMessages(); // Load ALNAV Messages from static data file
+  loadSecnavDirectives(); // Load SECNAV Directives from static data file (lib/secnav-data.js)
+  loadAlnavMessages(); // Load ALNAV Messages from static data file (lib/alnav-data.js)
+  // Note: Static files may be empty if fetch scripts failed during build
+  // This is expected in GitHub Actions due to network restrictions
   restoreFilterPreferences();
   fetchAllFeeds();
   initTheme();
@@ -925,10 +927,17 @@ async function fetchSemperAdminPosts() {
 
     if (!response.ok) {
       const errorText = await response.text();
+      let errorDetails = null;
+      try {
+        errorDetails = JSON.parse(errorText);
+      } catch (e) {
+        // Not JSON, use raw text
+      }
       console.error('❌ [Semper Admin] Facebook API error:', {
         status: response.status,
         statusText: response.statusText,
-        errorText: errorText
+        errorText: errorText,
+        details: errorDetails?.details || 'No additional details'
       });
       return;
     }
