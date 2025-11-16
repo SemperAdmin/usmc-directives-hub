@@ -1965,18 +1965,25 @@ function filterMessages() {
   if (searchTerm) {
     console.log(`Filtering by search term: "${searchTerm}"`);
 
-    // Tokenize search query for multi-word search
-    const searchWords = searchTerm.split(/\s+/).filter(word => word.length > 0);
+    // Tokenize search query for multi-word search (same filter as searchTokens)
+    const searchWords = searchTerm.split(/\s+/).filter(word => word.length > 2);
 
     if (searchWords.length === 1) {
-      // Single word search - use simple includes (fast)
+      // Single word search - use simple includes on searchText (fast)
       filtered = filtered.filter(m => m.searchText.includes(searchTerm));
-    } else {
-      // Multi-word search - all words must match (AND logic)
+    } else if (searchWords.length > 1) {
+      // Multi-word search - use pre-computed searchTokens for performance
+      // All search words must match (AND logic)
       filtered = filtered.filter(m => {
-        // Check if all search words are present in the message
-        return searchWords.every(word => m.searchText.includes(word));
+        // Use the pre-computed searchTokens array for faster matching
+        // This preserves partial matching within tokens
+        return searchWords.every(word =>
+          m.searchTokens.some(token => token.includes(word))
+        );
       });
+    } else {
+      // Search term too short (all words < 3 chars), use full text search
+      filtered = filtered.filter(m => m.searchText.includes(searchTerm));
     }
 
     console.log(`After search filter: ${filtered.length} messages`);
@@ -3441,12 +3448,14 @@ function captureUserContext() {
 
 // ============================================================================
 // WEB VITALS TRACKING
-// Performance monitoring for Core Web Vitals
+// Performance monitoring using official Google web-vitals library
+// Tracks: LCP, INP (replaces FID), CLS, FCP, TTFB
 // ============================================================================
 
 /**
- * Track Core Web Vitals for performance monitoring
- * Measures: LCP, FID, CLS, FCP, TTFB
+ * Initialize Web Vitals tracking
+ * Uses official web-vitals library for accurate, maintained metrics
+ * Note: Library loaded via CDN in index.html
  */
 function initWebVitals() {
   // Only track in production (not during development)
@@ -3458,146 +3467,53 @@ function initWebVitals() {
     return;
   }
 
-  // Track Largest Contentful Paint (LCP)
-  // Good: < 2.5s, Needs improvement: 2.5s - 4s, Poor: > 4s
-  if ('PerformanceObserver' in window) {
-    try {
-      const lcpObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        const lastEntry = entries[entries.length - 1];
-        const lcpValue = lastEntry.renderTime || lastEntry.loadTime;
-
-        console.log('[Web Vitals] LCP:', lcpValue.toFixed(2) + 'ms');
-
-        // Log rating
-        if (lcpValue < 2500) {
-          console.log('[Web Vitals] LCP Rating: Good ✅');
-        } else if (lcpValue < 4000) {
-          console.log('[Web Vitals] LCP Rating: Needs Improvement ⚠️');
-        } else {
-          console.log('[Web Vitals] LCP Rating: Poor ❌');
-        }
-
-        // Optional: Send to analytics
-        // sendToAnalytics({ metric: 'LCP', value: lcpValue });
-      });
-
-      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
-    } catch (e) {
-      console.warn('[Web Vitals] LCP tracking failed:', e);
-    }
-
-    // Track First Input Delay (FID)
-    // Good: < 100ms, Needs improvement: 100ms - 300ms, Poor: > 300ms
-    try {
-      const fidObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach((entry) => {
-          const fidValue = entry.processingStart - entry.startTime;
-
-          console.log('[Web Vitals] FID:', fidValue.toFixed(2) + 'ms');
-
-          if (fidValue < 100) {
-            console.log('[Web Vitals] FID Rating: Good ✅');
-          } else if (fidValue < 300) {
-            console.log('[Web Vitals] FID Rating: Needs Improvement ⚠️');
-          } else {
-            console.log('[Web Vitals] FID Rating: Poor ❌');
-          }
-
-          // Optional: Send to analytics
-          // sendToAnalytics({ metric: 'FID', value: fidValue });
-        });
-      });
-
-      fidObserver.observe({ entryTypes: ['first-input'] });
-    } catch (e) {
-      console.warn('[Web Vitals] FID tracking failed:', e);
-    }
-
-    // Track Cumulative Layout Shift (CLS)
-    // Good: < 0.1, Needs improvement: 0.1 - 0.25, Poor: > 0.25
-    try {
-      let clsValue = 0;
-      const clsObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (!entry.hadRecentInput) {
-            clsValue += entry.value;
-          }
-        }
-
-        console.log('[Web Vitals] CLS:', clsValue.toFixed(3));
-
-        if (clsValue < 0.1) {
-          console.log('[Web Vitals] CLS Rating: Good ✅');
-        } else if (clsValue < 0.25) {
-          console.log('[Web Vitals] CLS Rating: Needs Improvement ⚠️');
-        } else {
-          console.log('[Web Vitals] CLS Rating: Poor ❌');
-        }
-      });
-
-      clsObserver.observe({ entryTypes: ['layout-shift'] });
-    } catch (e) {
-      console.warn('[Web Vitals] CLS tracking failed:', e);
-    }
-
-    // Track First Contentful Paint (FCP)
-    // Good: < 1.8s, Needs improvement: 1.8s - 3s, Poor: > 3s
-    try {
-      const fcpObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        entries.forEach((entry) => {
-          if (entry.name === 'first-contentful-paint') {
-            const fcpValue = entry.startTime;
-
-            console.log('[Web Vitals] FCP:', fcpValue.toFixed(2) + 'ms');
-
-            if (fcpValue < 1800) {
-              console.log('[Web Vitals] FCP Rating: Good ✅');
-            } else if (fcpValue < 3000) {
-              console.log('[Web Vitals] FCP Rating: Needs Improvement ⚠️');
-            } else {
-              console.log('[Web Vitals] FCP Rating: Poor ❌');
-            }
-
-            // Optional: Send to analytics
-            // sendToAnalytics({ metric: 'FCP', value: fcpValue });
-          }
-        });
-      });
-
-      fcpObserver.observe({ entryTypes: ['paint'] });
-    } catch (e) {
-      console.warn('[Web Vitals] FCP tracking failed:', e);
-    }
+  // Wait for web-vitals library to load from CDN
+  if (typeof webVitals === 'undefined') {
+    console.warn('[Web Vitals] Library not loaded yet, will retry...');
+    setTimeout(initWebVitals, 100);
+    return;
   }
 
-  // Track Time to First Byte (TTFB) using Navigation Timing API
-  // Good: < 800ms, Needs improvement: 800ms - 1800ms, Poor: > 1800ms
-  window.addEventListener('load', () => {
-    try {
-      const navTiming = performance.getEntriesByType('navigation')[0];
-      if (navTiming) {
-        const ttfb = navTiming.responseStart - navTiming.requestStart;
+  console.log('[Web Vitals] Initializing with official library v' + (webVitals.version || '3.x'));
 
-        console.log('[Web Vitals] TTFB:', ttfb.toFixed(2) + 'ms');
+  /**
+   * Report Web Vital metric with rating
+   * @param {Object} metric - Web Vital metric object {name, value, rating}
+   */
+  function reportWebVital(metric) {
+    const { name, value, rating } = metric;
 
-        if (ttfb < 800) {
-          console.log('[Web Vitals] TTFB Rating: Good ✅');
-        } else if (ttfb < 1800) {
-          console.log('[Web Vitals] TTFB Rating: Needs Improvement ⚠️');
-        } else {
-          console.log('[Web Vitals] TTFB Rating: Poor ❌');
-        }
+    // Format value based on metric type
+    const formattedValue = name === 'CLS'
+      ? value.toFixed(3)
+      : value.toFixed(2) + 'ms';
 
-        // Optional: Send to analytics
-        // sendToAnalytics({ metric: 'TTFB', value: ttfb });
-      }
-    } catch (e) {
-      console.warn('[Web Vitals] TTFB tracking failed:', e);
-    }
-  });
+    // Get rating emoji
+    const ratingEmoji = rating === 'good' ? '✅' :
+                       rating === 'needs-improvement' ? '⚠️' : '❌';
+
+    console.log(`[Web Vitals] ${name}: ${formattedValue}`);
+    console.log(`[Web Vitals] ${name} Rating: ${rating} ${ratingEmoji}`);
+
+    // Optional: Send to analytics
+    // sendToAnalytics({ metric: name, value, rating });
+  }
+
+  // Track all Core Web Vitals with the official library
+  // INP (Interaction to Next Paint) - replaced FID in March 2024
+  webVitals.onINP(reportWebVital);
+
+  // LCP (Largest Contentful Paint)
+  webVitals.onLCP(reportWebVital);
+
+  // CLS (Cumulative Layout Shift)
+  webVitals.onCLS(reportWebVital);
+
+  // FCP (First Contentful Paint)
+  webVitals.onFCP(reportWebVital);
+
+  // TTFB (Time to First Byte)
+  webVitals.onTTFB(reportWebVital);
 }
 
 // Initialize Web Vitals tracking when DOM is ready

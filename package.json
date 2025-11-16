@@ -17,7 +17,8 @@
     "format:check": "prettier --check \"*.{js,html,css,md}\""
   },
   "dependencies": {
-    "cheerio": "^1.0.0-rc.12"
+    "cheerio": "^1.0.0-rc.12",
+    "web-vitals": "^3.5.0"
   },
   "devDependencies": {
     "vite": "^5.0.0",
