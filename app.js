@@ -2958,6 +2958,7 @@ function loadCachedData() {
         console.log(`[Cache] Summary cache expired (age: ${Math.round(summaryCacheAge / 1000 / 60 / 60)} hours), clearing...`);
         localStorage.removeItem("summary_cache");
         localStorage.removeItem("summary_cache_timestamp");
+        summaryCache = {}; // Reset in-memory cache to prevent stale data usage
       }
     }
 
