@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#1a1a1a"/>
+
+  <!-- USMC Eagle, Globe, and Anchor inspired design -->
+  <g fill="#ffd700" stroke="#ffd700" stroke-width="2">
+    <!-- Simplified anchor -->
+    <path d="M256 120 L256 350 M220 330 Q230 345 256 350 Q282 345 292 330 M220 150 L220 180 Q220 200 240 200 L272 200 Q292 200 292 180 L292 150" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Globe circle -->
+    <circle cx="256" cy="240" r="60" fill="none" stroke-width="3"/>
+
+    <!-- Text USMC -->
+    <text x="256" y="255" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#ffd700">USMC</text>
+  </g>
+
+  <!-- Bottom text -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#ffd700">Directives Hub</text>
+</svg>
