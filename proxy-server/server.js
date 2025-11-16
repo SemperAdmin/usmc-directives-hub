@@ -435,17 +435,12 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
     console.error('================================');
 
     // Return detailed error to client
-    const fbError = error.response?.data?.error || {};
+    const fbError = error.response?.data?.error;
     res.status(error.response?.status || 500).json({
       success: false,
       error: 'Failed to fetch Semper Admin posts',
-      message: fbError.message || error.message,
-      facebookError: {
-        type: fbError.type,
-        code: fbError.code,
-        fbtrace_id: fbError.fbtrace_id,
-        message: fbError.message
-      }
+      message: error.message,
+      facebookError: fbError || null
     });
   }
 });
