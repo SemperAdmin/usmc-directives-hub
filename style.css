@@ -2335,6 +2335,14 @@ body.dark-theme .feedback-status.error {
   }
 }
 
+/* Email privacy note styling */
+#emailPrivacyNote {
+  display: block;
+  margin-top: 0.25rem;
+  color: #666;
+  font-size: 0.85rem;
+}
+
 /* Hide feedback button when printing */
 @media print {
   .feedback-btn,

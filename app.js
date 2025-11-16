@@ -1470,6 +1470,8 @@ async function generateAISummary(message, buttonElement) {
             console.log(`Found cached summary on server for ${messageKey}`);
             summaryCache[messageKey] = data.summary;
             message.aiSummary = data.summary;
+            // Update summary cache timestamp
+            localStorage.setItem("summary_cache_timestamp", new Date().toISOString());
             cacheData();
 
             if (buttonElement) {
@@ -1516,6 +1518,9 @@ async function generateAISummary(message, buttonElement) {
     // Cache the summary locally
     summaryCache[messageKey] = summary;
     message.aiSummary = summary;
+
+    // Update summary cache timestamp (24-hour TTL)
+    localStorage.setItem("summary_cache_timestamp", new Date().toISOString());
 
     // Save to local storage
     cacheData();
@@ -2906,8 +2911,6 @@ function cacheData() {
     localStorage.setItem("dodfmr_cache", JSON.stringify(allDodFmr));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", now);
-    // Separate timestamp for summary cache (has different TTL)
-    localStorage.setItem("summary_cache_timestamp", now);
     console.log('[Cache] Data cached successfully at', now);
   } catch(e) {
     console.error("Failed to cache data:", e);
@@ -2921,41 +2924,39 @@ function loadCachedData() {
     const SUMMARY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for AI summaries
 
     const ts = localStorage.getItem("cache_timestamp");
+    let mainCacheExpired = false;
 
-    // Check if cache has expired
+    // Check if main cache has expired
     if (ts) {
       const cacheAge = Date.now() - new Date(ts).getTime();
       if (cacheAge > CACHE_TTL) {
         console.log(`[Cache] Cache expired (age: ${Math.round(cacheAge / 1000 / 60)} minutes), clearing...`);
-        // Clear expired cache except summaries (they're expensive to regenerate)
-        localStorage.removeItem("maradmin_cache");
-        localStorage.removeItem("mcpub_cache");
-        localStorage.removeItem("alnav_cache");
-        localStorage.removeItem("almar_cache");
-        localStorage.removeItem("semperadmin_cache");
-        localStorage.removeItem("dodforms_cache");
-        localStorage.removeItem("youtube_cache");
-        localStorage.removeItem("secnav_cache");
-        localStorage.removeItem("jtr_cache");
-        localStorage.removeItem("dodfmr_cache");
-        localStorage.removeItem("cache_timestamp");
-
-        // Clear summary cache if it's too old
-        const summaryCacheTimestamp = localStorage.getItem("summary_cache_timestamp");
-        if (summaryCacheTimestamp) {
-          const summaryCacheAge = Date.now() - new Date(summaryCacheTimestamp).getTime();
-          if (summaryCacheAge > SUMMARY_CACHE_TTL) {
-            console.log('[Cache] Summary cache expired, clearing...');
-            localStorage.removeItem("summary_cache");
-            localStorage.removeItem("summary_cache_timestamp");
-          }
-        }
-
-        lastUpdateSpan.textContent = "Cache expired - fetching fresh data...";
-        return; // Skip loading expired cache
+        const feedCacheKeys = [
+          "maradmin_cache", "mcpub_cache", "alnav_cache", "almar_cache",
+          "semperadmin_cache", "dodforms_cache", "youtube_cache",
+          "secnav_cache", "jtr_cache", "dodfmr_cache", "cache_timestamp"
+        ];
+        feedCacheKeys.forEach(key => localStorage.removeItem(key));
+        mainCacheExpired = true;
       } else {
         console.log(`[Cache] Using cached data (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
       }
+    }
+
+    // Check summary cache expiration independently
+    const summaryCacheTimestamp = localStorage.getItem("summary_cache_timestamp");
+    if (summaryCacheTimestamp) {
+      const summaryCacheAge = Date.now() - new Date(summaryCacheTimestamp).getTime();
+      if (summaryCacheAge > SUMMARY_CACHE_TTL) {
+        console.log(`[Cache] Summary cache expired (age: ${Math.round(summaryCacheAge / 1000 / 60 / 60)} hours), clearing...`);
+        localStorage.removeItem("summary_cache");
+        localStorage.removeItem("summary_cache_timestamp");
+      }
+    }
+
+    if (mainCacheExpired) {
+      lastUpdateSpan.textContent = "Cache expired - fetching fresh data...";
+      return; // Skip loading expired cache
     }
 
     const maradminCache = localStorage.getItem("maradmin_cache");

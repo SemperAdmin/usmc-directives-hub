@@ -6,8 +6,8 @@
 <!-- Content Security Policy for enhanced security -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' 'unsafe-inline';
-  style-src 'self' 'unsafe-inline';
+  script-src 'self';
+  style-src 'self';
   img-src 'self' data: https:;
   connect-src 'self'
     https://www.marines.mil
@@ -15,7 +15,7 @@
     https://www.secnav.navy.mil
     https://www.igmc.marines.mil
     https://www.esd.whs.mil
-    https://comptroller.war.gov
+    https://comptroller.defense.gov
     https://www.travel.dod.mil
     https://usmc-directives-proxy.onrender.com
     http://localhost:3000
@@ -147,7 +147,7 @@
       <div class="feedback-form-group">
         <label for="feedbackEmail">Email (Optional - will be public in GitHub issue)</label>
         <input type="email" id="feedbackEmail" placeholder="your@email.mil (visible publicly)" aria-describedby="emailPrivacyNote">
-        <small id="emailPrivacyNote" style="display: block; margin-top: 0.25rem; color: #666; font-size: 0.85rem;">⚠️ Your email will be visible in the public GitHub issue</small>
+        <small id="emailPrivacyNote">⚠️ Your email will be visible in the public GitHub issue</small>
       </div>
 
       <div class="feedback-form-actions">
