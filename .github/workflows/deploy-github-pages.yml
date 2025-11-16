@@ -35,15 +35,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Fetch latest data
-        run: |
-          echo "Fetching FA Checklists..."
-          npm run fetch-fa || echo "FA fetch failed (non-blocking)"
-          echo "Fetching SECNAV data..."
-          npm run fetch-secnav || echo "SECNAV fetch failed (non-blocking)"
-          echo "Fetching ALNAV data..."
-          npm run fetch-alnav || echo "ALNAV fetch failed (non-blocking)"
-        continue-on-error: true
+      # Note: Static data fetch scripts are disabled in GitHub Actions
+      # due to network restrictions. Run these locally and commit the
+      # populated files: npm run fetch-all
+      # The build will use the committed lib/*.js files
+      # - name: Fetch latest data
+      #   run: npm run fetch-all
+      #   continue-on-error: true
 
       - name: Build with Vite
         run: npm run build
