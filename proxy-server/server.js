@@ -415,10 +415,17 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
     });
   } catch (error) {
     console.error('Facebook API error:', error.message);
+    console.error('Facebook API error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    });
     res.status(error.response?.status || 500).json({
       success: false,
       error: 'Failed to fetch Semper Admin posts',
-      message: error.message
+      message: error.message,
+      details: error.response?.data || null
     });
   }
 });
