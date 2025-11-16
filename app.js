@@ -939,6 +939,11 @@ async function fetchSemperAdminPosts() {
         errorText: errorText,
         details: errorDetails?.details || 'No additional details'
       });
+      showError(
+        'Unable to fetch Semper Admin posts from Facebook.',
+        `Facebook API returned status ${response.status}. Check console for details.`,
+        'error'
+      );
       return;
     }
 
@@ -956,6 +961,11 @@ async function fetchSemperAdminPosts() {
         message: data.message,
         fullData: data
       });
+      showError(
+        'Unable to fetch Semper Admin posts from Facebook.',
+        data.message || 'Invalid response from server. Check console for details.',
+        'error'
+      );
       return;
     }
 
