@@ -345,11 +345,24 @@ app.get('/api/youtube/videos', async (req, res) => {
 
     res.json(response.data);
   } catch (error) {
-    console.error('YouTube API error:', error.message);
+    console.error('====== YouTube API Error ======');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Response status:', error.response?.status);
+    console.error('Response statusText:', error.response?.statusText);
+    console.error('Response data:', JSON.stringify(error.response?.data || {}, null, 2));
+    console.error('Request URL:', error.config?.url);
+    console.error('Request method:', error.config?.method);
+    console.error('================================');
+
+    // Return detailed error to client
+    const youtubeError = error.response?.data?.error;
     res.status(error.response?.status || 500).json({
       success: false,
       error: 'Failed to fetch YouTube videos',
-      message: error.message
+      message: error.message,
+      youtubeError: youtubeError || null,
+      details: youtubeError?.errors?.[0] || null
     });
   }
 });
