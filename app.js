@@ -209,6 +209,20 @@ document.addEventListener("DOMContentLoaded", () => {
   initKeyboardShortcuts();
 });
 refreshBtn.addEventListener("click", () => {
+  // Warn user about API quota consumption before refreshing
+  const confirmed = confirm(
+    '⚠️ Manual Refresh Warning\n\n' +
+    'This will fetch fresh data from all sources and use API quota.\n\n' +
+    '• YouTube API: Uses limited daily quota\n' +
+    '• Most data is cached for 1-24 hours\n' +
+    '• Auto-refresh runs every 10 minutes\n\n' +
+    'Are you sure you want to refresh now?'
+  );
+
+  if (!confirmed) {
+    return; // User cancelled
+  }
+
   refreshBtn.disabled = true;
   refreshBtn.textContent = "🔄 Refreshing...";
   loadIgmcChecklists(); // Reload IGMC Checklists from static data file
@@ -804,13 +818,44 @@ function parseAlnavLinks(doc, sourceUrl) {
 
 // Fetch YouTube videos using YouTube Data API v3
 async function fetchYouTubeVideos() {
-  console.log('Fetching YouTube videos from YouTube Data API...');
+  console.log('Fetching YouTube videos...');
 
   try {
+    // PRIORITY 1: Check if static YouTube data exists (loaded from lib/youtube-data.js)
+    // This prevents API quota usage - data is pre-fetched daily by GitHub Actions
+    if (typeof window.YOUTUBE_VIDEOS !== 'undefined' && window.YOUTUBE_VIDEOS && window.YOUTUBE_VIDEOS.length > 0) {
+      console.log(`✓ Using pre-fetched YouTube data (${window.YOUTUBE_VIDEOS.length} videos, ZERO quota used)`);
+
+      // Transform static data to match expected format
+      const videos = window.YOUTUBE_VIDEOS.map(video => ({
+        id: video.id,
+        numericId: video.id,
+        subject: video.title,
+        title: video.title,
+        link: `https://www.youtube.com/watch?v=${video.id}`,
+        pubDate: video.publishedAt,
+        pubDateObj: new Date(video.publishedAt),
+        summary: (video.description || '').substring(0, 200),
+        description: video.description || '',
+        category: '',
+        type: 'youtube',
+        searchText: `${video.id} ${video.title} ${video.description || ''}`.toLowerCase(),
+        detailsFetched: false,
+        maradminNumber: null
+      }));
+
+      allYouTubePosts = videos;
+      cacheData();
+      console.log(`Total YouTube videos loaded: ${allYouTubePosts.length} (from static data)`);
+      return;
+    }
+
+    // PRIORITY 2: Fallback to API if static data not available
+    console.log('⚠️  No pre-fetched data found, falling back to YouTube API (uses quota)');
     const videos = [];
     let pageToken = '';
     let pageCount = 0;
-    const maxPages = 20; // Limit to 20 pages (1000 videos max)
+    const maxPages = 5; // Limit to 5 pages (250 videos max) - Reduced to conserve quota
 
     do {
       try {
@@ -2960,6 +3005,16 @@ function cacheData() {
     localStorage.setItem("dodfmr_cache", JSON.stringify(allDodFmr));
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", now);
+
+    // Set separate cache timestamps for YouTube (24hr TTL) and Facebook (6hr TTL)
+    // Only update these timestamps if the data actually changed
+    if (!localStorage.getItem("youtube_cache_timestamp") || allYouTubePosts.length > 0) {
+      localStorage.setItem("youtube_cache_timestamp", now);
+    }
+    if (!localStorage.getItem("facebook_cache_timestamp") || allSemperAdminPosts.length > 0) {
+      localStorage.setItem("facebook_cache_timestamp", now);
+    }
+
     console.log('[Cache] Data cached successfully at', now);
   } catch(e) {
     console.error("Failed to cache data:", e);
@@ -2968,22 +3023,25 @@ function cacheData() {
 
 function loadCachedData() {
   try {
-    // Cache TTL Configuration (1 hour for RSS feeds, 24 hours for summaries)
-    const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+    // Cache TTL Configuration - Different TTLs for different data types
+    const CACHE_TTL = 60 * 60 * 1000; // 1 hour for frequently updated feeds (MARADMINs, ALNAVs)
+    const YOUTUBE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for YouTube (videos change slowly + quota limited)
+    const FACEBOOK_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for Facebook posts
     const SUMMARY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for AI summaries
 
     const ts = localStorage.getItem("cache_timestamp");
+    const youtubeTs = localStorage.getItem("youtube_cache_timestamp");
+    const facebookTs = localStorage.getItem("facebook_cache_timestamp");
     let mainCacheExpired = false;
 
-    // Check if main cache has expired
+    // Check if main cache has expired (for frequently-updated feeds)
     if (ts) {
       const cacheAge = Date.now() - new Date(ts).getTime();
       if (cacheAge > CACHE_TTL) {
-        console.log(`[Cache] Cache expired (age: ${Math.round(cacheAge / 1000 / 60)} minutes), clearing...`);
+        console.log(`[Cache] Main cache expired (age: ${Math.round(cacheAge / 1000 / 60)} minutes), clearing frequently-updated feeds...`);
         const feedCacheKeys = [
           "maradmin_cache", "mcpub_cache", "alnav_cache", "almar_cache",
-          "semperadmin_cache", "dodforms_cache", "youtube_cache",
-          "secnav_cache", "jtr_cache", "dodfmr_cache", "cache_timestamp"
+          "dodforms_cache", "secnav_cache", "jtr_cache", "dodfmr_cache", "cache_timestamp"
         ];
         feedCacheKeys.forEach(key => localStorage.removeItem(key));
         mainCacheExpired = true;
@@ -3001,6 +3059,30 @@ function loadCachedData() {
         localStorage.removeItem("summary_cache");
         localStorage.removeItem("summary_cache_timestamp");
         summaryCache = {}; // Reset in-memory cache to prevent stale data usage
+      }
+    }
+
+    // Check YouTube cache expiration independently (24-hour TTL to conserve API quota)
+    if (youtubeTs) {
+      const youtubeCacheAge = Date.now() - new Date(youtubeTs).getTime();
+      if (youtubeCacheAge > YOUTUBE_CACHE_TTL) {
+        console.log(`[Cache] YouTube cache expired (age: ${Math.round(youtubeCacheAge / 1000 / 60 / 60)} hours), will fetch fresh videos...`);
+        localStorage.removeItem("youtube_cache");
+        localStorage.removeItem("youtube_cache_timestamp");
+      } else {
+        console.log(`[Cache] Using cached YouTube data (age: ${Math.round(youtubeCacheAge / 1000 / 60 / 60)} hours, quota-saving mode)`);
+      }
+    }
+
+    // Check Facebook cache expiration independently (6-hour TTL)
+    if (facebookTs) {
+      const facebookCacheAge = Date.now() - new Date(facebookTs).getTime();
+      if (facebookCacheAge > FACEBOOK_CACHE_TTL) {
+        console.log(`[Cache] Facebook cache expired (age: ${Math.round(facebookCacheAge / 1000 / 60 / 60)} hours), will fetch fresh posts...`);
+        localStorage.removeItem("semperadmin_cache");
+        localStorage.removeItem("facebook_cache_timestamp");
+      } else {
+        console.log(`[Cache] Using cached Facebook data (age: ${Math.round(facebookCacheAge / 1000 / 60 / 60)} hours)`);
       }
     }
 
