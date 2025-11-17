@@ -62,6 +62,10 @@ if (!YOUTUBE_API_KEY || !GEMINI_API_KEY || !SEMPER_ADMIN_API_KEY) {
 // Info message for Facebook Graph API
 console.log(`ℹ️  Facebook Graph API configured for page ID: ${FACEBOOK_PAGE_ID}`);
 
+// Trust proxy - Required for Render.com and other hosting platforms
+// Allows rate limiting to work correctly with X-Forwarded-For headers
+app.set('trust proxy', true);
+
 // Enable CORS for your GitHub Pages site
 app.use(cors({
   origin: ['https://semperadmin.github.io', 'http://localhost:8000', 'http://127.0.0.1:8000'],
