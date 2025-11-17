@@ -23,7 +23,7 @@ const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
-const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || "280042265193211"; // Semper Admin Facebook Page ID
+const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID; // Semper Admin Facebook Page ID
 const FACEBOOK_API_VERSION = "v21.0"; // Facebook Graph API version (updated to latest)
 
 // Validate required environment variables
@@ -402,6 +402,14 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
 
       // Check if there's a next page
       nextUrl = response.data.paging?.next || null;
+
+      // Security: Strip access_token from nextUrl to prevent token leakage in logs
+      // The Authorization header is sufficient for authentication
+      if (nextUrl) {
+        const url = new URL(nextUrl);
+        url.searchParams.delete('access_token');
+        nextUrl = url.toString();
+      }
 
       // Break if no more posts on this page
       if (posts.length === 0) {
