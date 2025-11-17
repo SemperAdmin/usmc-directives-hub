@@ -810,7 +810,7 @@ async function fetchYouTubeVideos() {
     const videos = [];
     let pageToken = '';
     let pageCount = 0;
-    const maxPages = 20; // Limit to 20 pages (1000 videos max)
+    const maxPages = 5; // Limit to 5 pages (250 videos max) - Reduced to conserve quota
 
     do {
       try {
