@@ -346,8 +346,6 @@ app.get('/api/youtube/videos', async (req, res) => {
 app.get('/api/facebook/semperadmin', async (req, res) => {
   console.log('Fetching Semper Admin posts from Facebook via web scraping...');
 
-  // Facebook page username/ID - set via environment variable or use default
-  const FACEBOOK_PAGE_USERNAME = process.env.FACEBOOK_PAGE_USERNAME || 'SemperAdminUSMC';
   const pageUrl = `https://m.facebook.com/${FACEBOOK_PAGE_USERNAME}`;
 
   console.log(`Scraping Facebook page: ${pageUrl}`);
@@ -400,7 +398,7 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
         }
 
         // Extract timestamp
-        let created_time = new Date().toISOString();
+        let created_time = null;
         const timeElement = $post.find('abbr[data-utime], abbr').first();
         if (timeElement.length > 0) {
           const unixTime = timeElement.attr('data-utime');
@@ -432,7 +430,7 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
             message: message || '',
             story: '',
             created_time,
-            permalink_url: permalink_url || `https://m.facebook.com/${FACEBOOK_PAGE_USERNAME}`,
+            permalink_url: permalink_url || '',
             full_picture
           });
         }
@@ -455,8 +453,8 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
               id: `post_${index}`,
               message: message.substring(0, 500),
               story: '',
-              created_time: new Date().toISOString(),
-              permalink_url: `https://m.facebook.com/${FACEBOOK_PAGE_USERNAME}`,
+              created_time: null,
+              permalink_url: '',
               full_picture: ''
             });
           }
