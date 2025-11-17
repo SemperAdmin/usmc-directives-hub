@@ -373,8 +373,8 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
   try {
     const allPosts = [];
     let pageCount = 0;
-    const maxPages = 10; // Safety limit to prevent infinite loops (10 pages * 25 posts = ~250 posts)
-    const postsPerPage = 25; // Facebook's typical page size
+    const maxPages = 20; // Safety limit to prevent infinite loops (20 pages * 100 posts = ~2000 posts)
+    const postsPerPage = 100; // Facebook's maximum allowed limit per page
 
     // Construct initial URL with parameters
     const initialParams = new URLSearchParams({
