@@ -352,15 +352,25 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
 
   try {
     // Fetch the mobile Facebook page (simpler HTML structure)
+    // Use comprehensive headers to mimic a real mobile browser
     const response = await axios.get(pageUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1.1 Mobile/15E148 Safari/604.1',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'DNT': '1'
       },
-      timeout: 30000
+      timeout: 30000,
+      maxRedirects: 5,
+      validateStatus: (status) => status >= 200 && status < 400 // Accept redirects
     });
 
     // Parse HTML with cheerio
@@ -369,18 +379,44 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
 
     // Facebook mobile uses article tags or specific div structures for posts
     // This selector targets common post containers on mobile Facebook
-    $('article, div[data-ft]').each((index, element) => {
+    // Note: Facebook frequently changes their HTML structure and may block scrapers
+    $('article, div[data-ft], div[role="article"]').each((index, element) => {
       try {
         const $post = $(element);
 
         // Extract post text (message)
+        // Try multiple strategies to find post content
         let message = '';
-        const textElements = $post.find('div[data-gt], p, span').filter((i, el) => {
-          const text = $(el).text().trim();
-          return text.length > 20; // Only consider substantial text
-        });
-        if (textElements.length > 0) {
-          message = $(textElements[0]).text().trim();
+
+        // Strategy 1: Look for data-gt attribute (older structure)
+        const dataGtElement = $post.find('div[data-gt]').first();
+        if (dataGtElement.length > 0) {
+          message = dataGtElement.text().trim();
+        }
+
+        // Strategy 2: Look for paragraphs with substantial text
+        if (!message) {
+          const paragraphs = $post.find('p').filter((i, el) => {
+            const text = $(el).text().trim();
+            return text.length > 20;
+          });
+          if (paragraphs.length > 0) {
+            message = $(paragraphs[0]).text().trim();
+          }
+        }
+
+        // Strategy 3: Look for any div with substantial text content
+        if (!message) {
+          const divs = $post.find('div').filter((i, el) => {
+            const $el = $(el);
+            const text = $el.text().trim();
+            const children = $el.children().length;
+            // Get divs with text but few children (likely content, not containers)
+            return text.length > 50 && children < 5;
+          });
+          if (divs.length > 0) {
+            message = $(divs[0]).text().trim();
+          }
         }
 
         // Extract post link
@@ -488,11 +524,29 @@ app.get('/api/facebook/semperadmin', async (req, res) => {
     console.error('Response statusText:', error.response?.statusText);
     console.error('=====================================');
 
-    res.status(error.response?.status || 500).json({
+    // Determine appropriate error message based on status code
+    let errorMessage = error.message;
+    let details = 'Facebook page structure may have changed or is inaccessible';
+
+    if (error.response?.status === 403) {
+      errorMessage = 'Facebook blocked the request (403 Forbidden)';
+      details = 'Facebook actively blocks automated scrapers. This is expected behavior. Consider using an RSS feed or official API if available.';
+    } else if (error.response?.status === 429) {
+      errorMessage = 'Rate limited by Facebook (429 Too Many Requests)';
+      details = 'Too many requests in a short time. Please wait before trying again.';
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      errorMessage = 'Network error: Unable to reach Facebook';
+      details = 'Check your internet connection and firewall settings.';
+    }
+
+    // Return 503 Service Unavailable instead of passing through Facebook's error codes
+    // This makes it clear that it's a service availability issue, not a client error
+    res.status(503).json({
       success: false,
       error: 'Failed to scrape Semper Admin posts',
-      message: error.message,
-      details: 'Facebook page structure may have changed or is inaccessible'
+      message: errorMessage,
+      details: details,
+      facebookStatus: error.response?.status || null
     });
   }
 });
