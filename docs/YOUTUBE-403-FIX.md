@@ -1,5 +1,7 @@
 # YouTube API 403 Error - Diagnostic & Fix Guide
 
+> **Note**: This is a deep-dive guide specifically for **403 Forbidden** errors. For general YouTube API troubleshooting (including 503 errors, missing API keys, or quota issues), see [YOUTUBE-API-TROUBLESHOOTING.md](./YOUTUBE-API-TROUBLESHOOTING.md).
+
 ## Error Details
 
 ```

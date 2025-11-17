@@ -351,8 +351,14 @@ app.get('/api/youtube/videos', async (req, res) => {
     console.error('Response status:', error.response?.status);
     console.error('Response statusText:', error.response?.statusText);
     console.error('Response data:', JSON.stringify(error.response?.data || {}, null, 2));
-    console.error('Request URL:', error.config?.url);
     console.error('Request method:', error.config?.method);
+
+    // Security: Redact API key from request params before logging
+    const safeParams = { ...error.config?.params };
+    if (safeParams?.key) {
+      safeParams.key = `${safeParams.key.substring(0, 8)}...REDACTED`;
+    }
+    console.error('Request params:', JSON.stringify(safeParams, null, 2));
     console.error('================================');
 
     // Return detailed error to client
