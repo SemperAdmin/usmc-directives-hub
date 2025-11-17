@@ -818,9 +818,40 @@ function parseAlnavLinks(doc, sourceUrl) {
 
 // Fetch YouTube videos using YouTube Data API v3
 async function fetchYouTubeVideos() {
-  console.log('Fetching YouTube videos from YouTube Data API...');
+  console.log('Fetching YouTube videos...');
 
   try {
+    // PRIORITY 1: Check if static YouTube data exists (loaded from lib/youtube-data.js)
+    // This prevents API quota usage - data is pre-fetched daily by GitHub Actions
+    if (typeof window.YOUTUBE_VIDEOS !== 'undefined' && window.YOUTUBE_VIDEOS && window.YOUTUBE_VIDEOS.length > 0) {
+      console.log(`✓ Using pre-fetched YouTube data (${window.YOUTUBE_VIDEOS.length} videos, ZERO quota used)`);
+
+      // Transform static data to match expected format
+      const videos = window.YOUTUBE_VIDEOS.map(video => ({
+        id: video.id,
+        numericId: video.id,
+        subject: video.title,
+        title: video.title,
+        link: `https://www.youtube.com/watch?v=${video.id}`,
+        pubDate: video.publishedAt,
+        pubDateObj: new Date(video.publishedAt),
+        summary: (video.description || '').substring(0, 200),
+        description: video.description || '',
+        category: '',
+        type: 'youtube',
+        searchText: `${video.id} ${video.title} ${video.description || ''}`.toLowerCase(),
+        detailsFetched: false,
+        maradminNumber: null
+      }));
+
+      allYouTubePosts = videos;
+      cacheData();
+      console.log(`Total YouTube videos loaded: ${allYouTubePosts.length} (from static data)`);
+      return;
+    }
+
+    // PRIORITY 2: Fallback to API if static data not available
+    console.log('⚠️  No pre-fetched data found, falling back to YouTube API (uses quota)');
     const videos = [];
     let pageToken = '';
     let pageCount = 0;

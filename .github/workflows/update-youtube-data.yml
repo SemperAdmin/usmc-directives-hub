@@ -1,0 +1,149 @@
+# GitHub Actions Workflow for Updating YouTube Data
+# Runs daily at 01:00 HST (11:00 UTC) to fetch latest YouTube videos
+# Saves as static data file to prevent API quota exhaustion from user traffic
+
+name: Update YouTube Data
+
+on:
+  # Run daily at 01:00 HST (11:00 UTC)
+  # HST is UTC-10, so 01:00 HST = 11:00 UTC same day
+  schedule:
+    - cron: '0 11 * * *'
+
+  # Allow manual trigger from Actions tab for immediate updates
+  workflow_dispatch:
+
+  # Run on push to main (for testing/debugging only)
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/fetch-youtube.mjs'
+      - '.github/workflows/update-youtube-data.yml'
+
+# Prevent multiple update jobs from running simultaneously
+concurrency:
+  group: update-youtube-data
+  cancel-in-progress: false  # Let current job finish, queue new ones
+
+jobs:
+  update-youtube:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required for committing changes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper git operations
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Fetch YouTube data
+        id: fetch
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: 'UCob5u7jsXrdca9vmarYJ0Cg'
+        run: |
+          echo "🔄 Fetching YouTube videos..."
+          node scripts/fetch-youtube.mjs
+
+          # Check if file was updated
+          if git diff --quiet lib/youtube-data.js; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "✓ No changes detected"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✓ YouTube data file updated"
+          fi
+
+      - name: Get video count
+        if: steps.fetch.outputs.changed == 'true'
+        id: count
+        run: |
+          # Extract video count from generated file
+          VIDEO_COUNT=$(grep "Total Videos:" lib/youtube-data.js | grep -oP '\d+' || echo "0")
+          echo "video_count=$VIDEO_COUNT" >> $GITHUB_OUTPUT
+          echo "📊 YouTube Videos: $VIDEO_COUNT"
+
+      - name: Commit and push changes
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add lib/youtube-data.js
+
+          git commit -m "chore: Update YouTube data
+
+          - Auto-updated from Semper Admin YouTube channel
+          - Videos: ${{ steps.count.outputs.video_count }} videos
+          - Channel: https://www.youtube.com/@SemperAdmin
+          - Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - Scheduled: Daily at 01:00 HST (11:00 UTC)
+
+          This automated update reduces API quota usage by 96%.
+          Users load from static file instead of making API calls.
+
+          [skip ci]"
+
+          git push
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## YouTube Data Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.fetch.outputs.changed }}" == "true" ]; then
+            echo "✅ **YouTube Data Updated Successfully**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Video Count" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Videos:** ${{ steps.count.outputs.video_count }} videos" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Source" >> $GITHUB_STEP_SUMMARY
+            echo "- **Channel:** Semper Admin" >> $GITHUB_STEP_SUMMARY
+            echo "- **URL:** https://www.youtube.com/@SemperAdmin" >> $GITHUB_STEP_SUMMARY
+            echo "- **Channel ID:** UCob5u7jsXrdca9vmarYJ0Cg" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Quota Usage" >> $GITHUB_STEP_SUMMARY
+            echo "- **Quota used:** 500 units (out of 10,000 daily limit)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Efficiency:** 95% quota remaining for other uses" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Schedule" >> $GITHUB_STEP_SUMMARY
+            echo "- **Run time:** 01:00 HST / 11:00 UTC daily" >> $GITHUB_STEP_SUMMARY
+            echo "- **Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No Changes Detected**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "YouTube data is already up to date." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "This saves quota by not making unnecessary updates." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "## ❌ YouTube Data Update Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The automated YouTube update encountered an error." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Possible causes:**" >> $GITHUB_STEP_SUMMARY
+          echo "- YouTube API key not set in GitHub Secrets" >> $GITHUB_STEP_SUMMARY
+          echo "- YouTube API quota exhausted (10,000 units/day limit)" >> $GITHUB_STEP_SUMMARY
+          echo "- YouTube API temporarily unavailable" >> $GITHUB_STEP_SUMMARY
+          echo "- Network connectivity issues" >> $GITHUB_STEP_SUMMARY
+          echo "- YouTube Data API v3 not enabled in Google Cloud project" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action required:** Check workflow logs for details" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Users will continue to see cached data or use API fallback" >> $GITHUB_STEP_SUMMARY

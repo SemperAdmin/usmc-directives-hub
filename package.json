@@ -10,7 +10,8 @@
     "fetch-fa": "node scripts/fetch-fa-checklists.mjs",
     "fetch-secnav": "node scripts/fetch-secnav.mjs",
     "fetch-alnav": "node scripts/fetch-alnav.mjs",
-    "fetch-all": "npm run fetch-fa && npm run fetch-secnav && npm run fetch-alnav",
+    "fetch-youtube": "node scripts/fetch-youtube.mjs",
+    "fetch-all": "npm run fetch-fa && npm run fetch-secnav && npm run fetch-alnav && npm run fetch-youtube",
     "lint": "eslint app.js --fix",
     "format": "prettier --write \"*.{js,html,css,md}\"",
     "format:check": "prettier --check \"*.{js,html,css,md}\""
