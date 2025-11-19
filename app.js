@@ -821,11 +821,7 @@ function transformYouTubeVideo(video) {
   // Handle both static data format and API response format
   const videoId = video.id?.videoId || video.id;
   const snippet = video.snippet || video;
-
-  // Ensure pubDate is in ISO string format
-  const pubDate = snippet.publishedAt instanceof Date
-    ? snippet.publishedAt.toISOString()
-    : snippet.publishedAt;
+  const pubDateObj = new Date(snippet.publishedAt);
 
   return {
     id: videoId,
@@ -833,8 +829,8 @@ function transformYouTubeVideo(video) {
     subject: snippet.title,
     title: snippet.title,
     link: `https://www.youtube.com/watch?v=${videoId}`,
-    pubDate: pubDate,
-    pubDateObj: new Date(snippet.publishedAt),
+    pubDate: pubDateObj.toISOString(),
+    pubDateObj: pubDateObj,
     summary: (snippet.description || '').substring(0, 200),
     description: snippet.description || '',
     category: '',
