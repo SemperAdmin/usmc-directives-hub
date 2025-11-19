@@ -816,6 +816,35 @@ function parseAlnavLinks(doc, sourceUrl) {
   return messages;
 }
 
+// Helper function to transform YouTube video data into standard message format
+function transformYouTubeVideo(video) {
+  // Handle both static data format and API response format
+  const videoId = video.id?.videoId || video.id;
+  const snippet = video.snippet || video;
+
+  // Ensure pubDate is in ISO string format
+  const pubDate = snippet.publishedAt instanceof Date
+    ? snippet.publishedAt.toISOString()
+    : snippet.publishedAt;
+
+  return {
+    id: videoId,
+    numericId: videoId,
+    subject: snippet.title,
+    title: snippet.title,
+    link: `https://www.youtube.com/watch?v=${videoId}`,
+    pubDate: pubDate,
+    pubDateObj: new Date(snippet.publishedAt),
+    summary: (snippet.description || '').substring(0, 200),
+    description: snippet.description || '',
+    category: '',
+    type: 'youtube',
+    searchText: `${videoId} ${snippet.title} ${snippet.description || ''}`.toLowerCase(),
+    detailsFetched: false,
+    maradminNumber: null
+  };
+}
+
 // Fetch YouTube videos using YouTube Data API v3
 async function fetchYouTubeVideos() {
   console.log('Fetching YouTube videos...');
@@ -823,29 +852,15 @@ async function fetchYouTubeVideos() {
   try {
     // PRIORITY 1: Check if static YouTube data exists (loaded from lib/youtube-data.js)
     // This prevents API quota usage - data is pre-fetched daily by GitHub Actions
-    if (typeof window.YOUTUBE_VIDEOS !== 'undefined' && window.YOUTUBE_VIDEOS && window.YOUTUBE_VIDEOS.length > 0) {
+    if (window.YOUTUBE_VIDEOS?.length > 0) {
       console.log(`✓ Using pre-fetched YouTube data (${window.YOUTUBE_VIDEOS.length} videos, ZERO quota used)`);
 
       // Transform static data to match expected format
-      const videos = window.YOUTUBE_VIDEOS.map(video => ({
-        id: video.id,
-        numericId: video.id,
-        subject: video.title,
-        title: video.title,
-        link: `https://www.youtube.com/watch?v=${video.id}`,
-        pubDate: video.publishedAt,
-        pubDateObj: new Date(video.publishedAt),
-        summary: (video.description || '').substring(0, 200),
-        description: video.description || '',
-        category: '',
-        type: 'youtube',
-        searchText: `${video.id} ${video.title} ${video.description || ''}`.toLowerCase(),
-        detailsFetched: false,
-        maradminNumber: null
-      }));
+      const videos = window.YOUTUBE_VIDEOS.map(transformYouTubeVideo);
 
       allYouTubePosts = videos;
       cacheData();
+      localStorage.setItem("youtube_cache_timestamp", new Date().toISOString());
       console.log(`Total YouTube videos loaded: ${allYouTubePosts.length} (from static data)`);
       return;
     }
@@ -891,28 +906,7 @@ async function fetchYouTubeVideos() {
         if (data.items && data.items.length > 0) {
           data.items.forEach(item => {
             if (item.id.videoId) {
-              const videoId = item.id.videoId;
-              const title = item.snippet.title;
-              const publishedAt = item.snippet.publishedAt;
-              const url = `https://www.youtube.com/watch?v=${videoId}`;
-              const description = item.snippet.description || '';
-
-              videos.push({
-                id: videoId,
-                numericId: videoId,
-                subject: title,
-                title: title,
-                link: url,
-                pubDate: new Date(publishedAt).toISOString(),
-                pubDateObj: new Date(publishedAt),
-                summary: description.substring(0, 200),
-                description: description,
-                category: '',
-                type: 'youtube',
-                searchText: `${videoId} ${title} ${description}`.toLowerCase(),
-                detailsFetched: false,
-                maradminNumber: null
-              });
+              videos.push(transformYouTubeVideo(item));
             }
           });
 
@@ -936,6 +930,7 @@ async function fetchYouTubeVideos() {
 
     allYouTubePosts = videos;
     cacheData();
+    localStorage.setItem("youtube_cache_timestamp", new Date().toISOString());
     console.log(`Total YouTube videos loaded: ${allYouTubePosts.length}`);
   } catch (error) {
     console.error('Error fetching YouTube videos:', error);
@@ -1065,6 +1060,7 @@ async function fetchSemperAdminPosts() {
 
     allSemperAdminPosts = posts;
     cacheData();
+    localStorage.setItem("facebook_cache_timestamp", new Date().toISOString());
     console.log('✅ [Semper Admin] Total Semper Admin posts loaded:', allSemperAdminPosts.length);
   } catch (error) {
     console.error('❌ [Semper Admin] Error fetching Semper Admin posts:', {
@@ -3006,15 +3002,8 @@ function cacheData() {
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", now);
 
-    // Set separate cache timestamps for YouTube (24hr TTL) and Facebook (6hr TTL)
-    // Only update these timestamps if the data actually changed
-    if (!localStorage.getItem("youtube_cache_timestamp") || allYouTubePosts.length > 0) {
-      localStorage.setItem("youtube_cache_timestamp", now);
-    }
-    if (!localStorage.getItem("facebook_cache_timestamp") || allSemperAdminPosts.length > 0) {
-      localStorage.setItem("facebook_cache_timestamp", now);
-    }
-
+    // Note: Separate cache timestamps for YouTube (24hr TTL) and Facebook (6hr TTL)
+    // are set directly in their respective fetch functions when fresh data is retrieved
     console.log('[Cache] Data cached successfully at', now);
   } catch(e) {
     console.error("Failed to cache data:", e);
