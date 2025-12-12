@@ -54,7 +54,7 @@ jobs:
         id: fetch
         run: |
           echo "🔄 Fetching static data..."
-          npm run fetch-all
+          npm run fetch-static
 
           # Check if any files were updated
           if git diff --quiet lib/fa-checklists.js lib/secnav-data.js lib/alnav-data.js; then
