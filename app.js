@@ -4,7 +4,6 @@ const APPLICATION_CONFIG = {
     maradmin: { subjectSource: 'subject', showAISummary: true, showDetails: true, prependIdToTitle: true, hideIdColumn: true },
     mcpub: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
     almar: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
-    semperadmin: { subjectSource: 'subject', showAISummary: false, showDetails: false, linkSource: 'semperadminLink', prependIdToTitle: false, hideIdColumn: true },
     dodforms: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: true, hideIdColumn: true },
     dodfmr: { subjectSource: 'subject', showAISummary: false, showDetails: false, prependIdToTitle: false, hideIdColumn: true },
     igmc: { subjectSource: 'subject', showAISummary: false, showDetails: true, prependIdToTitle: false, hideIdColumn: false },
@@ -20,7 +19,6 @@ const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=500&category=14336",
   mcpub: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=5&Site=481&max=500",
   almar: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=500&category=14335",
-  // semperadmin now uses Facebook Graph API via /api/facebook/semperadmin endpoint
   alnav: null, // Using static data file loaded from lib/alnav-data.js
   secnav: null, // Using static data file loaded from lib/secnav-data.js
   jtr: "https://www.travel.dod.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1311&Category=22932&isdashboardselected=0&max=500"
@@ -183,14 +181,13 @@ let allMaradmins = []; // Store all MARADMINs
 let allMcpubs = []; // Store all MCPUBs
 let allAlnavs = []; // Store all ALNAVs
 let allAlmars = []; // Store all ALMARs
-let allSemperAdminPosts = []; // Store all Semper Admin posts
 let allDodForms = []; // Store all DoD Forms
 let allIgmcChecklists = []; // Store all IGMC Checklists
 let allYouTubePosts = []; // Store all YouTube posts
 let allSecnavs = []; // Store all SECNAV directives
 let allJtrs = []; // Store all JTR (Joint Travel Regulations) updates
 let allDodFmr = []; // Store all DoD FMR changes
-let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'semperadmin', 'dodforms', 'igmc', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
+let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'dodforms', 'igmc', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
 
 // Init
@@ -930,140 +927,6 @@ async function fetchYouTubeVideos() {
     console.log(`Total YouTube videos loaded: ${allYouTubePosts.length}`);
   } catch (error) {
     console.error('Error fetching YouTube videos:', error);
-  }
-}
-
-// Fetch Semper Admin posts from Facebook API via backend proxy
-async function fetchSemperAdminPosts() {
-  console.log('🔵 [Semper Admin] Starting Facebook API fetch...');
-
-  try {
-    // Use backend API endpoint for Facebook posts
-    const apiUrl = CUSTOM_PROXY_URL
-      ? `${CUSTOM_PROXY_URL}/api/facebook/semperadmin`
-      : null;
-
-    console.log('🔵 [Semper Admin] Proxy URL:', CUSTOM_PROXY_URL);
-    console.log('🔵 [Semper Admin] API endpoint:', apiUrl);
-
-    if (!apiUrl) {
-      console.error('❌ [Semper Admin] Proxy server not configured. Skipping Semper Admin fetch.');
-      return;
-    }
-
-    console.log('🔵 [Semper Admin] Fetching from:', apiUrl);
-    const response = await fetch(apiUrl);
-
-    console.log('🔵 [Semper Admin] Response status:', response.status);
-    console.log('🔵 [Semper Admin] Response ok:', response.ok);
-    console.log('🔵 [Semper Admin] Response headers:', {
-      'content-type': response.headers.get('content-type'),
-      'content-length': response.headers.get('content-length')
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorDetails = null;
-      try {
-        errorDetails = JSON.parse(errorText);
-      } catch (e) {
-        // Not JSON, use raw text
-      }
-      console.error('❌ [Semper Admin] Facebook API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorText: errorText,
-        details: errorDetails
-      });
-
-      // Extract Facebook-specific error if available
-      const fbError = errorDetails?.facebookError;
-      let errorMessage = `Facebook API returned status ${response.status}.`;
-      if (fbError?.message) {
-        errorMessage = `Facebook error: ${fbError.message} (Code: ${fbError.code || 'unknown'})`;
-      } else if (errorDetails?.message) {
-        errorMessage = errorDetails.message;
-      }
-
-      showError(
-        'Unable to fetch Semper Admin posts from Facebook.',
-        errorMessage,
-        'error'
-      );
-      return;
-    }
-
-    const data = await response.json();
-    console.log('🔵 [Semper Admin] Raw response data:', data);
-    console.log('🔵 [Semper Admin] data.success:', data.success);
-    console.log('🔵 [Semper Admin] data.posts:', data.posts ? `${data.posts.length} posts` : 'undefined');
-
-    if (!data.success || !data.posts) {
-      console.error('❌ [Semper Admin] Invalid response from Facebook API:', {
-        success: data.success,
-        postsExists: !!data.posts,
-        postsLength: data.posts?.length,
-        error: data.error,
-        message: data.message,
-        fullData: data
-      });
-      showError(
-        'Unable to fetch Semper Admin posts from Facebook.',
-        data.message || 'Invalid response from server. Check console for details.',
-        'error'
-      );
-      return;
-    }
-
-    console.log('🔵 [Semper Admin] Processing', data.posts.length, 'posts...');
-
-    // Parse Facebook posts into our message format
-    const posts = data.posts.map((post, index) => {
-      // Extract post ID (use Facebook post ID or generate one)
-      const postId = post.id || `Post ${index + 1}`;
-
-      // Use message as subject, or fall back to a default
-      const subject = post.message || post.story || `Semper Admin Update ${index + 1}`;
-
-      // Get permalink URL
-      const link = post.permalink_url || `https://www.facebook.com/${postId}`;
-
-      // Parse creation date
-      const pubDate = post.created_time ? new Date(post.created_time) : new Date();
-
-      // Extract description/summary (first sentence of message)
-      const description = post.message || post.story || '';
-      const summary = firstSentence(description);
-
-      return {
-        id: postId,
-        numericId: postId,
-        subject: subject.substring(0, 200), // Limit length
-        title: subject,
-        link: link,
-        semperadminLink: link, // Use for config.linkSource
-        pubDate: pubDate.toISOString(),
-        pubDateObj: pubDate,
-        summary: summary,
-        description: description,
-        category: '',
-        type: 'semperadmin',
-        searchText: `${postId} ${subject} ${description}`.toLowerCase(),
-        detailsFetched: false,
-        maradminNumber: null
-      };
-    });
-
-    allSemperAdminPosts = posts;
-    cacheData();
-    localStorage.setItem("facebook_cache_timestamp", new Date().toISOString());
-    console.log('✅ [Semper Admin] Total Semper Admin posts loaded:', allSemperAdminPosts.length);
-  } catch (error) {
-    console.error('❌ [Semper Admin] Error fetching Semper Admin posts:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
   }
 }
 
@@ -1999,8 +1862,6 @@ function filterMessages() {
     allMessages = [...allMcpubs];
   } else if (currentMessageType === 'almar') {
     allMessages = [...allAlmars];
-  } else if (currentMessageType === 'semperadmin') {
-    allMessages = [...allSemperAdminPosts];
   } else if (currentMessageType === 'dodforms') {
     allMessages = [...allDodForms];
   } else if (currentMessageType === 'igmc') {
@@ -2017,7 +1878,7 @@ function filterMessages() {
     allMessages = [...allAlnavs];
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from "All Messages"
-    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
+    allMessages = [...allMaradmins, ...allMcpubs, ...allAlmars, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr];
     allMessages.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   }
 
@@ -2163,19 +2024,16 @@ function updateResultsCount() {
     totalCount = allAlnavs.length;
   } else if (currentMessageType === 'almar') {
     totalCount = allAlmars.length;
-  } else if (currentMessageType === 'semperadmin') {
-    totalCount = allSemperAdminPosts.length;
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
   } else if (currentMessageType === 'youtube') {
     totalCount = allYouTubePosts.length;
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from All Messages count
-    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allDodForms.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
   }
 
   const typeLabel = currentMessageType === 'all' ? 'Messages' :
-                    currentMessageType === 'semperadmin' ? 'Posts' :
                     currentMessageType === 'dodforms' ? 'Forms' :
                     currentMessageType === 'youtube' ? 'Videos' :
                     currentMessageType.toUpperCase() + 's';
@@ -2233,10 +2091,6 @@ function updateTabCounters() {
         count = getFilteredCount(allAlmars);
         baseText = 'ALMARs';
         break;
-      case 'semperadmin':
-        count = getFilteredCount(allSemperAdminPosts);
-        baseText = 'Semper Admin';
-        break;
       case 'dodforms':
         count = getFilteredCount(allDodForms);
         baseText = 'DoD Forms';
@@ -2263,7 +2117,7 @@ function updateTabCounters() {
         break;
       case 'all':
         // Exclude ALNAV and SECNAV from All Messages count
-        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allSemperAdminPosts, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
+        count = getFilteredCount([...allMaradmins, ...allMcpubs, ...allAlmars, ...allDodForms, ...allIgmcChecklists, ...allYouTubePosts, ...allJtrs, ...allDodFmr]);
         baseText = 'All Messages';
         break;
     }
@@ -2284,8 +2138,6 @@ function renderSummaryStats() {
     totalCount = allAlnavs.length;
   } else if (currentMessageType === 'almar') {
     totalCount = allAlmars.length;
-  } else if (currentMessageType === 'semperadmin') {
-    totalCount = allSemperAdminPosts.length;
   } else if (currentMessageType === 'dodforms') {
     totalCount = allDodForms.length;
   } else if (currentMessageType === 'igmc') {
@@ -2300,7 +2152,7 @@ function renderSummaryStats() {
     totalCount = allDodFmr.length;
   } else if (currentMessageType === 'all') {
     // Exclude ALNAV and SECNAV from total count
-    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allSemperAdminPosts.length + allDodForms.length + allIgmcChecklists.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
+    totalCount = allMaradmins.length + allMcpubs.length + allAlmars.length + allDodForms.length + allIgmcChecklists.length + allYouTubePosts.length + allJtrs.length + allDodFmr.length;
   }
 
   // Get date range
@@ -2314,7 +2166,6 @@ function renderSummaryStats() {
     const maradminCount = currentMessages.filter(m => m.type === 'maradmin').length;
     const mcpubCount = currentMessages.filter(m => m.type === 'mcpub').length;
     const almarCount = currentMessages.filter(m => m.type === 'almar').length;
-    const semperAdminCount = currentMessages.filter(m => m.type === 'semperadmin').length;
     const dodFormsCount = currentMessages.filter(m => m.type === 'dodforms').length;
     const igmcCount = currentMessages.filter(m => m.type === 'igmc').length;
     const youtubeCount = currentMessages.filter(m => m.type === 'youtube').length;
@@ -2332,10 +2183,6 @@ function renderSummaryStats() {
       <div class="stat-item">
         <span class="stat-label">ALMARs:</span>
         <span class="stat-value">${almarCount}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Semper Admin:</span>
-        <span class="stat-value">${semperAdminCount}</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">DoD Forms:</span>
@@ -2441,7 +2288,6 @@ function renderCompactView(arr) {
       'mcpub': 'MCPUB',
       'alnav': 'ALNAV',
       'almar': 'ALMAR',
-      'semperadmin': 'SEMPER ADMIN',
       'dodforms': 'DOD FORM',
       'youtube': 'YOUTUBE',
       'secnav': 'SECNAV',
@@ -2468,8 +2314,8 @@ function renderCompactView(arr) {
       displaySubject = `${item.id}: ${displaySubject}`;
     }
 
-    // Determine link URL (some types use semperadminLink)
-    const linkUrl = config.linkSource === 'semperadminLink' && item.semperadminLink ? item.semperadminLink : item.link;
+    // Determine link URL
+    const linkUrl = item.link;
 
     // Check if message is from today
     const isNew = isMessageNew(item.pubDateObj);
@@ -2989,7 +2835,6 @@ function cacheData() {
     localStorage.setItem("mcpub_cache", JSON.stringify(allMcpubs));
     localStorage.setItem("alnav_cache", JSON.stringify(allAlnavs));
     localStorage.setItem("almar_cache", JSON.stringify(allAlmars));
-    localStorage.setItem("semperadmin_cache", JSON.stringify(allSemperAdminPosts));
     localStorage.setItem("dodforms_cache", JSON.stringify(allDodForms));
     localStorage.setItem("youtube_cache", JSON.stringify(allYouTubePosts));
     localStorage.setItem("secnav_cache", JSON.stringify(allSecnavs));
@@ -2998,8 +2843,7 @@ function cacheData() {
     localStorage.setItem("summary_cache", JSON.stringify(summaryCache));
     localStorage.setItem("cache_timestamp", now);
 
-    // Note: Separate cache timestamps for YouTube (24hr TTL) and Facebook (6hr TTL)
-    // are set directly in their respective fetch functions when fresh data is retrieved
+    // Note: YouTube cache timestamp (24hr TTL) is set in fetchYouTubeVideos when fresh data is retrieved
     console.log('[Cache] Data cached successfully at', now);
   } catch(e) {
     console.error("Failed to cache data:", e);
@@ -3011,12 +2855,10 @@ function loadCachedData() {
     // Cache TTL Configuration - Different TTLs for different data types
     const CACHE_TTL = 60 * 60 * 1000; // 1 hour for frequently updated feeds (MARADMINs, ALNAVs)
     const YOUTUBE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for YouTube (videos change slowly + quota limited)
-    const FACEBOOK_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours for Facebook posts
     const SUMMARY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for AI summaries
 
     const ts = localStorage.getItem("cache_timestamp");
     const youtubeTs = localStorage.getItem("youtube_cache_timestamp");
-    const facebookTs = localStorage.getItem("facebook_cache_timestamp");
     let mainCacheExpired = false;
 
     // Check if main cache has expired (for frequently-updated feeds)
@@ -3059,18 +2901,6 @@ function loadCachedData() {
       }
     }
 
-    // Check Facebook cache expiration independently (6-hour TTL)
-    if (facebookTs) {
-      const facebookCacheAge = Date.now() - new Date(facebookTs).getTime();
-      if (facebookCacheAge > FACEBOOK_CACHE_TTL) {
-        console.log(`[Cache] Facebook cache expired (age: ${Math.round(facebookCacheAge / 1000 / 60 / 60)} hours), will fetch fresh posts...`);
-        localStorage.removeItem("semperadmin_cache");
-        localStorage.removeItem("facebook_cache_timestamp");
-      } else {
-        console.log(`[Cache] Using cached Facebook data (age: ${Math.round(facebookCacheAge / 1000 / 60 / 60)} hours)`);
-      }
-    }
-
     if (mainCacheExpired) {
       lastUpdateSpan.textContent = "Cache expired - fetching fresh data...";
       return; // Skip loading expired cache
@@ -3080,7 +2910,6 @@ function loadCachedData() {
     const mcpubCache = localStorage.getItem("mcpub_cache");
     const alnavCache = localStorage.getItem("alnav_cache");
     const almarCache = localStorage.getItem("almar_cache");
-    const semperAdminCache = localStorage.getItem("semperadmin_cache");
     const summaryCacheData = localStorage.getItem("summary_cache");
 
     if (maradminCache) {
@@ -3110,14 +2939,6 @@ function loadCachedData() {
     if (almarCache) {
       allAlmars = JSON.parse(almarCache);
       allAlmars = allAlmars.map(m => ({
-        ...m,
-        pubDateObj: new Date(m.pubDate)
-      }));
-    }
-
-    if (semperAdminCache) {
-      allSemperAdminPosts = JSON.parse(semperAdminCache);
-      allSemperAdminPosts = allSemperAdminPosts.map(m => ({
         ...m,
         pubDateObj: new Date(m.pubDate)
       }));
@@ -3355,25 +3176,19 @@ function initKeyboardShortcuts() {
         break;
 
       case '5':
-        // 5 = Semper Admin tab
-        e.preventDefault();
-        switchMessageType('semperadmin');
-        break;
-
-      case '6':
-        // 6 = DoD Forms tab
+        // 5 = DoD Forms tab
         e.preventDefault();
         switchMessageType('dodforms');
         break;
 
-      case '7':
-        // 7 = YouTube tab
+      case '6':
+        // 6 = YouTube tab
         e.preventDefault();
         switchMessageType('youtube');
         break;
 
-      case '8':
-        // 8 = All Messages tab
+      case '7':
+        // 7 = All Messages tab
         e.preventDefault();
         switchMessageType('all');
         break;

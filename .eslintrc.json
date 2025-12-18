@@ -28,7 +28,6 @@
     "allMcpubs": "writable",
     "allAlnavs": "writable",
     "allAlmars": "writable",
-    "allSemperAdminPosts": "writable",
     "allDodForms": "writable",
     "allIgmcChecklists": "writable",
     "allYouTubePosts": "writable",

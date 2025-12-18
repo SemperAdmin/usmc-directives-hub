@@ -1124,11 +1124,6 @@ footer a:hover {
   color: #c2185b;
 }
 
-.type-badge.type-semperadmin {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
 .type-badge.type-dodforms {
   background: #e8f5e9;
   color: #2e7d32;
@@ -1715,11 +1710,6 @@ body.dark-theme .type-badge.type-alnav {
 body.dark-theme .type-badge.type-almar {
   background: #3a1a2a;
   color: #f48fb1;
-}
-
-body.dark-theme .type-badge.type-semperadmin {
-  background: #2a1a3a;
-  color: #ce93d8;
 }
 
 body.dark-theme .type-badge.type-dodforms {
