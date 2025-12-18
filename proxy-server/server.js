@@ -22,9 +22,6 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // GitHub Personal Access Token f
 const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"; // GitHub repo (owner/repo)
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-const SEMPER_ADMIN_API_KEY = process.env.SEMPER_ADMIN_API_KEY; // Facebook Page Access Token
-const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID; // Semper Admin Facebook Page ID
-const FACEBOOK_API_VERSION = "v21.0"; // Facebook Graph API version (updated to latest)
 
 // Validate required environment variables
 if (!YOUTUBE_API_KEY) {
@@ -43,24 +40,11 @@ if (!GITHUB_TOKEN) {
   console.error('   Create a GitHub Personal Access Token with repo scope');
 }
 
-if (!SEMPER_ADMIN_API_KEY) {
-  console.error('❌ CRITICAL: SEMPER_ADMIN_API_KEY environment variable is not set');
-  console.error('   Set it in your hosting environment or GitHub Secrets');
-}
-
-if (!FACEBOOK_PAGE_ID) {
-  console.error('❌ CRITICAL: FACEBOOK_PAGE_ID environment variable is not set');
-  console.error('   Set it in your hosting environment or GitHub Secrets');
-}
-
 // Warn if running without keys (will cause API calls to fail)
-if (!YOUTUBE_API_KEY || !GEMINI_API_KEY || !SEMPER_ADMIN_API_KEY) {
+if (!YOUTUBE_API_KEY || !GEMINI_API_KEY) {
   console.warn('⚠️  Server starting WITHOUT required environment variables - some API endpoints may fail');
   console.warn('   This is OK for development, but REQUIRED for production');
 }
-
-// Info message for Facebook Graph API
-console.log(`ℹ️  Facebook Graph API configured for page ID: ${FACEBOOK_PAGE_ID}`);
 
 // Trust proxy - Required for Render.com and other hosting platforms
 // Allows rate limiting to work correctly with X-Forwarded-For headers
@@ -377,109 +361,6 @@ app.get('/api/youtube/videos', async (req, res) => {
   }
 });
 
-// Proxy endpoint for Facebook - Semper Admin posts (Graph API)
-app.get('/api/facebook/semperadmin', async (req, res) => {
-  // Check if API key is configured
-  if (!SEMPER_ADMIN_API_KEY) {
-    return res.status(503).json({
-      success: false,
-      error: 'Facebook API key not configured',
-      message: 'Server administrator must set SEMPER_ADMIN_API_KEY environment variable'
-    });
-  }
-
-  console.log('Fetching Semper Admin posts from Facebook Graph API...');
-  console.log(`Facebook API URL: https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts`);
-  console.log(`Page ID: ${FACEBOOK_PAGE_ID}`);
-  console.log(`API Version: ${FACEBOOK_API_VERSION}`);
-
-  try {
-    const allPosts = [];
-    let pageCount = 0;
-    const maxPages = 20; // Safety limit to prevent infinite loops (20 pages * 100 posts = ~2000 posts)
-    const postsPerPage = 100; // Facebook's maximum allowed limit per page
-
-    // Construct initial URL with parameters
-    const initialParams = new URLSearchParams({
-      fields: 'id,message,story,created_time,permalink_url,full_picture',
-      limit: postsPerPage.toString()
-    });
-    let nextUrl = `https://graph.facebook.com/${FACEBOOK_API_VERSION}/${FACEBOOK_PAGE_ID}/posts?${initialParams.toString()}`;
-
-    // Pagination loop - fetch all pages of posts
-    while (nextUrl && pageCount < maxPages) {
-      pageCount++;
-      console.log(`Fetching Facebook posts - page ${pageCount}...`);
-
-      const response = await axios.get(nextUrl, {
-        headers: {
-          'Authorization': `Bearer ${SEMPER_ADMIN_API_KEY}`
-        },
-        timeout: 30000
-      });
-
-      // Add posts from this page to our collection
-      const posts = response.data.data || [];
-      allPosts.push(...posts);
-      console.log(`  Retrieved ${posts.length} posts (total so far: ${allPosts.length})`);
-
-      // Check if there's a next page
-      nextUrl = response.data.paging?.next || null;
-
-      // Security: Strip access_token from nextUrl to prevent token leakage in logs
-      // The Authorization header is sufficient for authentication
-      if (nextUrl) {
-        const url = new URL(nextUrl);
-        url.searchParams.delete('access_token');
-        nextUrl = url.toString();
-      }
-
-      // Break if no more posts on this page
-      if (posts.length === 0) {
-        console.log('  No more posts found, stopping pagination');
-        break;
-      }
-    }
-
-    if (pageCount >= maxPages && nextUrl) {
-      console.log(`Reached maximum page limit (${maxPages}). There may be more posts available.`);
-    }
-
-    console.log(`Total Facebook posts retrieved: ${allPosts.length}`);
-
-    res.json({
-      success: true,
-      posts: allPosts,
-      metadata: {
-        totalPosts: allPosts.length,
-        pagesRetrieved: pageCount,
-        hasMore: !!nextUrl,
-        method: 'graph-api'
-      }
-    });
-  } catch (error) {
-    console.error('====== Facebook API Error ======');
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Response status:', error.response?.status);
-    console.error('Response statusText:', error.response?.statusText);
-    console.error('Response headers:', JSON.stringify(error.response?.headers || {}, null, 2));
-    console.error('Response data:', JSON.stringify(error.response?.data || {}, null, 2));
-    console.error('Request URL:', error.config?.url);
-    console.error('Request method:', error.config?.method);
-    console.error('================================');
-
-    // Return detailed error to client
-    const fbError = error.response?.data?.error;
-    res.status(error.response?.status || 500).json({
-      success: false,
-      error: 'Failed to fetch Semper Admin posts',
-      message: error.message,
-      facebookError: fbError || null
-    });
-  }
-});
-
 // Proxy endpoint for Gemini API (with stricter rate limiting)
 app.post('/api/gemini/summarize', summaryLimiter, async (req, res) => {
   // Check if API key is configured
@@ -550,7 +431,6 @@ app.get('/api/proxy', async (req, res) => {
     'navy.mil',
     'marines.mil',        // USMC RSS feeds (MARADMIN, MCPUB, ALMAR)
     'rss.app',            // RSS feed proxy for ALNAV, SECNAV
-    'fetchrss.com',       // RSS feed proxy for SemperAdmin
     'travel.dod.mil'      // DoD JTR (Joint Travel Regulations)
   ];
 
@@ -729,7 +609,6 @@ app.listen(PORT, () => {
   console.log(`GitHub debug: http://localhost:${PORT}/api/debug/github`);
   console.log(`ALNAV endpoint: http://localhost:${PORT}/api/alnav/2025`);
   console.log(`SECNAV endpoint: http://localhost:${PORT}/api/navy-directives`);
-  console.log(`Facebook endpoint: http://localhost:${PORT}/api/facebook/semperadmin`);
   console.log(`AI Summaries endpoint: http://localhost:${PORT}/api/summaries`);
   console.log(`Save summary: POST http://localhost:${PORT}/api/summary`);
   console.log(`Get summary: GET http://localhost:${PORT}/api/summary/:messageKey`);
