@@ -86,23 +86,16 @@
       <span id="searchHelp" class="sr-only">Enter keywords to filter messages</span>
     </div>
     <div class="filter-controls">
-      <div class="quick-filters" role="group" aria-label="Quick date filters">
-        <button class="quick-filter-btn active" data-days="1" aria-pressed="true">Today</button>
-        <button class="quick-filter-btn" data-days="7" aria-pressed="false">This Week</button>
+      <div class="quick-filters" role="group" aria-label="Date range filters">
+        <button class="quick-filter-btn" data-days="1" aria-pressed="false">Today</button>
+        <button class="quick-filter-btn active" data-days="7" aria-pressed="true">This Week</button>
+        <button class="quick-filter-btn" data-days="14" aria-pressed="false">2 Weeks</button>
         <button class="quick-filter-btn" data-days="30" aria-pressed="false">This Month</button>
-        <button class="quick-filter-btn" data-days="90" aria-pressed="false">Last 90 Days</button>
+        <button class="quick-filter-btn" data-days="60" aria-pressed="false">60 Days</button>
+        <button class="quick-filter-btn" data-days="90" aria-pressed="false">90 Days</button>
+        <button class="quick-filter-btn" data-days="180" aria-pressed="false">180 Days</button>
+        <button class="quick-filter-btn" data-days="0" aria-pressed="false">All</button>
       </div>
-      <label for="dateRange" class="sr-only">Date range filter</label>
-      <select id="dateRange" aria-label="Select date range">
-        <option value="1" selected>Last 24 hours</option>
-        <option value="7">Last 7 days</option>
-        <option value="14">Last 14 days</option>
-        <option value="30">Last 30 days</option>
-        <option value="60">Last 60 days</option>
-        <option value="90">Last 90 days</option>
-        <option value="180">Last 180 days</option>
-        <option value="0">All messages</option>
-      </select>
     </div>
   </div>
   <div id="status" class="status" role="status" aria-live="polite">Loading cached data...</div>
@@ -114,12 +107,7 @@
   <p class="semper-admin-branding">
     A <a href="https://linktr.ee/semperadmin" target="_blank" aria-label="Semper Admin (opens in new tab)">Semper Admin</a> Project
   </p>
-  <p>Data source: <a href="https://www.marines.mil/News/Messages/" target="_blank" aria-label="Marines.mil Messages (opens in new tab)">Marines.mil Messages</a> & <a href="https://www.esd.whs.mil/Directives/forms/" target="_blank" aria-label="DoD Forms (opens in new tab)">DoD Forms</a> | Last updated: <span id="lastUpdate">Never</span></p>
-  <p class="footer-links">
-    <a href="https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx" target="_blank" aria-label="SECNAV Directives (opens in new tab)">SECNAV</a> •
-    <a href="https://www.travel.dod.mil/" target="_blank" aria-label="Joint Travel Regulations (opens in new tab)">JTR</a> •
-    <a href="https://comptroller.defense.gov/FMR/" target="_blank" aria-label="DoD Financial Management Regulation (opens in new tab)">DoD FMR</a>
-  </p>
+  <p>Data source Last updated: <span id="lastUpdate">Never</span></p>
   <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>
 
