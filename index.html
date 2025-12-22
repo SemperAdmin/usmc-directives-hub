@@ -86,23 +86,16 @@
       <span id="searchHelp" class="sr-only">Enter keywords to filter messages</span>
     </div>
     <div class="filter-controls">
-      <div class="quick-filters" role="group" aria-label="Quick date filters">
-        <button class="quick-filter-btn active" data-days="1" aria-pressed="true">Today</button>
-        <button class="quick-filter-btn" data-days="7" aria-pressed="false">This Week</button>
+      <div class="quick-filters" role="group" aria-label="Date range filters">
+        <button class="quick-filter-btn" data-days="1" aria-pressed="false">Today</button>
+        <button class="quick-filter-btn active" data-days="7" aria-pressed="true">This Week</button>
+        <button class="quick-filter-btn" data-days="14" aria-pressed="false">2 Weeks</button>
         <button class="quick-filter-btn" data-days="30" aria-pressed="false">This Month</button>
-        <button class="quick-filter-btn" data-days="90" aria-pressed="false">Last 90 Days</button>
+        <button class="quick-filter-btn" data-days="60" aria-pressed="false">60 Days</button>
+        <button class="quick-filter-btn" data-days="90" aria-pressed="false">90 Days</button>
+        <button class="quick-filter-btn" data-days="180" aria-pressed="false">180 Days</button>
+        <button class="quick-filter-btn" data-days="0" aria-pressed="false">All</button>
       </div>
-      <label for="dateRange" class="sr-only">Date range filter</label>
-      <select id="dateRange" aria-label="Select date range">
-        <option value="1" selected>Last 24 hours</option>
-        <option value="7">Last 7 days</option>
-        <option value="14">Last 14 days</option>
-        <option value="30">Last 30 days</option>
-        <option value="60">Last 60 days</option>
-        <option value="90">Last 90 days</option>
-        <option value="180">Last 180 days</option>
-        <option value="0">All messages</option>
-      </select>
     </div>
   </div>
   <div id="status" class="status" role="status" aria-live="polite">Loading cached data...</div>

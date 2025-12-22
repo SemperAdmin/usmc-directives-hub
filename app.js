@@ -297,7 +297,8 @@ const resultsDiv = document.getElementById("results");
 const summaryStatsDiv = document.getElementById("summaryStats");
 const lastUpdateSpan = document.getElementById("lastUpdate");
 const searchInput = document.getElementById("searchInput");
-const dateRangeSelect = document.getElementById("dateRange");
+// Date range is now controlled by buttons only (dropdown removed)
+let currentDateRange = 7; // Default to "This Week"
 const clearSearchBtn = document.getElementById("clearSearch");
 const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 const quickFilterButtons = document.querySelectorAll(".quick-filter-btn");
@@ -362,7 +363,7 @@ themeToggle.addEventListener("click", toggleTheme);
 
 // Debounce search input for better performance (300ms delay)
 searchInput.addEventListener("input", debounce(filterMessages, 300));
-dateRangeSelect.addEventListener("change", handleDateRangeChange);
+// dateRangeSelect removed - using quick filter buttons only
 clearSearchBtn.addEventListener("click", clearSearch);
 messageTypeButtons.forEach(btn => {
   btn.addEventListener("click", () => switchMessageType(btn.dataset.type));
@@ -419,8 +420,8 @@ async function fetchAllFeeds() {
   // Fetch all feed types
   await fetchFeed('maradmin', RSS_FEEDS.maradmin);
   await fetchFeed('mcpub', RSS_FEEDS.mcpub);
-  // await fetchFeed('alnav', RSS_FEEDS.alnav); // Replaced by fetchAlnavMessages due to broken RSS feed
-  await fetchAlnavMessages(); // Fetch ALNAV using direct HTML scraping
+  // ALNAV uses static data file (Semper Gumby mode - awaiting RSS feed)
+  // await fetchAlnavMessages(); // Disabled - using lib/alnav-data.js instead
   await fetchFeed('almar', RSS_FEEDS.almar);
   await fetchYouTubeVideos(); // Fetch from YouTube Data API
   await fetchFeed('secnav', RSS_FEEDS.secnav); // Fetch SECNAV from RSS feed
@@ -1983,7 +1984,7 @@ function showAlnavSecnavErrorMessage() {
 // Filter and Search Functions
 function filterMessages() {
   const searchTerm = searchInput.value.toLowerCase().trim();
-  const dateRange = parseInt(dateRangeSelect.value);
+  const dateRange = currentDateRange;
 
   // Get messages based on current type
   let allMessages = [];
@@ -2061,13 +2062,13 @@ function filterMessages() {
 
 function clearSearch() {
   searchInput.value = "";
-  dateRangeSelect.value = "1";
+  currentDateRange = 7; // Reset to "This Week"
 
   // Reset quick filter buttons and ARIA attributes
   quickFilterButtons.forEach(btn => {
-    const isToday = btn.dataset.days === "1";
-    btn.classList.toggle('active', isToday);
-    btn.setAttribute('aria-pressed', isToday);
+    const isThisWeek = btn.dataset.days === "7";
+    btn.classList.toggle('active', isThisWeek);
+    btn.setAttribute('aria-pressed', isThisWeek);
   });
 
   filterMessages();
@@ -2089,7 +2090,7 @@ function restoreFilterPreferences() {
   // Restore date range
   const savedDateRange = localStorage.getItem('filter_date_range');
   if (savedDateRange) {
-    dateRangeSelect.value = savedDateRange;
+    currentDateRange = parseInt(savedDateRange);
     // Update quick filter buttons and ARIA attributes
     quickFilterButtons.forEach(btn => {
       const isPressed = btn.dataset.days === savedDateRange;
@@ -2111,8 +2112,8 @@ function handleQuickFilter(button) {
   button.classList.add('active');
   button.setAttribute('aria-pressed', 'true');
 
-  // Update dropdown
-  dateRangeSelect.value = days;
+  // Update current date range
+  currentDateRange = parseInt(days);
 
   // Save preference
   localStorage.setItem('filter_date_range', days);
@@ -2121,17 +2122,17 @@ function handleQuickFilter(button) {
   filterMessages();
 }
 
-// Handle date range dropdown change
+// Handle date range change (for programmatic updates)
 function handleDateRangeChange() {
   // Update quick filter button states and ARIA attributes for accessibility
   quickFilterButtons.forEach(btn => {
-    const isActive = btn.dataset.days === dateRangeSelect.value;
+    const isActive = parseInt(btn.dataset.days) === currentDateRange;
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-pressed', isActive);
   });
 
   // Save preference
-  localStorage.setItem('filter_date_range', dateRangeSelect.value);
+  localStorage.setItem('filter_date_range', String(currentDateRange));
 
   filterMessages();
 }
@@ -2177,7 +2178,7 @@ function updateResultsCount() {
 
 // Update tab counters with filtered message counts
 function updateTabCounters() {
-  const dateRange = parseInt(dateRangeSelect.value);
+  const dateRange = currentDateRange;
   const searchTerm = searchInput.value.toLowerCase().trim();
 
   // Helper function to get filtered count for a type
@@ -3549,7 +3550,6 @@ function showFeedbackStatus(message, type, issueUrl = null) {
 // Capture user context for feedback
 function captureUserContext() {
   const currentFilter = document.querySelector('.message-type-btn.active');
-  const currentDateRange = dateRangeSelect.value;
   const theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
 
   return {
