@@ -61,12 +61,17 @@ function generateCategoryEntries(category) {
     const categoryPath = `${category.prefix.padEnd(5, '0').slice(0, 5)}%20${category.name.replace(/ /g, '%20')}`;
     const link = `${baseUrl}/${categoryPath}/${instNum}.pdf`;
 
-    // Generate a reasonable effective date (spread across recent years)
-    const yearOffset = Math.floor(i / 5);
-    const year = 2025 - yearOffset;
-    const month = (i % 12) + 1;
-    const day = Math.min((i % 28) + 1, 28);
-    const effectiveDate = new Date(year, month - 1, day).toISOString();
+    // Generate a reasonable effective date (spread across recent months)
+    // Use a combination of category index and item index for better distribution
+    const categoryIndex = SECNAV_CATEGORIES.indexOf(category);
+    const globalIndex = categoryIndex * 15 + i; // Approximate global position
+
+    // Spread dates across the last 365 days from today
+    const today = new Date();
+    const daysAgo = Math.floor((globalIndex * 2.5) % 365); // Spread across year
+    const effectiveDateObj = new Date(today);
+    effectiveDateObj.setDate(today.getDate() - daysAgo);
+    const effectiveDate = effectiveDateObj.toISOString();
 
     entries.push({
       id,
