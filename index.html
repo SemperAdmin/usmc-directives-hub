@@ -48,6 +48,12 @@
 <!-- Skip Navigation Link for Keyboard Accessibility -->
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
+<!-- Cold Start Banner (shown when server is waking up) -->
+<div id="coldStartBanner" class="cold-start-banner" role="alert" aria-live="polite">
+  <span class="spinner"></span>
+  Server is waking up... This may take 10-30 seconds on first load.
+</div>
+
 <header>
   <a href="https://linktr.ee/semperadmin" target="_blank" class="branding-link" aria-label="Visit Semper Admin on Linktree (opens in new tab)">
     <div class="branding">
@@ -60,7 +66,12 @@
   </a>
   <p class="subtitle">Search and track Marine Corps Messages, Publications, and Forms</p>
   <div class="controls">
+    <div class="server-status" id="serverStatus" title="Server status">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-text" id="statusText">Checking...</span>
+    </div>
     <button id="refreshBtn" aria-label="Refresh data from server">🔄 Refresh</button>
+    <button id="clearCacheBtn" aria-label="Clear cached data">🗑️ Clear Cache</button>
     <button id="themeToggle" aria-label="Toggle dark mode">🌙 Dark Mode</button>
   </div>
 </header>
@@ -117,7 +128,7 @@
   <p class="footer-links">
     <a href="https://www.secnav.navy.mil/doni/Directives/Forms/doniAllInstructions.aspx" target="_blank" aria-label="SECNAV Directives (opens in new tab)">SECNAV</a> •
     <a href="https://www.travel.dod.mil/" target="_blank" aria-label="Joint Travel Regulations (opens in new tab)">JTR</a> •
-    <a href="https://comptroller.war.gov/FMR/change/" target="_blank" aria-label="DoD Financial Management Regulation (opens in new tab)">DoD FMR</a>
+    <a href="https://comptroller.defense.gov/FMR/" target="_blank" aria-label="DoD Financial Management Regulation (opens in new tab)">DoD FMR</a>
   </p>
   <p class="footer-note">Auto-refreshes every 10 minutes • Data cached for offline access</p>
 </footer>

@@ -173,6 +173,10 @@ const dateRangeSelect = document.getElementById("dateRange");
 const clearSearchBtn = document.getElementById("clearSearch");
 const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 const quickFilterButtons = document.querySelectorAll(".quick-filter-btn");
+const clearCacheBtn = document.getElementById("clearCacheBtn");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+const coldStartBanner = document.getElementById("coldStartBanner");
 
 // Gemini API configuration - API keys moved to backend for security
 
@@ -189,6 +193,130 @@ let allJtrs = []; // Store all JTR (Joint Travel Regulations) updates
 let allDodFmr = []; // Store all DoD FMR changes
 let currentMessageType = 'maradmin'; // Track current view: 'maradmin', 'mcpub', 'alnav', 'almar', 'dodforms', 'igmc', 'youtube', 'secnav', 'jtr', 'dodfmr', or 'all'
 let summaryCache = {}; // Cache for AI-generated summaries
+let serverStatus = 'unknown'; // Track server status: 'online', 'offline', 'connecting'
+
+/**
+ * Check server health status and update UI indicator
+ * Handles cold start detection for Render free tier
+ */
+async function checkServerHealth() {
+  if (!CUSTOM_PROXY_URL) {
+    updateServerStatus('offline', 'No server');
+    return;
+  }
+
+  updateServerStatus('connecting', 'Connecting...');
+
+  const startTime = Date.now();
+  const COLD_START_THRESHOLD = 5000; // 5 seconds indicates cold start
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout for cold starts
+
+    // Show cold start banner if response takes too long
+    const coldStartTimer = setTimeout(() => {
+      if (coldStartBanner) {
+        coldStartBanner.classList.add('visible');
+      }
+    }, COLD_START_THRESHOLD);
+
+    const response = await fetch(`${CUSTOM_PROXY_URL}/health`, {
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    clearTimeout(coldStartTimer);
+
+    // Hide cold start banner
+    if (coldStartBanner) {
+      coldStartBanner.classList.remove('visible');
+    }
+
+    const elapsed = Date.now() - startTime;
+
+    if (response.ok) {
+      const data = await response.json();
+      const statusMsg = elapsed > COLD_START_THRESHOLD ? 'Online (warmed up)' : 'Online';
+      updateServerStatus('online', statusMsg);
+      console.log(`[Health] Server online. Response time: ${elapsed}ms`);
+    } else {
+      updateServerStatus('offline', 'Error');
+      console.warn(`[Health] Server returned status: ${response.status}`);
+    }
+  } catch (error) {
+    // Hide cold start banner on error
+    if (coldStartBanner) {
+      coldStartBanner.classList.remove('visible');
+    }
+
+    if (error.name === 'AbortError') {
+      updateServerStatus('offline', 'Timeout');
+      console.warn('[Health] Server health check timed out');
+    } else {
+      updateServerStatus('offline', 'Offline');
+      console.warn('[Health] Server health check failed:', error.message);
+    }
+  }
+}
+
+/**
+ * Update server status indicator in the UI
+ * @param {string} status - 'online', 'offline', or 'connecting'
+ * @param {string} text - Status text to display
+ */
+function updateServerStatus(status, text) {
+  serverStatus = status;
+
+  if (statusDot) {
+    statusDot.className = 'status-dot ' + status;
+  }
+  if (statusText) {
+    statusText.textContent = text;
+  }
+
+  // Update title attribute for accessibility
+  const serverStatusEl = document.getElementById('serverStatus');
+  if (serverStatusEl) {
+    serverStatusEl.title = `Server status: ${text}`;
+  }
+}
+
+/**
+ * Clear all cached data and refresh
+ */
+function clearAllCache() {
+  const cacheKeys = [
+    'maradmin_cache', 'mcpub_cache', 'alnav_cache', 'almar_cache',
+    'dodforms_cache', 'igmc_cache', 'youtube_cache', 'secnav_cache',
+    'jtr_cache', 'dodfmr_cache', 'cache_timestamp', 'youtube_cache_timestamp',
+    'summary_cache_timestamp', 'summary_cache', PROXY_CACHE_KEY, PROXY_CACHE_TIMESTAMP_KEY
+  ];
+
+  let clearedCount = 0;
+  cacheKeys.forEach(key => {
+    if (localStorage.getItem(key)) {
+      localStorage.removeItem(key);
+      clearedCount++;
+    }
+  });
+
+  // Clear in-memory caches
+  summaryCache = {};
+  allMaradmins = [];
+  allMcpubs = [];
+  allAlnavs = [];
+  allAlmars = [];
+  allDodForms = [];
+  allIgmcChecklists = [];
+  allYouTubePosts = [];
+  allSecnavs = [];
+  allJtrs = [];
+  allDodFmr = [];
+
+  console.log(`[Cache] Cleared ${clearedCount} cache entries`);
+  return clearedCount;
+}
 
 // Init
 document.addEventListener("DOMContentLoaded", () => {
@@ -199,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Note: Static files may be empty if fetch scripts failed during build
   // This is expected in GitHub Actions due to network restrictions
   restoreFilterPreferences();
+  checkServerHealth(); // Check server status on load
   fetchAllFeeds();
   initTheme();
   startAutoRefresh();
@@ -231,6 +360,41 @@ refreshBtn.addEventListener("click", () => {
   });
 });
 themeToggle.addEventListener("click", toggleTheme);
+
+// Clear cache button event listener
+if (clearCacheBtn) {
+  clearCacheBtn.addEventListener("click", () => {
+    const confirmed = confirm(
+      '🗑️ Clear Cache\n\n' +
+      'This will clear all cached data and fetch fresh data from all sources.\n\n' +
+      '• All locally cached messages will be cleared\n' +
+      '• AI summaries will need to be regenerated\n' +
+      '• This uses API quota\n\n' +
+      'Continue?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const clearedCount = clearAllCache();
+    clearCacheBtn.disabled = true;
+    clearCacheBtn.textContent = "🗑️ Clearing...";
+
+    // Reload static data files
+    loadIgmcChecklists();
+    loadSecnavDirectives();
+    loadAlnavMessages();
+
+    // Fetch fresh data
+    fetchAllFeeds().then(() => {
+      clearCacheBtn.disabled = false;
+      clearCacheBtn.textContent = "🗑️ Clear Cache";
+      alert(`✅ Cache cleared!\n\n${clearedCount} cache entries removed.\nFresh data has been loaded.`);
+    });
+  });
+}
+
 // Debounce search input for better performance (300ms delay)
 searchInput.addEventListener("input", debounce(filterMessages, 300));
 dateRangeSelect.addEventListener("change", handleDateRangeChange);
@@ -479,7 +643,6 @@ function processRSSData(text, type) {
     // JTR (Joint Travel Regulations) updates
     allJtrs = parsed;
   }
-  // Note: semperadmin now uses Facebook Graph API, not RSS
 
   cacheData();
   console.log(`Loaded ${parsed.length} ${type.toUpperCase()}s`);
@@ -1749,11 +1912,6 @@ function parseRSS(xmlText, type){
       }
     } else if (type === 'jtr') {
       // JTR items - use title as-is or extract from RSS feed
-      id = title.substring(0, 50);
-      numericId = String(index + 1);
-      subject = title;
-    } else if (type === 'semperadmin') {
-      // For Semper Admin posts, use title as-is
       id = title.substring(0, 50);
       numericId = String(index + 1);
       subject = title;
