@@ -1,9 +1,20 @@
 import { defineConfig } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   // Base path for GitHub Pages deployment (repo name)
   base: '/usmc-directives-hub/',
   root: '.',
+  plugins: [
+    viteStaticCopy({
+      targets: [
+        { src: 'lib/*', dest: 'lib' },
+        { src: 'app.js', dest: '' },
+        { src: 'pwa-init.js', dest: '' },
+        { src: 'service-worker.js', dest: '' }
+      ]
+    })
+  ],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
