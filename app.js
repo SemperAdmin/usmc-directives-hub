@@ -422,7 +422,6 @@ async function fetchAllFeeds() {
   // await fetchFeed('alnav', RSS_FEEDS.alnav); // Replaced by fetchAlnavMessages due to broken RSS feed
   await fetchAlnavMessages(); // Fetch ALNAV using direct HTML scraping
   await fetchFeed('almar', RSS_FEEDS.almar);
-  await fetchSemperAdminPosts(); // Fetch from Facebook API
   await fetchYouTubeVideos(); // Fetch from YouTube Data API
   await fetchFeed('secnav', RSS_FEEDS.secnav); // Fetch SECNAV from RSS feed
   await fetchFeed('jtr', RSS_FEEDS.jtr); // Fetch JTR (Joint Travel Regulations) updates
