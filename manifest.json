@@ -1,7 +1,7 @@
 {
-  "name": "USMC Directives Hub",
-  "short_name": "USMC Hub",
-  "description": "Search and track Marine Corps Messages, Publications, and Forms",
+  "name": "Message Watch",
+  "short_name": "MsgWatch",
+  "description": "Monitor military directives, messages, and publications",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

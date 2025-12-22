@@ -1,10 +1,10 @@
-// Service Worker for USMC Directives Hub
+// Service Worker for Message Watch
 // Provides offline caching and improved performance
 
 // Cache version - update this when deploying new versions
 // Format: v{major}.{minor}.{patch}-{timestamp}
-const CACHE_VERSION = 'v1.3.0-20251222';
-const CACHE_NAME = `usmc-directives-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v2.0.0-20251222';
+const CACHE_NAME = `message-watch-${CACHE_VERSION}`;
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
