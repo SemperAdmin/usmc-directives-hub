@@ -354,7 +354,7 @@ app.get('/api/youtube/videos', async (req, res) => {
     });
   }
 
-  // Check if we're approaching quota limit (warn at 80%)
+  // Check if we're approaching quota limit (block at 95%)
   const quotaInfo = getQuotaInfo();
   if (quotaInfo.percentUsed >= 95) {
     return res.status(429).json({

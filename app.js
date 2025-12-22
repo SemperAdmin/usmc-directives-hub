@@ -33,8 +33,8 @@ const ErrorAnalytics = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       source,
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : null,
+      message: error?.message ?? (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error)),
+      stack: error?.stack ?? null,
       context,
       userAgent: navigator.userAgent,
       url: window.location.href
