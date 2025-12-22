@@ -44,10 +44,27 @@ function generateAlnavEntries(year, count) {
     const link = `https://www.mynavyhr.navy.mil/Portals/55/Messages/ALNAV/ALN${year}/ALN${shortYear}${num}.${ext}`;
 
     // Estimate publication date (distribute throughout the year)
-    const monthIndex = Math.floor((i - 1) / (count / 12));
-    const month = Math.min(monthIndex, 11);
-    const day = Math.min(((i - 1) % 28) + 1, 28);
-    const pubDate = new Date(year, month, day).toISOString();
+    // For current year, spread recent entries across recent days
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    let pubDate;
+
+    if (year === currentYear) {
+      // For current year: spread entries from start of year to today
+      const startOfYear = new Date(year, 0, 1);
+      const dayOfYear = Math.floor((today - startOfYear) / (1000 * 60 * 60 * 24));
+      // Calculate days from start of year for this entry
+      const entryDayOfYear = Math.floor((i / count) * dayOfYear);
+      const entryDate = new Date(year, 0, 1);
+      entryDate.setDate(entryDate.getDate() + entryDayOfYear);
+      pubDate = entryDate.toISOString();
+    } else {
+      // For past years: distribute throughout the whole year
+      const monthIndex = Math.floor((i - 1) / (count / 12));
+      const month = Math.min(monthIndex, 11);
+      const day = Math.min(((i - 1) % 28) + 1, 28);
+      pubDate = new Date(year, month, day).toISOString();
+    }
 
     entries.push({
       id,
