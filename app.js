@@ -14,6 +14,134 @@ const APPLICATION_CONFIG = {
   }
 };
 
+// ============================================================================
+// ERROR ANALYTICS SYSTEM
+// Centralized error tracking for debugging and monitoring
+// ============================================================================
+const ErrorAnalytics = {
+  errors: [],
+  MAX_ERRORS: 100, // Keep last 100 errors in memory
+
+  /**
+   * Track an error with context
+   * @param {string} source - Where the error occurred (e.g., 'fetchFeed', 'parseRSS')
+   * @param {Error|string} error - The error object or message
+   * @param {object} context - Additional context (url, type, etc.)
+   */
+  track(source, error, context = {}) {
+    const errorEntry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      source,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : null,
+      context,
+      userAgent: navigator.userAgent,
+      url: window.location.href
+    };
+
+    // Add to beginning of array (newest first)
+    this.errors.unshift(errorEntry);
+
+    // Keep only last MAX_ERRORS
+    if (this.errors.length > this.MAX_ERRORS) {
+      this.errors = this.errors.slice(0, this.MAX_ERRORS);
+    }
+
+    // Log structured error
+    console.error(`[ErrorAnalytics] ${source}:`, {
+      message: errorEntry.message,
+      context: errorEntry.context,
+      timestamp: errorEntry.timestamp
+    });
+
+    return errorEntry;
+  },
+
+  /**
+   * Get recent errors, optionally filtered by source
+   * @param {string} source - Filter by source (optional)
+   * @param {number} limit - Max errors to return (default 10)
+   */
+  getRecent(source = null, limit = 10) {
+    let filtered = this.errors;
+    if (source) {
+      filtered = filtered.filter(e => e.source === source);
+    }
+    return filtered.slice(0, limit);
+  },
+
+  /**
+   * Get error statistics
+   */
+  getStats() {
+    const stats = {
+      total: this.errors.length,
+      bySource: {},
+      last24h: 0,
+      lastHour: 0
+    };
+
+    const now = Date.now();
+    const hourAgo = now - (60 * 60 * 1000);
+    const dayAgo = now - (24 * 60 * 60 * 1000);
+
+    this.errors.forEach(err => {
+      // Count by source
+      stats.bySource[err.source] = (stats.bySource[err.source] || 0) + 1;
+
+      // Count by time
+      const errorTime = new Date(err.timestamp).getTime();
+      if (errorTime > hourAgo) stats.lastHour++;
+      if (errorTime > dayAgo) stats.last24h++;
+    });
+
+    return stats;
+  },
+
+  /**
+   * Clear all tracked errors
+   */
+  clear() {
+    const count = this.errors.length;
+    this.errors = [];
+    console.log(`[ErrorAnalytics] Cleared ${count} errors`);
+    return count;
+  },
+
+  /**
+   * Export errors for debugging/reporting
+   */
+  export() {
+    return {
+      exportedAt: new Date().toISOString(),
+      stats: this.getStats(),
+      errors: this.errors
+    };
+  }
+};
+
+// Make ErrorAnalytics available globally for debugging
+window.ErrorAnalytics = ErrorAnalytics;
+
+// Global error handler for uncaught errors
+window.addEventListener('error', (event) => {
+  ErrorAnalytics.track('uncaught', event.error || event.message, {
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno
+  });
+});
+
+// Global handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  ErrorAnalytics.track('unhandledRejection', event.reason, {
+    type: 'promise'
+  });
+});
+
+console.log('[ErrorAnalytics] Initialized - use window.ErrorAnalytics.getStats() to view error statistics');
+
 // RSS Feed URLs
 const RSS_FEEDS = {
   maradmin: "https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=500&category=14336",
@@ -527,7 +655,7 @@ async function fetchDodForms() {
     cacheData();
     console.log(`Total DoD Forms loaded: ${allDodForms.length}`);
   } catch (error) {
-    console.error('Error fetching DoD Forms:', error);
+    ErrorAnalytics.track('fetchDodForms', error, { source: 'DoD Forms' });
   }
 }
 
@@ -916,7 +1044,7 @@ async function fetchYouTubeVideos() {
         }
 
       } catch (pageError) {
-        console.error('Error fetching YouTube page:', pageError);
+        ErrorAnalytics.track('fetchYouTubePage', pageError, { pageCount, source: 'YouTube API' });
         break;
       }
     } while (pageToken && pageCount < maxPages);
@@ -926,7 +1054,7 @@ async function fetchYouTubeVideos() {
     localStorage.setItem("youtube_cache_timestamp", new Date().toISOString());
     console.log(`Total YouTube videos loaded: ${allYouTubePosts.length}`);
   } catch (error) {
-    console.error('Error fetching YouTube videos:', error);
+    ErrorAnalytics.track('fetchYouTubeVideos', error, { source: 'YouTube' });
   }
 }
 
@@ -2994,7 +3122,7 @@ function loadCachedData() {
 
     filterMessages();
   } catch(e) {
-    console.error("Failed to load cached data:", e);
+    ErrorAnalytics.track('loadCachedData', e, { source: 'localStorage' });
   }
 }
 

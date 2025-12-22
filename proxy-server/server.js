@@ -23,6 +23,40 @@ const GITHUB_REPO = process.env.GITHUB_REPO || "SemperAdmin/usmc-directives-hub"
 const YOUTUBE_CHANNEL_ID = process.env.YOUTUBE_CHANNEL_ID || "UCob5u7jsXrdca9vmarYJ0Cg";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
+// YouTube API Quota Tracking (resets daily at midnight UTC or on server restart)
+// Daily quota limit: 10,000 units. Search API costs ~100 units per request.
+const YOUTUBE_DAILY_QUOTA = 10000;
+const YOUTUBE_SEARCH_COST = 100; // Cost per search request
+let youtubeQuotaUsed = 0;
+let youtubeQuotaResetDate = new Date().toISOString().split('T')[0]; // Today's date
+
+function checkAndResetQuota() {
+  const today = new Date().toISOString().split('T')[0];
+  if (today !== youtubeQuotaResetDate) {
+    console.log(`[Quota] Daily reset: ${youtubeQuotaUsed} units used yesterday`);
+    youtubeQuotaUsed = 0;
+    youtubeQuotaResetDate = today;
+  }
+}
+
+function trackQuotaUsage(cost = YOUTUBE_SEARCH_COST) {
+  checkAndResetQuota();
+  youtubeQuotaUsed += cost;
+  console.log(`[Quota] Used ${cost} units. Total today: ${youtubeQuotaUsed}/${YOUTUBE_DAILY_QUOTA}`);
+}
+
+function getQuotaInfo() {
+  checkAndResetQuota();
+  return {
+    used: youtubeQuotaUsed,
+    limit: YOUTUBE_DAILY_QUOTA,
+    remaining: Math.max(0, YOUTUBE_DAILY_QUOTA - youtubeQuotaUsed),
+    percentUsed: Math.round((youtubeQuotaUsed / YOUTUBE_DAILY_QUOTA) * 100),
+    resetDate: youtubeQuotaResetDate,
+    searchCost: YOUTUBE_SEARCH_COST
+  };
+}
+
 // Validate required environment variables
 if (!YOUTUBE_API_KEY) {
   console.error('❌ CRITICAL: YOUTUBE_API_KEY environment variable is not set');
@@ -299,6 +333,15 @@ app.get('/api/summaries', async (req, res) => {
   }
 });
 
+// YouTube API quota status endpoint
+app.get('/api/youtube/quota', (req, res) => {
+  res.json({
+    success: true,
+    quota: getQuotaInfo(),
+    note: 'Quota tracking resets on server restart. Actual Google quota resets at midnight Pacific Time.'
+  });
+});
+
 // Proxy endpoint for YouTube API
 app.get('/api/youtube/videos', async (req, res) => {
   // Check if API key is configured
@@ -306,7 +349,19 @@ app.get('/api/youtube/videos', async (req, res) => {
     return res.status(503).json({
       success: false,
       error: 'YouTube API key not configured',
-      message: 'Server administrator must set YOUTUBE_API_KEY environment variable'
+      message: 'Server administrator must set YOUTUBE_API_KEY environment variable',
+      quota: getQuotaInfo()
+    });
+  }
+
+  // Check if we're approaching quota limit (warn at 80%)
+  const quotaInfo = getQuotaInfo();
+  if (quotaInfo.percentUsed >= 95) {
+    return res.status(429).json({
+      success: false,
+      error: 'YouTube API quota nearly exhausted',
+      message: 'Daily quota limit reached. Please try again tomorrow or use cached data.',
+      quota: quotaInfo
     });
   }
 
@@ -331,7 +386,14 @@ app.get('/api/youtube/videos', async (req, res) => {
       timeout: 30000
     });
 
-    res.json(response.data);
+    // Track quota usage after successful request
+    trackQuotaUsage(YOUTUBE_SEARCH_COST);
+
+    // Include quota info in response
+    res.json({
+      ...response.data,
+      quota: getQuotaInfo()
+    });
   } catch (error) {
     console.error('====== YouTube API Error ======');
     console.error('Error message:', error.message);
@@ -349,6 +411,11 @@ app.get('/api/youtube/videos', async (req, res) => {
     console.error('Request params:', JSON.stringify(safeParams, null, 2));
     console.error('================================');
 
+    // Track quota even on error (Google still counts the request)
+    if (error.response?.status !== 403) {
+      trackQuotaUsage(YOUTUBE_SEARCH_COST);
+    }
+
     // Return detailed error to client
     const youtubeError = error.response?.data?.error;
     res.status(error.response?.status || 500).json({
@@ -356,7 +423,8 @@ app.get('/api/youtube/videos', async (req, res) => {
       error: 'Failed to fetch YouTube videos',
       message: error.message,
       youtubeError: youtubeError || null,
-      details: youtubeError?.errors?.[0] || null
+      details: youtubeError?.errors?.[0] || null,
+      quota: getQuotaInfo()
     });
   }
 });
