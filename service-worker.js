@@ -1,7 +1,9 @@
 // Service Worker for USMC Directives Hub
 // Provides offline caching and improved performance
 
-const CACHE_VERSION = 'v1.1.0';
+// Cache version - update this when deploying new versions
+// Format: v{major}.{minor}.{patch}-{timestamp}
+const CACHE_VERSION = 'v1.2.0-20251222';
 const CACHE_NAME = `usmc-directives-${CACHE_VERSION}`;
 
 // Assets to cache immediately on install
@@ -16,7 +18,10 @@ const STATIC_ASSETS = [
   '/lib/fa-checklists.js',
   '/lib/secnav-data.js',
   '/lib/alnav-data.js',
-  '/manifest.json'
+  '/lib/youtube-data.js',
+  '/manifest.json',
+  '/icon.svg',
+  '/logo.png'
 ];
 
 // Install event - cache static assets
@@ -40,26 +45,45 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and notify clients
 self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating...');
 
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
+        const oldCaches = cacheNames.filter(
+          (name) => name.startsWith('usmc-directives-') && name !== CACHE_NAME
+        );
+
+        if (oldCaches.length > 0) {
+          console.log('[Service Worker] Found old caches to delete:', oldCaches);
+        }
+
         return Promise.all(
-          cacheNames
-            .filter((name) => name.startsWith('usmc-directives-') && name !== CACHE_NAME)
-            .map((name) => {
-              console.log('[Service Worker] Deleting old cache:', name);
-              return caches.delete(name);
-            })
+          oldCaches.map((name) => {
+            console.log('[Service Worker] Deleting old cache:', name);
+            return caches.delete(name);
+          })
         );
       })
       .then(() => {
         console.log('[Service Worker] Activation complete');
         // Take control of all pages immediately
         return self.clients.claim();
+      })
+      .then(() => {
+        // Notify all clients about the update
+        return self.clients.matchAll({ type: 'window' });
+      })
+      .then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: CACHE_VERSION
+          });
+        });
+        console.log(`[Service Worker] Notified ${clients.length} clients about update to ${CACHE_VERSION}`);
       })
   );
 });
@@ -185,6 +209,14 @@ self.addEventListener('message', (event) => {
       })
     );
   }
+
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.source.postMessage({
+      type: 'VERSION_INFO',
+      version: CACHE_VERSION,
+      cacheName: CACHE_NAME
+    });
+  }
 });
 
-console.log('[Service Worker] Loaded successfully');
+console.log(`[Service Worker] Loaded successfully - version ${CACHE_VERSION}`);
