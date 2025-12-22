@@ -293,22 +293,194 @@ const SECNAV_INSTRUCTIONS = [
 ];
 
 /**
- * Map instruction number to category folder
+ * DONI Subcategory mappings
+ * Based on actual DONI folder structure
  */
-function getCategoryFolder(instNum) {
-  const prefix = parseInt(instNum.split('.')[0]);
+const SUBCATEGORY_MAP = {
+  // 01000 Military Personnel Support
+  '1000': '01-01 General Military Personnel Records',
+  '1001': '01-01 General Military Personnel Records',
+  '1100': '01-100 Officer Personnel',
+  '1141': '01-100 Officer Personnel',
+  '1300': '01-300 Military Personnel General Records',
+  '1306': '01-300 Military Personnel General Records',
+  '1320': '01-300 Military Personnel General Records',
+  '1400': '01-400 Promotion and Advancement Programs',
+  '1401': '01-400 Promotion and Advancement Programs',
+  '1412': '01-400 Promotion and Advancement Programs',
+  '1416': '01-400 Promotion and Advancement Programs',
+  '1420': '01-400 Promotion and Advancement Programs',
+  '1426': '01-400 Promotion and Advancement Programs',
+  '1427': '01-400 Promotion and Advancement Programs',
+  '1500': '01-500 Military Training and Education Services',
+  '1524': '01-500 Military Training and Education Services',
+  '1531': '01-500 Military Training and Education Services',
+  '1542': '01-500 Military Training and Education Services',
+  '1560': '01-500 Military Training and Education Services',
+  '1600': '01-600 Military Correctional Services',
+  '1640': '01-600 Military Correctional Services',
+  '1650': '01-600 Military Awards Services',
+  '1700': '01-700 Morale Welfare and Recreation',
+  '1730': '01-700 Morale Welfare and Recreation',
+  '1740': '01-700 Morale Welfare and Recreation',
+  '1750': '01-750 Family Support Services',
+  '1752': '01-750 Family Support Services',
+  '1754': '01-750 Family Support Services',
+  '1770': '01-700 Morale Welfare and Recreation',
+  '1800': '01-800 Retirement Services',
+  '1820': '01-800 Retirement Services',
+  '1850': '01-800 Retirement Services',
+  '1860': '01-800 Retirement Services',
+  '1900': '01-900 Reserve Personnel',
+  '1920': '01-900 Reserve Personnel',
 
-  if (prefix >= 1000 && prefix < 2000) return '01000 Military Personnel Support';
-  if (prefix >= 2000 && prefix < 3000) return '02000 Communications';
-  if (prefix >= 3000 && prefix < 4000) return '03000 Operations and Readiness';
-  if (prefix >= 4000 && prefix < 5000) return '04000 Logistical Support';
-  if (prefix >= 5000 && prefix < 6000) return '05000 General Admin and Management';
-  if (prefix >= 6000 && prefix < 7000) return '06000 Medicine and Dentistry';
-  if (prefix >= 7000 && prefix < 8000) return '07000 Financial Management';
-  if (prefix >= 11000 && prefix < 12000) return '11000 Facilities and Activities Ashore';
-  if (prefix >= 12000 && prefix < 13000) return '12000 Civilian Personnel';
+  // 02000 Communications
+  '2400': '02-400 Telecommunication Systems',
+  '2421': '02-400 Telecommunication Systems',
 
-  return '05000 General Admin and Management';
+  // 03000 Operations and Readiness
+  '3300': '03-300 Intelligence',
+  '3440': '03-400 Base Defense',
+  '3500': '03-500 Readiness',
+  '3501': '03-500 Readiness',
+  '3502': '03-500 Readiness',
+  '3640': '03-600 Military Awards',
+  '3800': '03-800 Military Information Security',
+  '3820': '03-800 Military Information Security',
+  '3850': '03-800 Military Information Security',
+  '3860': '03-800 Military Information Security',
+  '3870': '03-800 Military Information Security',
+  '3890': '03-800 Military Information Security',
+  '3891': '03-800 Military Information Security',
+  '3893': '03-800 Military Information Security',
+  '3900': '03-900 Research and Development',
+  '3960': '03-900 Research and Development',
+  '3970': '03-900 Research and Development',
+
+  // 04000 Logistical Support and Services
+  '4000': '04-000 Logistics General',
+  '4001': '04-000 Logistics General',
+  '4100': '04-100 Industrial Production',
+  '4101': '04-100 Industrial Production',
+  '4102': '04-100 Industrial Production',
+  '4120': '04-100 Industrial Production',
+  '4200': '04-200 Procurement',
+  '4280': '04-200 Procurement',
+  '4355': '04-300 Food Service',
+  '4440': '04-400 Material Management',
+  '4720': '04-700 Transportation',
+  '4855': '04-800 Product Assurance',
+  '4900': '04-900 Transportation Services',
+  '4950': '04-900 Transportation Services',
+
+  // 05000 General Management Security and Safety Services
+  '5000': '05-000 General Management Support',
+  '5030': '05-000 General Management Support',
+  '5060': '05-000 General Management Support',
+  '5061': '05-000 General Management Support',
+  '5090': '05-000 General Management Support',
+  '5100': '05-100 Safety',
+  '5200': '05-200 Management Program and Techniques Services',
+  '5210': '05-200 Management Program and Techniques Services',
+  '5211': '05-200 Management Program and Techniques Services',
+  '5213': '05-200 Management Program and Techniques Services',
+  '5214': '05-200 Management Program and Techniques Services',
+  '5216': '05-200 Management Program and Techniques Services',
+  '5239': '05-200 Management Program and Techniques Services',
+  '5300': '05-300 Manpower and Personnel Management',
+  '5311': '05-300 Manpower and Personnel Management',
+  '5312': '05-300 Manpower and Personnel Management',
+  '5350': '05-300 Manpower and Personnel Management',
+  '5370': '05-300 Manpower and Personnel Management',
+  '5400': '05-400 Organization and Functional Support Services',
+  '5430': '05-400 Organization and Functional Support Services',
+  '5450': '05-400 Organization and Functional Support Services',
+  '5500': '05-500 Security',
+  '5510': '05-500 Security',
+  '5520': '05-500 Security',
+  '5580': '05-500 Security',
+  '5700': '05-700 Public Affairs and Information',
+  '5720': '05-700 Public Affairs and Information',
+  '5726': '05-700 Public Affairs and Information',
+  '5730': '05-700 Public Affairs and Information',
+  '5800': '05-800 Legal Services',
+  '5801': '05-800 Legal Services',
+  '5802': '05-800 Legal Services',
+  '5803': '05-800 Legal Services',
+  '5820': '05-800 Legal Services',
+  '5830': '05-800 Legal Services',
+  '5840': '05-800 Legal Services',
+  '5870': '05-800 Legal Services',
+
+  // 06000 Medicine and Dentistry
+  '6000': '06-000 Medicine and Dentistry General',
+  '6200': '06-200 Medical Services',
+  '6410': '06-400 Aviation Medicine',
+  '6420': '06-400 Aviation Medicine',
+  '6520': '06-500 Psychology',
+
+  // 07000 Financial Management
+  '7000': '07-000 Financial Management General',
+  '7041': '07-000 Financial Management General',
+  '7042': '07-000 Financial Management General',
+  '7043': '07-000 Financial Management General',
+  '7220': '07-200 Pay and Allowances',
+  '7320': '07-300 Personal Property Claims',
+  '7510': '07-500 Auditing',
+  '7600': '07-600 Budget',
+
+  // 10000 DON Issuances
+  '10000': '10000 General DON Issuances',
+
+  // 11000 Facilities and Activities Ashore
+  '11010': '11-000 Facilities General',
+  '11011': '11-000 Facilities General',
+  '11100': '11-100 Naval Regulations',
+  '11101': '11-100 Naval Regulations',
+  '11260': '11-200 Weight Handling',
+
+  // 12000 Civilian Personnel
+  '12250': '12-200 Civilian Personnel Administration',
+  '12271': '12-200 Civilian Personnel Administration',
+  '12300': '12-300 Employment and Placement',
+  '12335': '12-300 Employment and Placement',
+  '12351': '12-300 Employment and Placement',
+  '12410': '12-400 Training',
+  '12430': '12-400 Training',
+  '12510': '12-500 Classification',
+  '12550': '12-500 Classification',
+  '12610': '12-600 Pay',
+  '12752': '12-700 Discipline',
+  '12771': '12-700 Discipline',
+  '12920': '12-900 Defense Intelligence',
+  '12990': '12-900 Defense Intelligence',
+};
+
+/**
+ * Map instruction number to category and subcategory folders
+ */
+function getPathFolders(instNum) {
+  const baseNum = instNum.split('.')[0];
+  const prefix = parseInt(baseNum);
+
+  // Determine main category
+  let category;
+  if (prefix >= 1000 && prefix < 2000) category = '01000 Military Personnel Support';
+  else if (prefix >= 2000 && prefix < 3000) category = '02000 Communications';
+  else if (prefix >= 3000 && prefix < 4000) category = '03000 Operations and Readiness';
+  else if (prefix >= 4000 && prefix < 5000) category = '04000 Logistical Support and Services';
+  else if (prefix >= 5000 && prefix < 6000) category = '05000 General Management Security and Safety Services';
+  else if (prefix >= 6000 && prefix < 7000) category = '06000 Medicine and Dentistry';
+  else if (prefix >= 7000 && prefix < 8000) category = '07000 Financial Management';
+  else if (prefix >= 10000 && prefix < 11000) category = '10000 DON Issuances';
+  else if (prefix >= 11000 && prefix < 12000) category = '11000 Facilities and Activities Ashore';
+  else if (prefix >= 12000 && prefix < 13000) category = '12000 Civilian Personnel';
+  else category = '05000 General Management Security and Safety Services';
+
+  // Get subcategory from map
+  const subcategory = SUBCATEGORY_MAP[baseNum] || null;
+
+  return { category, subcategory };
 }
 
 /**
@@ -316,10 +488,17 @@ function getCategoryFolder(instNum) {
  */
 function buildUrl(instruction) {
   const baseUrl = 'https://www.secnav.navy.mil/doni';
-  const category = getCategoryFolder(instruction.id);
-  const encodedCategory = encodeURIComponent(category).replace(/%20/g, '%20');
-  const encodedId = encodeURIComponent(instruction.id).replace(/%20/g, '%20');
-  return `${baseUrl}/Directives/${encodedCategory}/${encodedId}.pdf`;
+  const { category, subcategory } = getPathFolders(instruction.id);
+
+  // Build path with or without subcategory
+  let path;
+  if (subcategory) {
+    path = `Directives/${encodeURIComponent(category)}/${encodeURIComponent(subcategory)}/${instruction.id}.pdf`;
+  } else {
+    path = `Directives/${encodeURIComponent(category)}/${instruction.id}.pdf`;
+  }
+
+  return `${baseUrl}/${path}`;
 }
 
 /**
@@ -335,7 +514,7 @@ function transformInstructions() {
       link: buildUrl(inst),
       pubDate: pubDate,
       description: `Secretary of the Navy Instruction ${inst.id} - ${inst.subject}`,
-      category: getCategoryFolder(inst.id).split(' ').slice(1).join(' '),
+      category: getPathFolders(inst.id).category.split(' ').slice(1).join(' '),
       effectiveDate: inst.date
     };
   });
