@@ -1,7 +1,7 @@
 {
-  "name": "usmc-directives-hub",
-  "version": "1.0.0",
-  "description": "USMC Directives Hub - Search and track Marine Corps Messages, Publications, and Forms",
+  "name": "message-watch",
+  "version": "2.0.0",
+  "description": "Message Watch - Monitor military directives, messages, and publications",
   "type": "module",
   "scripts": {
     "dev": "vite",
