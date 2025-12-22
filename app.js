@@ -298,7 +298,8 @@ const summaryStatsDiv = document.getElementById("summaryStats");
 const lastUpdateSpan = document.getElementById("lastUpdate");
 const searchInput = document.getElementById("searchInput");
 // Date range is now controlled by buttons only (dropdown removed)
-let currentDateRange = 7; // Default to "This Week"
+const DEFAULT_DATE_RANGE = 7; // "This Week"
+let currentDateRange = DEFAULT_DATE_RANGE;
 const clearSearchBtn = document.getElementById("clearSearch");
 const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 const quickFilterButtons = document.querySelectorAll(".quick-filter-btn");
@@ -523,7 +524,8 @@ async function fetchFeed(type, url) {
           almar: allAlmars
         };
         const messages = messageArrays[type] || [];
-        if (messages.length === 0 && (type === 'maradmin' || type === 'mcpub')) {
+        const criticalFeedTypes = ['maradmin', 'mcpub'];
+        if (messages.length === 0 && criticalFeedTypes.includes(type)) {
           showError(
             `Unable to fetch ${type.toUpperCase()}s.`,
             'All connection methods failed. Please check your internet connection or try again later.',
@@ -2062,16 +2064,8 @@ function filterMessages() {
 
 function clearSearch() {
   searchInput.value = "";
-  currentDateRange = 7; // Reset to "This Week"
-
-  // Reset quick filter buttons and ARIA attributes
-  quickFilterButtons.forEach(btn => {
-    const isThisWeek = btn.dataset.days === "7";
-    btn.classList.toggle('active', isThisWeek);
-    btn.setAttribute('aria-pressed', isThisWeek);
-  });
-
-  filterMessages();
+  currentDateRange = DEFAULT_DATE_RANGE;
+  handleDateRangeChange();
 }
 
 // Restore filter preferences from localStorage
@@ -2091,12 +2085,7 @@ function restoreFilterPreferences() {
   const savedDateRange = localStorage.getItem('filter_date_range');
   if (savedDateRange) {
     currentDateRange = parseInt(savedDateRange);
-    // Update quick filter buttons and ARIA attributes
-    quickFilterButtons.forEach(btn => {
-      const isPressed = btn.dataset.days === savedDateRange;
-      btn.classList.toggle('active', isPressed);
-      btn.setAttribute('aria-pressed', isPressed);
-    });
+    handleDateRangeChange();
   }
 }
 
