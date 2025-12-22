@@ -33,8 +33,8 @@ const ErrorAnalytics = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       source,
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : null,
+      message: error?.message ?? (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error)),
+      stack: error?.stack ?? null,
       context,
       userAgent: navigator.userAgent,
       url: window.location.href
@@ -512,9 +512,18 @@ async function fetchFeed(type, url) {
     } catch(err) {
       console.log(`Proxy ${i + 1} failed for ${type}:`, err.message);
       if (i === orderedProxies.length - 1) {
-        // Last proxy failed
-        const messages = type === 'maradmin' ? allMaradmins : allMcpubs;
-        if (messages.length === 0) {
+        // Last proxy failed - log error for all feed types
+        console.error(`[${type.toUpperCase()}] All fetch methods failed`);
+
+        // Show error for critical feed types
+        const messageArrays = {
+          maradmin: allMaradmins,
+          mcpub: allMcpubs,
+          jtr: allJtrs,
+          almar: allAlmars
+        };
+        const messages = messageArrays[type] || [];
+        if (messages.length === 0 && (type === 'maradmin' || type === 'mcpub')) {
           showError(
             `Unable to fetch ${type.toUpperCase()}s.`,
             'All connection methods failed. Please check your internet connection or try again later.',
