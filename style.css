@@ -1870,6 +1870,8 @@ body.dark-theme .footer-note {
     font-size: 0.75rem;
     text-align: center;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .maradmin-header {
