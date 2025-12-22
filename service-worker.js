@@ -3,7 +3,7 @@
 
 // Cache version - update this when deploying new versions
 // Format: v{major}.{minor}.{patch}-{timestamp}
-const CACHE_VERSION = 'v1.2.0-20251222';
+const CACHE_VERSION = 'v1.3.0-20251222';
 const CACHE_NAME = `usmc-directives-${CACHE_VERSION}`;
 
 // Assets to cache immediately on install

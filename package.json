@@ -11,8 +11,12 @@
     "fetch-secnav": "node scripts/fetch-secnav.mjs",
     "fetch-alnav": "node scripts/fetch-alnav.mjs",
     "fetch-youtube": "node scripts/fetch-youtube.mjs",
-    "fetch-static": "npm run fetch-fa && npm run fetch-secnav && npm run fetch-alnav",
+    "generate-secnav": "node scripts/generate-secnav-data.mjs",
+    "generate-alnav": "node scripts/generate-alnav-data.mjs",
+    "generate-static": "npm run generate-secnav && npm run generate-alnav",
+    "fetch-static": "npm run fetch-fa && npm run generate-secnav && npm run generate-alnav",
     "fetch-all": "npm run fetch-static && npm run fetch-youtube",
+    "update-data": "npm run generate-static && npm run fetch-youtube",
     "lint": "eslint app.js --fix",
     "format": "prettier --write \"*.{js,html,css,md}\"",
     "format:check": "prettier --check \"*.{js,html,css,md}\""
