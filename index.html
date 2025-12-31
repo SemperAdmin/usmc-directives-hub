@@ -7,7 +7,7 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' https://unpkg.com/web-vitals@3.5.0/;
-  style-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
   img-src 'self' data: https:;
   connect-src 'self'
     https://www.marines.mil
@@ -23,7 +23,7 @@
     https://api.allorigins.win
     https://cors-anywhere.herokuapp.com
     https://api.codetabs.com;
-  font-src 'self' data:;
+  font-src 'self' data: https://cdnjs.cloudflare.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
@@ -41,6 +41,7 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 <link rel="stylesheet" href="style.css?v=23">
 <link rel="stylesheet" href="ai-improvements.css?v=2">
 </head>
@@ -60,8 +61,8 @@
   </a>
   <p class="subtitle">Monitor military directives, messages, and publications</p>
   <div class="controls">
-    <button id="refreshBtn" aria-label="Refresh data from server">🔄 Refresh</button>
-    <button id="themeToggle" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+    <button id="refreshBtn" aria-label="Refresh data from server"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+    <button id="themeToggle" aria-label="Toggle dark mode"><i class="fa-solid fa-moon"></i> Dark Mode</button>
   </div>
 </header>
 <main id="main-content">
@@ -145,7 +146,7 @@
       <div class="feedback-form-group">
         <label for="feedbackEmail">Email (Optional - will be public in GitHub issue)</label>
         <input type="email" id="feedbackEmail" placeholder="your@email.mil (visible publicly)" aria-describedby="emailPrivacyNote">
-        <small id="emailPrivacyNote">⚠️ Your email will be visible in the public GitHub issue</small>
+        <small id="emailPrivacyNote"><i class="fa-solid fa-triangle-exclamation"></i> Your email will be visible in the public GitHub issue</small>
       </div>
 
       <div class="feedback-form-actions">

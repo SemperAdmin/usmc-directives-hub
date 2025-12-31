@@ -338,7 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
 refreshBtn.addEventListener("click", () => {
   // Warn user about API quota consumption before refreshing
   const confirmed = confirm(
-    '⚠️ Manual Refresh Warning\n\n' +
+    'Manual Refresh Warning\n\n' +
     'This will fetch fresh data from all sources and use API quota.\n\n' +
     '• YouTube API: Uses limited daily quota\n' +
     '• Most data is cached for 1-24 hours\n' +
@@ -351,13 +351,13 @@ refreshBtn.addEventListener("click", () => {
   }
 
   refreshBtn.disabled = true;
-  refreshBtn.textContent = "🔄 Refreshing...";
+  refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Refreshing...';
   loadIgmcChecklists(); // Reload IGMC Checklists from static data file
   loadSecnavDirectives(); // Reload SECNAV Directives from static data file
   loadAlnavMessages(); // Reload ALNAV Messages from static data file
   fetchAllFeeds().then(() => {
     refreshBtn.disabled = false;
-    refreshBtn.textContent = "🔄 Refresh";
+    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
   });
 });
 themeToggle.addEventListener("click", toggleTheme);
@@ -1533,7 +1533,7 @@ async function generateAISummary(message, buttonElement) {
   try {
     if (buttonElement) {
       buttonElement.disabled = true;
-      buttonElement.textContent = '⏳';
+      buttonElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
     }
 
     // Check proxy server for existing summary (shared across all users)
@@ -1551,7 +1551,7 @@ async function generateAISummary(message, buttonElement) {
             cacheData();
 
             if (buttonElement) {
-              buttonElement.textContent = '🤖';
+              buttonElement.innerHTML = '<i class="fa-solid fa-robot"></i>';
               buttonElement.disabled = false;
             }
             return data.summary;
@@ -1624,7 +1624,7 @@ async function generateAISummary(message, buttonElement) {
     }
 
     if (buttonElement) {
-      buttonElement.textContent = '🤖';
+      buttonElement.innerHTML = '<i class="fa-solid fa-robot"></i>';
       buttonElement.disabled = false;
     }
 
@@ -1633,7 +1633,7 @@ async function generateAISummary(message, buttonElement) {
   } catch (error) {
     console.error('Error generating AI summary:', error);
     if (buttonElement) {
-      buttonElement.textContent = '❌';
+      buttonElement.innerHTML = '<i class="fa-solid fa-xmark"></i>';
       buttonElement.disabled = false;
     }
     throw error;
@@ -2445,7 +2445,7 @@ function renderCompactView(arr) {
     // Build action buttons based on configuration
     let actionButtons = '';
     if (config.showAISummary) {
-      actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary">🤖 AI Summary</button>`;
+      actionButtons += `<button class="compact-ai-btn" onclick="toggleAISummary(${index}, currentMessages[${index}])" title="Generate AI Summary"><i class="fa-solid fa-robot"></i> AI Summary</button>`;
     } else {
       actionButtons = '<span class="no-actions">—</span>';
     }
@@ -2533,7 +2533,7 @@ function toggleCompactDetails(index, message) {
     if (descSection) {descSection.style.display = 'none';}
     if (categorySection) {categorySection.style.display = 'none';}
     if (actionsSection) {actionsSection.style.display = 'none';}
-    btn.textContent = '📋 Details';
+    btn.innerHTML = '<i class="fa-solid fa-list"></i> Details';
     btn.classList.remove('details-expanded');
   } else {
     // Show message details
@@ -2542,7 +2542,7 @@ function toggleCompactDetails(index, message) {
     if (descSection) {descSection.style.display = 'block';}
     if (categorySection) {categorySection.style.display = 'block';}
     if (actionsSection) {actionsSection.style.display = 'block';}
-    btn.textContent = '📋 Hide Details';
+    btn.innerHTML = '<i class="fa-solid fa-list"></i> Hide Details';
     btn.classList.add('details-expanded');
   }
 }
@@ -2600,7 +2600,7 @@ function formatAISummaryHTML(summary) {
   // Key Points sections
   const keyHeader = text.match(/🎯\s*(?:\*\*\s*)?KEY POINTS[^\n]*/i);
   if (keyHeader) {
-    html += '<h4 class="key-points-header">🎯 Key Points</h4>';
+    html += '<h4 class="key-points-header"><i class="fa-solid fa-bullseye"></i> Key Points</h4>';
 
     let currentSection = '';
     let items = [];
@@ -2664,12 +2664,12 @@ async function toggleAISummary(index, message) {
     if (existingSummary.style.display === 'none') {
       existingSummary.style.display = 'block';
       detailsRow.style.display = 'block';
-      btn.textContent = '🤖 Hide Summary';
+      btn.innerHTML = '<i class="fa-solid fa-robot"></i> Hide Summary';
       btn.classList.add('active');
     } else {
       existingSummary.style.display = 'none';
       detailsRow.style.display = 'none';
-      btn.textContent = '🤖 AI Summary';
+      btn.innerHTML = '<i class="fa-solid fa-robot"></i> AI Summary';
       btn.classList.remove('active');
     }
     return;
@@ -2683,7 +2683,7 @@ async function toggleAISummary(index, message) {
 
     if (!summary) {
       btn.disabled = true;
-      btn.innerHTML = '⏳ Generating...';
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
       btn.classList.add('loading');
 
       summary = await generateAISummary(message, btn);
@@ -2701,8 +2701,8 @@ async function toggleAISummary(index, message) {
 
     const header = document.createElement('div');
     header.className = 'ai-summary-header';
-    const cacheIndicator = isCached ? '<span class="cache-indicator" title="Loaded from cache">⚡ Cached</span>' : '<span class="cache-indicator new" title="Newly generated">✨ New</span>';
-    header.innerHTML = `<span class="ai-summary-title">🤖 AI-Generated Summary</span>${cacheIndicator}`;
+    const cacheIndicator = isCached ? '<span class="cache-indicator" title="Loaded from cache"><i class="fa-solid fa-bolt"></i> Cached</span>' : '<span class="cache-indicator new" title="Newly generated"><i class="fa-solid fa-sparkles"></i> New</span>';
+    header.innerHTML = `<span class="ai-summary-title"><i class="fa-solid fa-robot"></i> AI-Generated Summary</span>${cacheIndicator}`;
 
   const textDiv = document.createElement('div');
   textDiv.className = 'ai-summary-text';
@@ -2720,14 +2720,14 @@ async function toggleAISummary(index, message) {
       content.appendChild(summaryDiv);
     }
 
-    btn.textContent = '🤖 Hide Summary';
+    btn.innerHTML = '<i class="fa-solid fa-robot"></i> Hide Summary';
     btn.classList.add('active');
 
   } catch (error) {
     console.error('Error displaying AI summary:', error);
     btn.disabled = false;
     btn.classList.remove('loading');
-    btn.innerHTML = '❌ Retry';
+    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Retry';
 
     // Show user-friendly error message
     const errorMsg = error.message.includes('Proxy server not configured')
@@ -2753,7 +2753,7 @@ async function toggleDetails(index, message) {
   // If already visible, hide it
   if (detailsDiv.style.display === 'block') {
     detailsDiv.style.display = 'none';
-    btn.textContent = '📄 Show Details';
+    btn.innerHTML = '<i class="fa-solid fa-file-lines"></i> Show Details';
     return;
   }
 
@@ -2769,7 +2769,7 @@ async function toggleDetails(index, message) {
       await fetchMessageDetails(message);
 
       // Update button text
-      btn.textContent = '📋 Hide Details';
+      btn.innerHTML = '<i class="fa-solid fa-list"></i> Hide Details';
       btn.disabled = false;
 
       // Display details based on message type
@@ -2778,7 +2778,7 @@ async function toggleDetails(index, message) {
         detailsDiv.innerHTML = `
           <div class="maradmin-details-content">
             <h4>Message Details</h4>
-            ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : '<p class="no-details-found">No additional details extracted.</p>'}
+            ${message.maradminNumber ? `<p class="maradmin-number-found"><i class="fa-solid fa-file-lines"></i> MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : '<p class="no-details-found">No additional details extracted.</p>'}
           </div>
         `;
       } else if (message.type === 'mcpub') {
@@ -2789,7 +2789,7 @@ async function toggleDetails(index, message) {
             ${message.pdfUrl ? `
               <div class="pdf-download">
                 <a href="${message.pdfUrl}" target="_blank" rel="noopener noreferrer" class="download-pdf-btn">
-                  📥 Download PDF
+                  <i class="fa-solid fa-download"></i> Download PDF
                 </a>
                 <p class="pdf-link-url">${message.id || 'PDF Document'}</p>
               </div>
@@ -2822,17 +2822,17 @@ async function toggleDetails(index, message) {
     } catch (error) {
       detailsDiv.innerHTML = '<div class="error-details">Failed to fetch message details. Please try again.</div>';
       btn.disabled = false;
-      btn.textContent = '📋 Retry';
+      btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Retry';
     }
   } else {
     // Already fetched, just display
-    btn.textContent = '📋 Hide Details';
+    btn.innerHTML = '<i class="fa-solid fa-list"></i> Hide Details';
 
     if (message.type === 'maradmin') {
       detailsDiv.innerHTML = `
         <div class="maradmin-details-content">
           <h4>Message Details</h4>
-          ${message.maradminNumber ? `<p class="maradmin-number-found">📄 MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : '<p class="no-details-found">No additional details extracted.</p>'}
+          ${message.maradminNumber ? `<p class="maradmin-number-found"><i class="fa-solid fa-file-lines"></i> MARADMIN Number: <strong>${message.maradminNumber}</strong></p>` : '<p class="no-details-found">No additional details extracted.</p>'}
         </div>
       `;
     } else if (message.type === 'mcpub') {
@@ -2842,7 +2842,7 @@ async function toggleDetails(index, message) {
           ${message.pdfUrl ? `
             <div class="pdf-download">
               <a href="${message.pdfUrl}" target="_blank" rel="noopener noreferrer" class="download-pdf-btn">
-                📥 Download PDF
+                <i class="fa-solid fa-download"></i> Download PDF
               </a>
               <p class="pdf-link-url">${message.id || 'PDF Document'}</p>
             </div>
@@ -3132,7 +3132,7 @@ function initTheme() {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (prefersDark) {
       document.body.classList.add("dark-theme");
-      themeToggle.textContent = "☀️ Light Mode";
+      themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> Light Mode';
       localStorage.setItem("theme", "dark");
       return;
     }
@@ -3141,9 +3141,9 @@ function initTheme() {
   // Use saved preference
   if (savedTheme === "dark") {
     document.body.classList.add("dark-theme");
-    themeToggle.textContent = "☀️ Light Mode";
+    themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> Light Mode';
   } else {
-    themeToggle.textContent = "🌙 Dark Mode";
+    themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i> Dark Mode';
   }
 
   // Listen for system theme changes
@@ -3153,10 +3153,10 @@ function initTheme() {
     if (!userPreference) {
       if (e.matches) {
         document.body.classList.add("dark-theme");
-        themeToggle.textContent = "☀️ Light Mode";
+        themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> Light Mode';
       } else {
         document.body.classList.remove("dark-theme");
-        themeToggle.textContent = "🌙 Dark Mode";
+        themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i> Dark Mode';
       }
     }
   });
@@ -3166,7 +3166,7 @@ function toggleTheme() {
   document.body.classList.toggle("dark-theme");
   const isDark = document.body.classList.contains("dark-theme");
   localStorage.setItem("theme", isDark ? "dark" : "light");
-  themeToggle.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+  themeToggle.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i> Light Mode' : '<i class="fa-solid fa-moon"></i> Dark Mode';
 }
 
 function updateLastUpdate() {
@@ -3340,8 +3340,8 @@ function showKeyboardShortcuts() {
     modal.innerHTML = `
       <div class="feedback-modal-content">
         <div class="feedback-modal-header">
-          <h2 id="helpModalTitle">⌨️ Keyboard Shortcuts</h2>
-          <button id="closeHelpModal" class="feedback-close-btn" aria-label="Close help modal">✕</button>
+          <h2 id="helpModalTitle"><i class="fa-solid fa-keyboard"></i> Keyboard Shortcuts</h2>
+          <button id="closeHelpModal" class="feedback-close-btn" aria-label="Close help modal"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="help-shortcuts">
           <div class="help-shortcut">
