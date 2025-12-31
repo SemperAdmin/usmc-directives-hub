@@ -304,6 +304,24 @@ const clearSearchBtn = document.getElementById("clearSearch");
 const messageTypeButtons = document.querySelectorAll(".message-type-btn");
 const quickFilterButtons = document.querySelectorAll(".quick-filter-btn");
 
+/**
+ * Safely set button content with a Font Awesome icon
+ * Uses DOM manipulation instead of innerHTML to prevent XSS
+ * @param {HTMLElement} element - The element to update
+ * @param {string} iconClass - Font Awesome icon class (e.g., 'fa-arrows-rotate')
+ * @param {string} text - Text to display after the icon
+ * @param {string[]} extraIconClasses - Additional classes for the icon (e.g., ['fa-spin'])
+ */
+function setIconContent(element, iconClass, text = '', extraIconClasses = []) {
+  const icon = document.createElement('i');
+  icon.className = `fa-solid ${iconClass} ${extraIconClasses.join(' ')}`.trim();
+  if (text) {
+    element.replaceChildren(icon, ` ${text}`);
+  } else {
+    element.replaceChildren(icon);
+  }
+}
+
 // Gemini API configuration - API keys moved to backend for security
 
 let currentMessages = [];
@@ -351,13 +369,13 @@ refreshBtn.addEventListener("click", () => {
   }
 
   refreshBtn.disabled = true;
-  refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Refreshing...';
+  setIconContent(refreshBtn, 'fa-arrows-rotate', 'Refreshing...', ['fa-spin']);
   loadIgmcChecklists(); // Reload IGMC Checklists from static data file
   loadSecnavDirectives(); // Reload SECNAV Directives from static data file
   loadAlnavMessages(); // Reload ALNAV Messages from static data file
   fetchAllFeeds().then(() => {
     refreshBtn.disabled = false;
-    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+    setIconContent(refreshBtn, 'fa-arrows-rotate', 'Refresh');
   });
 });
 themeToggle.addEventListener("click", toggleTheme);
@@ -1533,7 +1551,7 @@ async function generateAISummary(message, buttonElement) {
   try {
     if (buttonElement) {
       buttonElement.disabled = true;
-      buttonElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      setIconContent(buttonElement, 'fa-spinner', '', ['fa-spin']);
     }
 
     // Check proxy server for existing summary (shared across all users)
@@ -1551,7 +1569,7 @@ async function generateAISummary(message, buttonElement) {
             cacheData();
 
             if (buttonElement) {
-              buttonElement.innerHTML = '<i class="fa-solid fa-robot"></i>';
+              setIconContent(buttonElement, 'fa-robot');
               buttonElement.disabled = false;
             }
             return data.summary;
@@ -1624,7 +1642,7 @@ async function generateAISummary(message, buttonElement) {
     }
 
     if (buttonElement) {
-      buttonElement.innerHTML = '<i class="fa-solid fa-robot"></i>';
+      setIconContent(buttonElement, 'fa-robot');
       buttonElement.disabled = false;
     }
 
@@ -1633,7 +1651,7 @@ async function generateAISummary(message, buttonElement) {
   } catch (error) {
     console.error('Error generating AI summary:', error);
     if (buttonElement) {
-      buttonElement.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      setIconContent(buttonElement, 'fa-xmark');
       buttonElement.disabled = false;
     }
     throw error;
@@ -2533,7 +2551,7 @@ function toggleCompactDetails(index, message) {
     if (descSection) {descSection.style.display = 'none';}
     if (categorySection) {categorySection.style.display = 'none';}
     if (actionsSection) {actionsSection.style.display = 'none';}
-    btn.innerHTML = '<i class="fa-solid fa-list"></i> Details';
+    setIconContent(btn, 'fa-list', 'Details');
     btn.classList.remove('details-expanded');
   } else {
     // Show message details
@@ -2542,7 +2560,7 @@ function toggleCompactDetails(index, message) {
     if (descSection) {descSection.style.display = 'block';}
     if (categorySection) {categorySection.style.display = 'block';}
     if (actionsSection) {actionsSection.style.display = 'block';}
-    btn.innerHTML = '<i class="fa-solid fa-list"></i> Hide Details';
+    setIconContent(btn, 'fa-list', 'Hide Details');
     btn.classList.add('details-expanded');
   }
 }
@@ -2664,12 +2682,12 @@ async function toggleAISummary(index, message) {
     if (existingSummary.style.display === 'none') {
       existingSummary.style.display = 'block';
       detailsRow.style.display = 'block';
-      btn.innerHTML = '<i class="fa-solid fa-robot"></i> Hide Summary';
+      setIconContent(btn, 'fa-robot', 'Hide Summary');
       btn.classList.add('active');
     } else {
       existingSummary.style.display = 'none';
       detailsRow.style.display = 'none';
-      btn.innerHTML = '<i class="fa-solid fa-robot"></i> AI Summary';
+      setIconContent(btn, 'fa-robot', 'AI Summary');
       btn.classList.remove('active');
     }
     return;
@@ -2683,7 +2701,7 @@ async function toggleAISummary(index, message) {
 
     if (!summary) {
       btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+      setIconContent(btn, 'fa-spinner', 'Generating...', ['fa-spin']);
       btn.classList.add('loading');
 
       summary = await generateAISummary(message, btn);
@@ -2701,8 +2719,26 @@ async function toggleAISummary(index, message) {
 
     const header = document.createElement('div');
     header.className = 'ai-summary-header';
-    const cacheIndicator = isCached ? '<span class="cache-indicator" title="Loaded from cache"><i class="fa-solid fa-bolt"></i> Cached</span>' : '<span class="cache-indicator new" title="Newly generated"><i class="fa-solid fa-sparkles"></i> New</span>';
-    header.innerHTML = `<span class="ai-summary-title"><i class="fa-solid fa-robot"></i> AI-Generated Summary</span>${cacheIndicator}`;
+
+    // Build title with icon using DOM methods
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'ai-summary-title';
+    const robotIcon = document.createElement('i');
+    robotIcon.className = 'fa-solid fa-robot';
+    titleSpan.appendChild(robotIcon);
+    titleSpan.appendChild(document.createTextNode(' AI-Generated Summary'));
+
+    // Build cache indicator with icon using DOM methods
+    const cacheSpan = document.createElement('span');
+    cacheSpan.className = isCached ? 'cache-indicator' : 'cache-indicator new';
+    cacheSpan.title = isCached ? 'Loaded from cache' : 'Newly generated';
+    const cacheIcon = document.createElement('i');
+    cacheIcon.className = isCached ? 'fa-solid fa-bolt' : 'fa-solid fa-sparkles';
+    cacheSpan.appendChild(cacheIcon);
+    cacheSpan.appendChild(document.createTextNode(isCached ? ' Cached' : ' New'));
+
+    header.appendChild(titleSpan);
+    header.appendChild(cacheSpan);
 
   const textDiv = document.createElement('div');
   textDiv.className = 'ai-summary-text';
@@ -2720,14 +2756,14 @@ async function toggleAISummary(index, message) {
       content.appendChild(summaryDiv);
     }
 
-    btn.innerHTML = '<i class="fa-solid fa-robot"></i> Hide Summary';
+    setIconContent(btn, 'fa-robot', 'Hide Summary');
     btn.classList.add('active');
 
   } catch (error) {
     console.error('Error displaying AI summary:', error);
     btn.disabled = false;
     btn.classList.remove('loading');
-    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Retry';
+    setIconContent(btn, 'fa-rotate-right', 'Retry');
 
     // Show user-friendly error message
     const errorMsg = error.message.includes('Proxy server not configured')
@@ -2753,7 +2789,7 @@ async function toggleDetails(index, message) {
   // If already visible, hide it
   if (detailsDiv.style.display === 'block') {
     detailsDiv.style.display = 'none';
-    btn.innerHTML = '<i class="fa-solid fa-file-lines"></i> Show Details';
+    setIconContent(btn, 'fa-file-lines', 'Show Details');
     return;
   }
 
@@ -2762,14 +2798,18 @@ async function toggleDetails(index, message) {
 
   // If not fetched yet, fetch now
   if (!message.detailsFetched) {
-    detailsDiv.innerHTML = '<div class="loading-details">Fetching message details...</div>';
+    detailsDiv.textContent = '';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-details';
+    loadingDiv.textContent = 'Fetching message details...';
+    detailsDiv.appendChild(loadingDiv);
     btn.disabled = true;
 
     try {
       await fetchMessageDetails(message);
 
       // Update button text
-      btn.innerHTML = '<i class="fa-solid fa-list"></i> Hide Details';
+      setIconContent(btn, 'fa-list', 'Hide Details');
       btn.disabled = false;
 
       // Display details based on message type
@@ -2820,13 +2860,17 @@ async function toggleDetails(index, message) {
       }
 
     } catch (error) {
-      detailsDiv.innerHTML = '<div class="error-details">Failed to fetch message details. Please try again.</div>';
+      detailsDiv.textContent = '';
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-details';
+      errorDiv.textContent = 'Failed to fetch message details. Please try again.';
+      detailsDiv.appendChild(errorDiv);
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Retry';
+      setIconContent(btn, 'fa-rotate-right', 'Retry');
     }
   } else {
     // Already fetched, just display
-    btn.innerHTML = '<i class="fa-solid fa-list"></i> Hide Details';
+    setIconContent(btn, 'fa-list', 'Hide Details');
 
     if (message.type === 'maradmin') {
       detailsDiv.innerHTML = `
@@ -3132,7 +3176,7 @@ function initTheme() {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (prefersDark) {
       document.body.classList.add("dark-theme");
-      themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> Light Mode';
+      setIconContent(themeToggle, 'fa-sun', 'Light Mode');
       localStorage.setItem("theme", "dark");
       return;
     }
@@ -3141,9 +3185,9 @@ function initTheme() {
   // Use saved preference
   if (savedTheme === "dark") {
     document.body.classList.add("dark-theme");
-    themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> Light Mode';
+    setIconContent(themeToggle, 'fa-sun', 'Light Mode');
   } else {
-    themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i> Dark Mode';
+    setIconContent(themeToggle, 'fa-moon', 'Dark Mode');
   }
 
   // Listen for system theme changes
@@ -3153,10 +3197,10 @@ function initTheme() {
     if (!userPreference) {
       if (e.matches) {
         document.body.classList.add("dark-theme");
-        themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> Light Mode';
+        setIconContent(themeToggle, 'fa-sun', 'Light Mode');
       } else {
         document.body.classList.remove("dark-theme");
-        themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i> Dark Mode';
+        setIconContent(themeToggle, 'fa-moon', 'Dark Mode');
       }
     }
   });
@@ -3166,7 +3210,7 @@ function toggleTheme() {
   document.body.classList.toggle("dark-theme");
   const isDark = document.body.classList.contains("dark-theme");
   localStorage.setItem("theme", isDark ? "dark" : "light");
-  themeToggle.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i> Light Mode' : '<i class="fa-solid fa-moon"></i> Dark Mode';
+  setIconContent(themeToggle, isDark ? 'fa-sun' : 'fa-moon', isDark ? 'Light Mode' : 'Dark Mode');
 }
 
 function updateLastUpdate() {
