@@ -3459,10 +3459,9 @@ const cancelFeedback = document.getElementById('cancelFeedback');
 const feedbackForm = document.getElementById('feedbackForm');
 const feedbackStatus = document.getElementById('feedbackStatus');
 
-// Open feedback modal
+// Open feedback link
 feedbackBtn.addEventListener('click', () => {
-  feedbackModal.classList.remove('hidden');
-  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+  window.open('https://semperadmin.github.io/Sentinel/#detail/usmc-directives-hub/todo', '_blank');
 });
 
 // Close feedback modal
